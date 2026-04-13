@@ -68,22 +68,4 @@ export const detectCompetingBundles = (
   };
 };
 
-// Generate mock mempool data for testing
-export const generateMockMempool = (count: number = 20): MempoolTransaction[] => {
-  const addresses = [
-    '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D',
-    '0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F',
-    '0xE592427A0AEce92De3Edee1F18E0157C05861564',
-  ];
-  const sigs = ['38ed1739', '7ff36ab5', '18cbafe5'];
-  
-  return Array.from({ length: count }, (_, i) => ({
-    hash: `0x${Math.random().toString(16).substr(2, 64)}`,
-    to: addresses[i % addresses.length],
-    value: (Math.random() * 10).toFixed(4),
-    gasPrice: 20 + Math.random() * 80,
-    maxPriorityFee: 1 + Math.random() * 10,
-    data: `0x${sigs[i % 3]}${Math.random().toString(16).substr(2, 56)}`,
-    timestamp: Date.now() - Math.random() * 60000,
-  }));
-};
+

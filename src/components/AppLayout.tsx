@@ -8,28 +8,23 @@ import { ProtocolMatrix } from './ProtocolMatrix';
 import { HowItWorks } from './HowItWorks';
 import { ApiSettings } from './ApiSettings';
 import { SmartContractDeployer } from './SmartContractDeployer';
-import { AnalyticsDashboard } from './AnalyticsDashboard';
-import { FeatureGovernance } from './FeatureGovernance';
+
 import { ProductionReadiness } from './ProductionReadiness';
 import { EdgeFunctionDeployer } from './EdgeFunctionDeployer';
 import { NetworkSelector } from './NetworkSelector';
 import { CrossChainArbitrage } from './CrossChainArbitrage';
-import { FlashbotsPanel } from './FlashbotsPanel';
-import { PriceFeedPanel } from './PriceFeedPanel';
+
 import { GasOptimizerPanel } from './GasOptimizerPanel';
 import { NotificationCenter } from './notifications/NotificationCenter';
 import { WebhookManager } from './webhooks/WebhookManager';
 import { RiskManagementPanel } from './risk/RiskManagementPanel';
-import { BacktestPanel } from './backtesting/BacktestPanel';
-import { AdvancedPerformance } from './AdvancedPerformance';
+
 import { TradingBotManager } from './bots/TradingBotManager';
 import { LiveTradingPanel } from './bots/LiveTradingPanel';
 import { OracleDashboard } from './oracles/OracleDashboard';
-import { MEVProtectionDashboard } from './mev/MEVProtectionDashboard';
+
 import { StrategyBuilderDashboard } from './strategy/StrategyBuilderDashboard';
-import { PerformanceAnalyticsDashboard } from './analytics/PerformanceAnalyticsDashboard';
-import { AdvancedAlertDashboard } from './alerts/AdvancedAlertDashboard';
-import { MonitoringEngineDashboard } from './monitoring/MonitoringEngineDashboard';
+
 import { IndexerDashboard } from './IndexerDashboard';
 import { MasterFlashLoanSlider } from './MasterFlashLoanSlider';
 import { PriceAlertDashboard } from './priceAlerts/PriceAlertDashboard';
@@ -47,7 +42,7 @@ import { ArbitrageOpportunity, Transaction } from '../types/arbitrage';
 import { useAppContext } from '../contexts/AppContext';
 import { useWeb3 } from '../contexts/Web3Context';
 import { useAuth } from '../contexts/AuthContext';
-import { Settings, RefreshCw, Activity, Shield, BarChart3, Cloud, ArrowLeftRight, Zap, Radio, Fuel, Bell, Webhook, History, AlertTriangle, Bot, Database, Lock, Layers, LineChart, Cpu, Server, BellRing, User, LogIn, Play, FileCode, Wallet, ShieldCheck, Stethoscope, Rocket, Clock, Plane, Power } from 'lucide-react';
+import { Settings, RefreshCw, Activity, Shield, Cloud, ArrowLeftRight, Fuel, Bell, Webhook, AlertTriangle, Bot, Database, Layers, Server, BellRing, User, LogIn, Play, FileCode, Wallet, ShieldCheck, Stethoscope, Rocket, Clock, Plane, Power } from 'lucide-react';
 
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -593,10 +588,6 @@ export const AppLayout: React.FC = () => {
               <FileCode className="h-4 w-4 mr-2" />
               Contracts
             </TabsTrigger>
-            <TabsTrigger value="price-feeds" className="data-[state=active]:bg-gray-700">
-              <Radio className="h-4 w-4 mr-2" />
-              Price Feeds
-            </TabsTrigger>
             <TabsTrigger value="gas" className="data-[state=active]:bg-gray-700">
               <Fuel className="h-4 w-4 mr-2" />
               Gas
@@ -605,17 +596,9 @@ export const AppLayout: React.FC = () => {
               <ArrowLeftRight className="h-4 w-4 mr-2" />
               Cross-Chain
             </TabsTrigger>
-            <TabsTrigger value="flashbots" className="data-[state=active]:bg-gray-700">
-              <Zap className="h-4 w-4 mr-2" />
-              Flashbots
-            </TabsTrigger>
             <TabsTrigger value="deploy-functions" className="data-[state=active]:bg-gray-700">
               <Cloud className="h-4 w-4 mr-2" />
               Deploy
-            </TabsTrigger>
-            <TabsTrigger value="analytics" className="data-[state=active]:bg-gray-700">
-              <BarChart3 className="h-4 w-4 mr-2" />
-              Analytics
             </TabsTrigger>
             <TabsTrigger value="strategy" className="data-[state=active]:bg-gray-700">
               <Settings className="h-4 w-4 mr-2" />
@@ -638,30 +621,13 @@ export const AppLayout: React.FC = () => {
               <AlertTriangle className="h-4 w-4 mr-2" />
               Risk
             </TabsTrigger>
-            <TabsTrigger value="backtest" className="data-[state=active]:bg-gray-700">
-              <History className="h-4 w-4 mr-2" />
-              Backtest
-            </TabsTrigger>
             <TabsTrigger value="oracles" className="data-[state=active]:bg-gray-700">
               <Database className="h-4 w-4 mr-2" />
               Oracles
             </TabsTrigger>
-            <TabsTrigger value="mev-protection" className="data-[state=active]:bg-gray-700">
-              <Lock className="h-4 w-4 mr-2" />
-              MEV Protection
-            </TabsTrigger>
             <TabsTrigger value="strategy-builder" className="data-[state=active]:bg-gray-700">
               <Layers className="h-4 w-4 mr-2" />
               Strategy Builder
-            </TabsTrigger>
-            <TabsTrigger value="performance-analytics" className="data-[state=active]:bg-gray-700">
-              <LineChart className="h-4 w-4 mr-2" />
-              Performance
-            </TabsTrigger>
-
-            <TabsTrigger value="monitoring-engine" className="data-[state=active]:bg-gray-700">
-              <Cpu className="h-4 w-4 mr-2" />
-              Monitoring
             </TabsTrigger>
             <TabsTrigger value="indexer" className="data-[state=active]:bg-gray-700">
               <Server className="h-4 w-4 mr-2" />
@@ -893,10 +859,6 @@ export const AppLayout: React.FC = () => {
             <SmartContractDeployer />
           </TabsContent>
 
-          <TabsContent value="price-feeds" className="space-y-4">
-            <PriceFeedPanel />
-          </TabsContent>
-
           <TabsContent value="gas" className="space-y-4">
             <GasOptimizerPanel />
           </TabsContent>
@@ -905,25 +867,12 @@ export const AppLayout: React.FC = () => {
             <CrossChainArbitrage />
           </TabsContent>
 
-          <TabsContent value="flashbots" className="space-y-4">
-            <FlashbotsPanel />
-          </TabsContent>
-
           <TabsContent value="deploy-functions" className="space-y-4">
             <EdgeFunctionDeployer />
           </TabsContent>
 
-          <TabsContent value="analytics" className="space-y-4">
-            <AnalyticsDashboard />
-            <AdvancedPerformance transactions={transactions.map(tx => ({ ...tx, status: tx.status === 'pending' ? 'failed' : tx.status }))} />
-          </TabsContent>
-
           <TabsContent value="strategy" className="space-y-4">
             <StrategyConfig />
-          </TabsContent>
-
-          <TabsContent value="notifications" className="space-y-4">
-            <AdvancedAlertDashboard />
           </TabsContent>
 
           <TabsContent value="webhooks" className="space-y-4">
@@ -934,28 +883,12 @@ export const AppLayout: React.FC = () => {
             <RiskManagementPanel />
           </TabsContent>
 
-          <TabsContent value="backtest" className="space-y-4">
-            <BacktestPanel />
-          </TabsContent>
-
           <TabsContent value="oracles" className="space-y-4">
             <OracleDashboard />
           </TabsContent>
 
-          <TabsContent value="mev-protection" className="space-y-4">
-            <MEVProtectionDashboard />
-          </TabsContent>
-
           <TabsContent value="strategy-builder" className="space-y-4">
             <StrategyBuilderDashboard />
-          </TabsContent>
-
-          <TabsContent value="performance-analytics" className="space-y-4">
-            <PerformanceAnalyticsDashboard />
-          </TabsContent>
-
-          <TabsContent value="monitoring-engine" className="space-y-4">
-            <MonitoringEngineDashboard />
           </TabsContent>
 
           <TabsContent value="indexer" className="space-y-4">

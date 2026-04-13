@@ -109,24 +109,6 @@ class PriceHistoryService {
     }
   }
 
-  // Generate initial mock history for demo
-  generateMockHistory(pair: string, basePrice: number) {
-    const points: PricePoint[] = [];
-    const sources = ['Uniswap V3', 'SushiSwap', 'Curve'];
-    let price = basePrice;
-    
-    for (let i = 300; i >= 0; i--) {
-      price += (Math.random() - 0.5) * basePrice * 0.002;
-      points.push({
-        timestamp: Date.now() - i * 10000,
-        price,
-        source: sources[Math.floor(Math.random() * sources.length)],
-        volume: Math.random() * 1000000,
-      });
-    }
-    
-    this.history.set(pair, points);
-  }
 }
 
 export const priceHistoryService = new PriceHistoryService();

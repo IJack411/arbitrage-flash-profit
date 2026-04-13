@@ -245,8 +245,8 @@ export const MultiWalletProvider: React.FC<{ children: React.ReactNode }> = ({ c
           balanceUSD,
           percentage: totalBalanceUSD > 0 ? (balanceUSD / totalBalanceUSD) * 100 : 0,
         })),
-      dailyChange: Math.random() * 1000 - 500,
-      dailyChangePercentage: Math.random() * 10 - 5,
+      dailyChange: 0,
+      dailyChangePercentage: 0,
     });
   }, [wallets]);
 

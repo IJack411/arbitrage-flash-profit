@@ -62,51 +62,6 @@ export const findBestBridge = (sourceChain: number, destChain: number, amount: n
   });
 };
 
-export const generateMockCrossChainOpportunities = (): CrossChainOpportunity[] => {
-  const opportunities: CrossChainOpportunity[] = [];
-  const chains = [1, 137, 42161, 56];
-  const dexes: Record<number, string[]> = {
-    1: ['Uniswap', 'SushiSwap'], 137: ['QuickSwap', 'SushiSwap'],
-    42161: ['SushiSwap', 'Camelot'], 56: ['PancakeSwap', 'BiSwap'],
-  };
-
-  CROSS_CHAIN_TOKENS.forEach(token => {
-    for (let i = 0; i < chains.length; i++) {
-      for (let j = 0; j < chains.length; j++) {
-        if (i === j) continue;
-        const src = chains[i], dest = chains[j];
-        if (!token.addresses[src] || !token.addresses[dest]) continue;
-        const bridge = findBestBridge(src, dest, 10000);
-        if (!bridge) continue;
-        const basePrice = token.symbol === 'WETH' ? 2000 : 1;
-        const priceDiff = (Math.random() - 0.3) * 0.05;
-        if (priceDiff <= 0.005) continue;
-        const buyPrice = basePrice, sellPrice = basePrice * (1 + priceDiff);
-        const tradeAmount = token.symbol === 'WETH' ? 5 : 10000;
-        const bridgeFee = estimateBridgeCost(bridge, tradeAmount * buyPrice);
-        const { grossProfit, netProfit, profitPercentage } = calculateCrossChainProfit(
-          buyPrice, sellPrice, tradeAmount, bridgeFee, 15, 5, 0.3
-        );
-        if (netProfit > 0) {
-          opportunities.push({
-            id: `cc-${src}-${dest}-${token.symbol}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            token: token.symbol, sourceChain: src, destChain: dest,
-            sourceChainName: getChainName(src), destChainName: getChainName(dest),
-            sourceDex: dexes[src][0], destDex: dexes[dest][0],
-            buyPrice, sellPrice, bridge: bridge.name, bridgeFee,
-            bridgeTime: bridge.estimatedTime, slippage: 0.3,
-            gasCostSource: 15, gasCostDest: 5, totalCost: bridgeFee + 20,
-            grossProfit, netProfit, profitPercentage, tradeAmount,
-            confidenceScore: profitPercentage > 1 ? 'high' : profitPercentage > 0.5 ? 'medium' : 'low',
-            timestamp: Date.now(), status: 'active',
-          });
-        }
-      }
-    }
-  });
-  return opportunities.sort((a, b) => b.netProfit - a.netProfit).slice(0, 10);
-};
-
 // Execute cross-chain arbitrage via edge function
 export const executeCrossChainArbitrage = async (
   opportunity: CrossChainOpportunity,

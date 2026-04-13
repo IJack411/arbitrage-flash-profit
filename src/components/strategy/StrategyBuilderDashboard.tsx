@@ -5,9 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { StrategyCanvas } from './StrategyCanvas';
 import { TemplateLibrary } from './TemplateLibrary';
-import { BacktestPanel } from '../backtesting/BacktestPanel';
 import { Strategy, StrategyTemplate } from '@/types/strategyBuilder';
-import { Layers, Play, History, FileText, Plus, Rocket } from 'lucide-react';
+import { Layers, Play, FileText, Plus, Rocket } from 'lucide-react';
 
 
 const defaultStrategy: Strategy = {
@@ -99,7 +98,6 @@ export const StrategyBuilderDashboard: React.FC = () => {
       <Tabs defaultValue="builder" className="space-y-4">
         <TabsList className="bg-slate-800/50 border border-slate-700">
           <TabsTrigger value="builder"><Layers className="w-4 h-4 mr-1" />Builder</TabsTrigger>
-          <TabsTrigger value="backtest"><History className="w-4 h-4 mr-1" />Backtest</TabsTrigger>
           <TabsTrigger value="templates"><FileText className="w-4 h-4 mr-1" />Templates</TabsTrigger>
 
         </TabsList>
@@ -111,10 +109,6 @@ export const StrategyBuilderDashboard: React.FC = () => {
             selectedRuleType={selectedRuleType}
             selectedRuleId={selectedRuleId}
           />
-        </TabsContent>
-
-        <TabsContent value="backtest">
-          <BacktestPanel strategy={strategy} />
         </TabsContent>
 
         <TabsContent value="templates">

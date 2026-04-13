@@ -77,25 +77,6 @@ export const getMempoolStats = (): MempoolStats => {
   };
 };
 
-export const generateMockMempoolTxs = (count: number): MempoolTx[] => {
-  const methods = Object.keys(SWAP_METHODS);
-  const dexes = Object.keys(DEX_ROUTERS);
-  return Array.from({ length: count }, (_, i) => ({
-    hash: `0x${Math.random().toString(16).substr(2, 64)}`,
-    from: `0x${Math.random().toString(16).substr(2, 40)}`,
-    to: dexes[Math.floor(Math.random() * dexes.length)],
-    value: (Math.random() * 10).toFixed(4),
-    gasPrice: 20 + Math.random() * 100,
-    maxPriorityFee: 1 + Math.random() * 10,
-    maxFeePerGas: 30 + Math.random() * 100,
-    nonce: Math.floor(Math.random() * 1000),
-    data: `${methods[Math.floor(Math.random() * methods.length)]}${Math.random().toString(16).substr(2, 56)}`,
-    timestamp: Date.now() - Math.random() * 60000,
-    methodId: methods[Math.floor(Math.random() * methods.length)],
-    decodedMethod: SWAP_METHODS[methods[Math.floor(Math.random() * methods.length)]],
-  }));
-};
-
 export const defaultProtectionConfig: ProtectionConfig = {
   enabled: true, useFlashbotsProtect: true, privateMempool: true,
   maxGasPrice: 200, sandwichDetection: true, frontrunProtection: true, backrunProtection: true,

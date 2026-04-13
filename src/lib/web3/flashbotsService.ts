@@ -57,31 +57,6 @@ export const getPrivatePool = (chainId: number): PrivatePoolConfig | null => {
   return Object.values(PRIVATE_POOLS).find(p => p.chainId === chainId) || null;
 };
 
-export const generateMockBundles = (): FlashbotsBundle[] => {
-  const statuses: FlashbotsBundle['status'][] = ['pending', 'submitted', 'included', 'failed'];
-  const networks = ['ethereum', 'polygon', 'arbitrum', 'bsc'];
-  return Array.from({ length: 8 }, (_, i) => ({
-    id: `bundle-${i}`,
-    bundleHash: `0x${Math.random().toString(16).substr(2, 64)}`,
-    targetBlocks: `${18500000 + i * 10}-${18500003 + i * 10}`,
-    status: statuses[i % 4],
-    transactions: 2 + Math.floor(Math.random() * 3),
-    simulationResult: {
-      success: i % 4 !== 3, totalGasUsed: 250000 + Math.floor(Math.random() * 100000),
-      coinbaseDiff: (Math.random() * 0.1).toFixed(6), gasFees: 10 + Math.random() * 30,
-      effectiveGasPrice: 30 + Math.random() * 20,
-      revertReason: i % 4 === 3 ? 'Execution reverted' : undefined,
-    },
-    profitLoss: i % 4 === 2 ? 50 + Math.random() * 200 : i % 4 === 3 ? -(10 + Math.random() * 20) : undefined,
-    gasUsed: 250000 + Math.floor(Math.random() * 100000),
-    createdAt: Date.now() - i * 3600000,
-    includedAt: i % 4 === 2 ? Date.now() - i * 3600000 + 15000 : undefined,
-    network: networks[i % 4],
-    bribeAmount: 5 + Math.random() * 20,
-    resubmitAttempt: i % 4 === 3 ? Math.floor(Math.random() * 3) : 0,
-  }));
-};
-
 export class FlashbotsService {
   private provider: ethers.Provider | null;
   private signer: ethers.Signer | null;

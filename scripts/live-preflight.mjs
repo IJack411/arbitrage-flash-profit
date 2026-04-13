@@ -1,0 +1,181 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
+const ROOT = process.cwd();
+const ENV_PATH = path.join(ROOT, '.env');
+
+const REQUIRED_ENV = [
+  'VITE_SUPABASE_URL',
+  'VITE_SUPABASE_ANON_KEY',
+  'VITE_ALCHEMY_API_KEY',
+  'VITE_ARBITRAGE_CONTRACT_ADDRESS',
+  'VITE_FLASH_LOAN_PROVIDER_ADDRESS',
+];
+
+const PLACEHOLDER_PATTERNS = [
+  'your-',
+  'replace-me',
+  'changeme',
+  'example',
+  '0xyour',
+];
+
+const KNOWN_DEV_CONTRACT_ADDRESSES = new Set([
+  '0xe7f1725e7734ce288f8367e1bb143e90bb3f0512',
+  '0x5fbdb2315678afecb367f032d93f642f64180aa3',
+]);
+
+function parseDotEnv(fileText) {
+  const result = {};
+  const lines = fileText.split(/\r?\n/);
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eq = trimmed.indexOf('=');
+    if (eq === -1) continue;
+
+    const key = trimmed.slice(0, eq).trim();
+    let value = trimmed.slice(eq + 1).trim();
+
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+
+    result[key] = value;
+  }
+
+  return result;
+}
+
+function isPlaceholder(value) {
+  const lower = String(value || '').toLowerCase();
+  return PLACEHOLDER_PATTERNS.some((pattern) => lower.includes(pattern));
+}
+
+function isEvmAddress(value) {
+  return /^0x[a-fA-F0-9]{40}$/.test(String(value || ''));
+}
+
+function printSection(title) {
+  console.log(`\n=== ${title} ===`);
+}
+
+function run() {
+  const failures = [];
+  const warnings = [];
+
+  if (!fs.existsSync(ENV_PATH)) {
+    console.error(`Missing .env file at ${ENV_PATH}`);
+    process.exit(1);
+  }
+
+  const envText = fs.readFileSync(ENV_PATH, 'utf8');
+  const env = parseDotEnv(envText);
+
+  printSection('Environment Checks');
+
+  for (const key of REQUIRED_ENV) {
+    const value = env[key];
+    if (!value) {
+      failures.push(`${key} is missing`);
+      continue;
+    }
+
+    if (isPlaceholder(value)) {
+      failures.push(`${key} still contains a placeholder value`);
+      continue;
+    }
+
+    console.log(`PASS ${key}`);
+  }
+
+  const supabaseUrl = env.VITE_SUPABASE_URL || '';
+  if (supabaseUrl && !/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(supabaseUrl)) {
+    failures.push('VITE_SUPABASE_URL must look like https://<project>.supabase.co');
+  }
+
+  const arbContract = env.VITE_ARBITRAGE_CONTRACT_ADDRESS || '';
+  if (arbContract) {
+    if (!isEvmAddress(arbContract)) {
+      failures.push('VITE_ARBITRAGE_CONTRACT_ADDRESS is not a valid EVM address');
+    } else if (KNOWN_DEV_CONTRACT_ADDRESSES.has(arbContract.toLowerCase())) {
+      failures.push('VITE_ARBITRAGE_CONTRACT_ADDRESS is a known local test deployment address');
+    }
+  }
+
+  const flashLoanProvider = env.VITE_FLASH_LOAN_PROVIDER_ADDRESS || '';
+  if (flashLoanProvider && !isEvmAddress(flashLoanProvider)) {
+    failures.push('VITE_FLASH_LOAN_PROVIDER_ADDRESS is not a valid EVM address');
+  }
+
+  const liveTradingEnabled = String(env.VITE_LIVE_TRADING_ENABLED || '').toLowerCase() === 'true';
+  if (!liveTradingEnabled) {
+    failures.push('VITE_LIVE_TRADING_ENABLED must be true for live trading (set only after all checks pass)');
+  }
+
+  const recommended = {
+    LIVE_MAX_SLIPPAGE_PERCENT: '2.0',
+    LIVE_MAX_LOAN_USD: '25000',
+    LIVE_MIN_NET_PROFIT_USD: '25',
+    LIVE_MAX_GAS_TO_PROFIT_RATIO: '0.4',
+  };
+
+  printSection('Recommended Live Risk Caps');
+  for (const [key, defaultValue] of Object.entries(recommended)) {
+    const value = env[key];
+    if (!value) {
+      warnings.push(`${key} not set (recommended default ${defaultValue})`);
+      continue;
+    }
+
+    const num = Number(value);
+    if (!Number.isFinite(num) || num <= 0) {
+      warnings.push(`${key} should be a positive number (current: ${value})`);
+    } else {
+      console.log(`PASS ${key}=${value}`);
+    }
+  }
+
+  const maxSlippage = Number(env.LIVE_MAX_SLIPPAGE_PERCENT || '2');
+  if (Number.isFinite(maxSlippage) && maxSlippage > 3.0) {
+    failures.push('LIVE_MAX_SLIPPAGE_PERCENT is too high for initial production rollout (must be <= 3.0)');
+  }
+
+  const maxLoan = Number(env.LIVE_MAX_LOAN_USD || '25000');
+  if (Number.isFinite(maxLoan) && maxLoan > 50000) {
+    failures.push('LIVE_MAX_LOAN_USD is too high for initial production rollout (must be <= 50000)');
+  }
+
+  const minNetProfit = Number(env.LIVE_MIN_NET_PROFIT_USD || '25');
+  if (Number.isFinite(minNetProfit) && minNetProfit < 10) {
+    failures.push('LIVE_MIN_NET_PROFIT_USD is too low for production (must be >= 10)');
+  }
+
+  const maxGasToProfit = Number(env.LIVE_MAX_GAS_TO_PROFIT_RATIO || '0.4');
+  if (Number.isFinite(maxGasToProfit) && maxGasToProfit > 0.6) {
+    failures.push('LIVE_MAX_GAS_TO_PROFIT_RATIO is too permissive (must be <= 0.6)');
+  }
+
+  printSection('Result');
+
+  if (warnings.length > 0) {
+    console.log('Warnings:');
+    for (const warning of warnings) {
+      console.log(`- ${warning}`);
+    }
+  }
+
+  if (failures.length > 0) {
+    console.log('Failures:');
+    for (const failure of failures) {
+      console.log(`- ${failure}`);
+    }
+    console.log('\nPreflight FAILED. Live trading must remain blocked.');
+    process.exit(1);
+  }
+
+  console.log('Preflight PASSED. Environment is ready for guarded live trading.');
+}
+
+run();

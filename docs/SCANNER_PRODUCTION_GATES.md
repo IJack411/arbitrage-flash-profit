@@ -1,0 +1,45 @@
+# Scanner Production Gates
+
+This document defines an enforceable go-live gate for the scanner based on Graph connectivity health.
+
+## Purpose
+
+Reduce production ambiguity by turning scanner readiness into objective pass/fail criteria.
+
+## Runtime Gate Controls
+
+Set these as Supabase Edge Function secrets (or in `supabase/.env.local` for local serve):
+
+- `SCANNER_ENFORCE_READINESS_GATES`
+- `SCANNER_MIN_GRAPH_SOURCES_HEALTHY`
+- `SCANNER_MAX_GRAPH_FALLBACK_SOURCES`
+
+Recommended starting values:
+
+- `SCANNER_ENFORCE_READINESS_GATES=true` (after burn-in)
+- `SCANNER_MIN_GRAPH_SOURCES_HEALTHY=3`
+- `SCANNER_MAX_GRAPH_FALLBACK_SOURCES=2`
+
+## Gate Logic
+
+Scanner readiness passes only when all conditions are true:
+
+1. `THEGRAPH_API_KEY` is present
+2. Healthy Graph sources >= `SCANNER_MIN_GRAPH_SOURCES_HEALTHY`
+3. Fallback-used sources <= `SCANNER_MAX_GRAPH_FALLBACK_SOURCES`
+
+If gates fail and enforcement is enabled, scanner returns HTTP 503 and no scan is executed.
+
+## Operational Flow
+
+1. During pre-production burn-in, keep `SCANNER_ENFORCE_READINESS_GATES=false`
+2. Monitor test payload from `scan-arbitrage-opportunities` with `{ test: true }`
+3. Validate stable gate pass rates for at least 24-48h
+4. Enable `SCANNER_ENFORCE_READINESS_GATES=true`
+5. Keep a rollback path: set the gate back to `false` if upstream outage is confirmed
+
+## Ownership
+
+- Connectivity/SLO owner: scanner platform maintainer
+- Trading owner: execution policy maintainer
+- Gate disable authority: on-call owner for scanner reliability

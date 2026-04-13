@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Flash Loan Arbitrage Bot</title>
+    <meta name="description" content="A powerful tool for executing profitable flash loan arbitrage opportunities automatically." />
+    <link rel="icon" type="image/svg+xml" href="/placeholder.svg" />
+
+    <meta property="og:title" content="Flash Loan Arbitrage Bot" />
+    <meta property="og:description" content="A powerful tool for executing profitable flash loan arbitrage opportunities automatically." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/og.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="/og.jpg" />
+
+    <!-- 
+      CRITICAL: Error suppression for wallet extension conflicts.
+      This MUST run before ANY other scripts to intercept extension errors.
+      Browser extensions inject providers into window.ethereum and conflict with each other.
+    -->
+    <script>
+      (function() {
+        'use strict';
+        
+        // Comprehensive wallet extension error detection
+        var walletErrorPatterns = [
+          'cannot redefine property: ethereum',
+          'cannot redefine property: solana',
+          'cannot redefine property: phantom',
+          'cannot redefine property: coinbase',
+          'evmask',
+          'inpage.js',
+          'contentscript',
+          'content-script',
+          'provider.js'
+        ];
+        
+        var extensionPatterns = [
+          'chrome-extension://',
+          'moz-extension://',
+          'safari-extension://',
+          'ms-browser-extension://'
+        ];
+        
+        function isWalletExtensionError(input) {
+          if (!input) return false;
+          
+          var str = '';
+          if (typeof input === 'string') {
+            str = input;
+          } else if (input instanceof Error) {
+            str = (input.message || '') + ' ' + (input.stack || '') + ' ' + (input.name || '');
+          } else if (input && typeof input === 'object') {
+            str = (input.message || '') + ' ' + (input.stack || '') + ' ' + (input.reason || '');
+            if (input.error) {
+              str += ' ' + (input.error.message || '') + ' ' + (input.error.stack || '');
+            }
+            try { str += ' ' + JSON.stringify(input); } catch(e) {}
+          }
+          
+          var lower = str.toLowerCase();
+          
+          // Check for direct wallet error patterns
+          for (var i = 0; i < walletErrorPatterns.length; i++) {
+            if (lower.indexOf(walletErrorPatterns[i]) !== -1) {
+              return true;
+            }
+          }
+          
+          // Check for extension-related errors
+          for (var j = 0; j < extensionPatterns.length; j++) {
+            if (lower.indexOf(extensionPatterns[j]) !== -1) {
+              // Extension error - check if wallet-related
+              if (lower.indexOf('ethereum') !== -1 || 
+                  lower.indexOf('wallet') !== -1 || 
+                  lower.indexOf('provider') !== -1 ||
+                  lower.indexOf('web3') !== -1 ||
+                  lower.indexOf('solana') !== -1 ||
+                  lower.indexOf('phantom') !== -1 ||
+                  lower.indexOf('redefine') !== -1 ||
+                  lower.indexOf('defineproperty') !== -1) {
+                return true;
+              }
+            }
+          }
+          
+          return false;
+        }
+        
+        // Expose globally for other scripts
+        window.__isWalletExtensionError = isWalletExtensionError;
+        
+        // CRITICAL: Intercept errors at the earliest possible point
+        // This runs before any framework code loads
+        
+        // 1. Override window.onerror (synchronous errors)
+        window.onerror = function(message, source, lineno, colno, error) {
+          var errorInfo = [
+            String(message || ''),
+            String(source || ''),
+            error ? (error.message || '') : '',
+            error ? (error.stack || '') : ''
+          ].join(' ');
+          
+          if (isWalletExtensionError(errorInfo)) {
+            return true; // Suppress - returning true prevents default handling
+          }
+          return false;
+        };
+        
+        // 2. Error event listener (capture phase - runs first)
+        window.addEventListener('error', function(event) {
+          var errorInfo = [
+            event.message || '',
+            event.filename || '',
+            event.error ? (event.error.message || '') : '',
+            event.error ? (event.error.stack || '') : ''
+          ].join(' ');
+          
+          if (isWalletExtensionError(errorInfo)) {
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            return false;
+          }
+        }, true);
+        
+        // 3. Unhandled rejection handler (capture phase)
+        window.addEventListener('unhandledrejection', function(event) {
+          if (isWalletExtensionError(event.reason)) {
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            return false;
+          }
+        }, true);
+        
+        // 4. Override console.error
+        var _consoleError = console.error;
+        console.error = function() {
+          var args = Array.prototype.slice.call(arguments);
+          var combined = '';
+          
+          for (var i = 0; i < args.length; i++) {
+            var arg = args[i];
+            if (arg == null) continue;
+            
+            if (typeof arg === 'string') {
+              combined += ' ' + arg;
+            } else if (arg instanceof Error) {
+              combined += ' ' + (arg.message || '') + ' ' + (arg.stack || '');
+            } else if (typeof arg === 'object') {
+              combined += ' ' + (arg.message || '') + ' ' + (arg.stack || '');
+              try { combined += ' ' + JSON.stringify(arg); } catch(e) {}
+            } else {
+              combined += ' ' + String(arg);
+            }
+          }
+          
+          if (isWalletExtensionError(combined)) {
+            return; // Suppress completely
+          }
+          
+          return _consoleError.apply(console, args);
+        };
+        
+        // 5. Override console.warn
+        var _consoleWarn = console.warn;
+        console.warn = function() {
+          var args = Array.prototype.slice.call(arguments);
+          var combined = args.map(function(a) { return a == null ? '' : String(a); }).join(' ');
+          
+          if (isWalletExtensionError(combined)) {
+            return;
+          }
+          
+          return _consoleWarn.apply(console, args);
+        };
+        
+        // 6. Patch Object.defineProperty to handle conflicts gracefully
+        var _defineProperty = Object.defineProperty;
+        Object.defineProperty = function(obj, prop, descriptor) {
+          if (obj === window && (prop === 'ethereum' || prop === 'solana' || prop === 'phantom' || prop === 'coinbaseWalletExtension')) {
+            try {
+              var existing = Object.getOwnPropertyDescriptor(obj, prop);
+              if (existing && !existing.configurable) {
+                // Already defined and not configurable - return silently
+                return obj;
+              }
+              // Make configurable to allow future extensions
+              if (descriptor && typeof descriptor === 'object') {
+                descriptor = Object.assign({}, descriptor, { configurable: true });
+              }
+            } catch (e) {}
+          }
+          
+          try {
+            return _defineProperty.call(Object, obj, prop, descriptor);
+          } catch (error) {
+            if (obj === window && 
+                (prop === 'ethereum' || prop === 'solana' || prop === 'phantom' || prop === 'coinbaseWalletExtension') &&
+                error && error.message && error.message.indexOf('Cannot redefine') !== -1) {
+              return obj; // Suppress and return
+            }
+            throw error;
+          }
+        };
+        
+        // 7. Hide Vite error overlay if it shows extension errors
+        // This runs periodically to catch any overlays that appear
+        function hideExtensionErrorOverlays() {
+          // Vite error overlay
+          var viteOverlay = document.querySelector('vite-error-overlay');
+          if (viteOverlay) {
+            var overlayText = viteOverlay.textContent || viteOverlay.innerText || '';
+            if (isWalletExtensionError(overlayText)) {
+              viteOverlay.remove();
+            }
+          }
+          
+          // Any element with error-overlay in class or id
+          var overlays = document.querySelectorAll('[class*="error-overlay"], [id*="error-overlay"], [class*="ErrorOverlay"]');
+          for (var i = 0; i < overlays.length; i++) {
+            var overlay = overlays[i];
+            var text = overlay.textContent || overlay.innerText || '';
+            if (isWalletExtensionError(text)) {
+              overlay.style.display = 'none';
+            }
+          }
+        }
+        
+        // Run periodically to catch late-appearing overlays
+        setInterval(hideExtensionErrorOverlays, 500);
+        
+        // Also run when DOM changes
+        if (typeof MutationObserver !== 'undefined') {
+          var observer = new MutationObserver(function(mutations) {
+            for (var i = 0; i < mutations.length; i++) {
+              var mutation = mutations[i];
+              if (mutation.addedNodes.length > 0) {
+                hideExtensionErrorOverlays();
+                break;
+              }
+            }
+          });
+          
+          // Start observing once DOM is ready
+          if (document.body) {
+            observer.observe(document.body, { childList: true, subtree: true });
+          } else {
+            document.addEventListener('DOMContentLoaded', function() {
+              observer.observe(document.body, { childList: true, subtree: true });
+            });
+          }
+        }
+        
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

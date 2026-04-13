@@ -1,0 +1,23 @@
+{
+  "name": "flash-arbitrage-contracts",
+  "version": "1.0.0",
+  "description": "FlashLoanArbitrage smart contract — Aave V3 flash loan receiver for DEX arbitrage",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "node": "hardhat node",
+    "deploy:mainnet":  "hardhat run scripts/deploy.js --network mainnet",
+    "deploy:base":     "hardhat run scripts/deploy.js --network base",
+    "deploy:arbitrum": "hardhat run scripts/deploy.js --network arbitrum",
+    "deploy:polygon":  "hardhat run scripts/deploy.js --network polygon",
+    "deploy:local":    "hardhat run scripts/deploy.js --network localhost"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "hardhat": "^2.22.0",
+    "dotenv": "^16.4.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.2"
+  }
+}

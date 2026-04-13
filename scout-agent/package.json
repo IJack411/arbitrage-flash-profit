@@ -1,0 +1,15 @@
+{
+  "name": "arbitrage-scout-agent",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "description": "Standalone ML scout agent that monitors DeFi markets and recommends improvements",
+  "scripts": {
+    "start": "node index.mjs",
+    "once": "node index.mjs --once"
+  },
+  "dependencies": {
+    "ethers": "^6.7.0",
+    "node-fetch": "^3.3.2"
+  }
+}

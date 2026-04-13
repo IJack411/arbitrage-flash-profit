@@ -1,0 +1,127 @@
+{
+  "scans": [
+    {
+      "ts": 1776044811334,
+      "found": 0,
+      "spreads": [],
+      "hour": 1,
+      "dayOfWeek": 1
+    },
+    {
+      "ts": 1776044838886,
+      "found": 0,
+      "spreads": [],
+      "hour": 1,
+      "dayOfWeek": 1
+    },
+    {
+      "ts": 1776044993734,
+      "found": 0,
+      "spreads": [],
+      "hour": 1,
+      "dayOfWeek": 1
+    },
+    {
+      "ts": 1776045037455,
+      "found": 0,
+      "spreads": [],
+      "hour": 1,
+      "dayOfWeek": 1
+    },
+    {
+      "ts": 1776045940110,
+      "found": 0,
+      "spreads": [],
+      "hour": 2,
+      "dayOfWeek": 1
+    },
+    {
+      "ts": 1776046842098,
+      "found": 0,
+      "spreads": [],
+      "hour": 2,
+      "dayOfWeek": 1
+    },
+    {
+      "ts": 1776047740242,
+      "found": 0,
+      "spreads": [],
+      "hour": 2,
+      "dayOfWeek": 1
+    },
+    {
+      "ts": 1776048640150,
+      "found": 0,
+      "spreads": [],
+      "hour": 2,
+      "dayOfWeek": 1
+    }
+  ],
+  "gasSnapshots": [
+    {
+      "ts": 1776044810785,
+      "baseFeeGwei": 0.1,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2205,
+      "hour": 1,
+      "dayOfWeek": 1
+    },
+    {
+      "ts": 1776044838342,
+      "baseFeeGwei": 0.1,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2204,
+      "hour": 1,
+      "dayOfWeek": 1
+    },
+    {
+      "ts": 1776044992848,
+      "baseFeeGwei": 0.1,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2204,
+      "hour": 1,
+      "dayOfWeek": 1
+    },
+    {
+      "ts": 1776045037049,
+      "baseFeeGwei": 0.1,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2204,
+      "hour": 1,
+      "dayOfWeek": 1
+    },
+    {
+      "ts": 1776045939598,
+      "baseFeeGwei": 0.09,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2204,
+      "hour": 2,
+      "dayOfWeek": 1
+    },
+    {
+      "ts": 1776046841513,
+      "baseFeeGwei": 0.1,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2198,
+      "hour": 2,
+      "dayOfWeek": 1
+    },
+    {
+      "ts": 1776047739782,
+      "baseFeeGwei": 0.1,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2201,
+      "hour": 2,
+      "dayOfWeek": 1
+    },
+    {
+      "ts": 1776048639530,
+      "baseFeeGwei": 0.1,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2195,
+      "hour": 2,
+      "dayOfWeek": 1
+    }
+  ],
+  "recommendations": []
+}

@@ -24,6 +24,12 @@ const isExtensionConflictError = (error: unknown): boolean => {
   );
 };
 
+const isEmbeddedBrowserRuntime = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const ua = (window.navigator?.userAgent || '').toLowerCase();
+  return ua.includes('vscode') || ua.includes('electron');
+};
+
 interface Web3ContextType {
   wallet: WalletInfo | null;
   account: string | null; // Backward compatibility alias for wallet?.address
@@ -200,9 +206,13 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         // Other wallet errors - show with retry button and expandable details
-        setError(err.message);
+        const enhancedMessage = err.message.includes('No injected wallet detected') && isEmbeddedBrowserRuntime()
+          ? `${err.message} If you are in the VS Code embedded browser, open localhost in your regular browser where MetaMask is installed.`
+          : err.message;
+
+        setError(enhancedMessage);
         const errorInfo = createWalletErrorInfo(
-          err.message,
+          enhancedMessage,
           err.originalError,
           err.errorCode
         );

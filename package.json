@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
+    "test:math": "playwright test tests/deterministic-math.spec.ts",
     "lint": "eslint .",
     "preview": "vite preview",
     "supabase:start": "supabase start",
@@ -19,7 +20,8 @@
     "trades:evaluate": "node scripts/evaluate-trades.mjs",
     "trades:append": "node scripts/append-trade.mjs",
     "trades:summary": "node scripts/trades-summary.mjs",
-    "trades:sync": "node scripts/sync-trades-from-supabase.mjs"
+    "trades:sync": "node scripts/sync-trades-from-supabase.mjs",
+    "phase2a:benchmark": "node scripts/phase-2a-latency-benchmark.mjs --part all --network arbitrum"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
@@ -74,7 +76,7 @@
     "sonner": "^1.5.0",
     "tailwind-merge": "^2.5.2",
     "tailwindcss-animate": "^1.0.7",
-    "uuid": "^11.1.0",
+    "uuid": "^14.0.0",
     "vaul": "^0.9.3",
     "zod": "^3.23.8"
   },
@@ -92,9 +94,10 @@
     "eslint-plugin-react-refresh": "^0.4.9",
     "globals": "^15.9.0",
     "postcss": "^8.4.47",
+    "rigour": "^1.0.1",
     "tailwindcss": "^3.4.11",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.0.1",
-    "vite": "^5.4.1"
+    "vite": "^8.0.10"
   }
 }

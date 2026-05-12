@@ -107,7 +107,7 @@ export const AppLayout: React.FC = () => {
   const [scanInterval, setScanInterval] = useState<NodeJS.Timeout | null>(null);
   const [isExecuting, setIsExecuting] = useState(false);
   const [executionMode, setExecutionMode] = useState<'simulation' | 'live'>('simulation');
-  const [selectedNetworks, setSelectedNetworks] = useState<string[]>(['ethereum']);
+  const [selectedNetworks, setSelectedNetworks] = useState<string[]>(['ethereum', 'arbitrum', 'base', 'polygon']);
   const [networkFilter, setNetworkFilter] = useState<string>('all');
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [lastScanDiagnostics, setLastScanDiagnostics] = useState<ScanDiagnosticsView | null>(null);

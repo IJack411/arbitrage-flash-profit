@@ -87,6 +87,25 @@ interface ParsedServerScanPayload {
   watchlistCount?: number;
 }
 
+const MAX_REASONABLE_SPREAD_PERCENT = 20;
+const MAX_REASONABLE_ROI_FRACTION = 0.20;
+
+const isReasonableOpportunity = (item: OpportunityLike): boolean => {
+  const loan = Number(item.executableLoanAmount ?? item.loanAmount ?? item.loan_amount ?? 0);
+  if (!Number.isFinite(loan) || loan <= 0) return false;
+
+  const netProfit = Number(item.netProfit ?? item.expectedProfit ?? item.estimated_profit ?? Number.NEGATIVE_INFINITY);
+  const grossProfit = Number(item.grossProfit ?? Number.NaN);
+  const spreadValue = Number(item.spread ?? Number.NaN);
+
+  const maxReasonableProfit = loan * MAX_REASONABLE_ROI_FRACTION;
+  if (Number.isFinite(netProfit) && netProfit > maxReasonableProfit) return false;
+  if (Number.isFinite(grossProfit) && grossProfit > maxReasonableProfit) return false;
+  if (Number.isFinite(spreadValue) && spreadValue > MAX_REASONABLE_SPREAD_PERCENT) return false;
+
+  return true;
+};
+
 const parseServerScanPayload = (input: unknown): ParsedServerScanPayload | null => {
   if (!input || typeof input !== 'object') return null;
 
@@ -102,9 +121,11 @@ const parseServerScanPayload = (input: unknown): ParsedServerScanPayload | null 
 
   for (const candidate of candidates) {
     if (Array.isArray(candidate.opportunities)) {
+      const filteredOpportunities = (candidate.opportunities as OpportunityLike[]).filter(isReasonableOpportunity);
+      const filteredWatchlist = (Array.isArray(candidate.watchlist) ? candidate.watchlist as OpportunityLike[] : []).filter(isReasonableOpportunity);
       return {
-        opportunities: candidate.opportunities as OpportunityLike[],
-        watchlist: Array.isArray(candidate.watchlist) ? candidate.watchlist as OpportunityLike[] : [],
+        opportunities: filteredOpportunities,
+        watchlist: filteredWatchlist,
         diagnostics: candidate.diagnostics && typeof candidate.diagnostics === 'object'
           ? candidate.diagnostics as Record<string, unknown>
           : undefined,
@@ -118,17 +139,17 @@ const parseServerScanPayload = (input: unknown): ParsedServerScanPayload | null 
 
 const DEMO_AUTO_MAX_DISTANCE_TO_EXECUTABLE_USD = 3;
 
-const SETTINGS_STORAGE_KEY = 'live_trading_panel_settings_v2';
+const SETTINGS_STORAGE_KEY = 'live_trading_panel_settings_v3';
 
 const loadPersistedSettings = (fallbackLoanAmount: number) => {
   const safeFallbackLoan = Number.isFinite(Number(fallbackLoanAmount)) && Number(fallbackLoanAmount) > 0
-    ? Math.max(500, Math.min(25000, Number(fallbackLoanAmount)))
-    : 3000;
+    ? Math.max(500, Math.min(12000, Number(fallbackLoanAmount)))
+    : 8000;
 
   const defaults = {
-    minProfit: 40,
+    minProfit: 15,
     maxGas: 40,
-    maxSlippage: 1.5,
+    maxSlippage: 2.0,
     estimatedGasUsd: 8,
     maxLiquidityUsagePercent: 20,
     loanAmount: safeFallbackLoan,
@@ -145,10 +166,28 @@ const loadPersistedSettings = (fallbackLoanAmount: number) => {
     const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
     if (!raw) return defaults;
     const parsed = JSON.parse(raw) as Partial<typeof defaults>;
+    const parsedLoanAmount = Number(parsed.loanAmount);
+    const parsedMinProfit = Number(parsed.minProfit);
+    const parsedSlippage = Number(parsed.maxSlippage);
+    const parsedEstimatedGas = Number(parsed.estimatedGasUsd);
+
+    // Migrate away from previously too-tight defaults that suppressed candidate flow.
+    const looksLikeLegacyTightProfile =
+      Number.isFinite(parsedLoanAmount) && parsedLoanAmount >= 25_000 &&
+      Number.isFinite(parsedMinProfit) && parsedMinProfit >= 40 &&
+      Number.isFinite(parsedSlippage) && parsedSlippage === 1.5 &&
+      Number.isFinite(parsedEstimatedGas) && parsedEstimatedGas === 8;
+
+    if (looksLikeLegacyTightProfile) {
+      return defaults;
+    }
+
     return {
       ...defaults,
       ...parsed,
-      loanAmount: Number.isFinite(Number(parsed.loanAmount)) ? Number(parsed.loanAmount) : defaults.loanAmount,
+      loanAmount: Number.isFinite(parsedLoanAmount)
+        ? Math.max(500, Math.min(15000, parsedLoanAmount))
+        : defaults.loanAmount,
     };
   } catch {
     return defaults;
@@ -184,8 +223,13 @@ export const LiveTradingPanel: React.FC = () => {
 
   const handleConnectWallet = useCallback(async () => {
     if (!walletAvailable) {
-      window.open('https://metamask.io/download/', '_blank', 'noopener,noreferrer');
-      return;
+      const shouldDownload = window.confirm(
+        "MetaMask wasn't detected in this browser context. If you're using VS Code's embedded browser, open localhost in your regular browser where MetaMask is installed. Click OK to download MetaMask, or Cancel to continue.",
+      );
+      if (shouldDownload) {
+        window.open('https://metamask.io/download/', '_blank', 'noopener,noreferrer');
+        return;
+      }
     }
 
     await connectWallet();
@@ -198,7 +242,7 @@ export const LiveTradingPanel: React.FC = () => {
 
   // Settings
   const PRESET_DEMO = { loanAmount: 600, minProfit: -1, maxSlippage: 7.0, estimatedGasUsd: 3, maxLiquidityUsagePercent: 35 };
-  const PRESET_REALISTIC = { loanAmount: 5000, minProfit: 60, maxSlippage: 1.5, estimatedGasUsd: 10, maxLiquidityUsagePercent: 20, autoExecuteThreshold: 90 };
+  const PRESET_REALISTIC = { loanAmount: 8000, minProfit: 15, maxSlippage: 2.0, estimatedGasUsd: 8, maxLiquidityUsagePercent: 20, autoExecuteThreshold: 90 };
   const PRESET_FIRST_LIVE = {
     loanAmount: 10000,
     minProfit: 100,
@@ -276,10 +320,10 @@ export const LiveTradingPanel: React.FC = () => {
 
   // Auto-scan logic
   const scanForOpportunities = useCallback(async () => {
-    if (!account) {
+    if (tradingState.executionMode === 'live' && !account) {
       toast({
         title: 'Wallet Required',
-        description: 'Connect your wallet before scanning for opportunities.',
+        description: 'Connect your wallet before scanning in live mode.',
         variant: 'destructive'
       });
       return;

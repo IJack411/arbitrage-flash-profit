@@ -12,18 +12,16 @@ interface OpportunityCardProps {
   disabled?: boolean;
 }
 
-const networkNames: Record<string, string> = {
-  ethereum: 'ETH',
-  polygon: 'MATIC',
-  arbitrum: 'ARB',
-  bsc: 'BSC',
-};
+
+import { NETWORK_INFO } from '../types/multiWallet';
+// If you need NetworkName, CORE_BASE_TOKENS, etc, import from '../shared/networks-tokens'
 
 const networkBadgeClasses: Record<string, string> = {
   ethereum: 'bg-blue-500/20 text-blue-400',
   polygon: 'bg-purple-500/20 text-purple-400',
   arbitrum: 'bg-cyan-500/20 text-cyan-400',
   bsc: 'bg-yellow-500/20 text-yellow-400',
+  base: 'bg-indigo-500/20 text-indigo-400',
 };
 
 export const OpportunityCard: React.FC<OpportunityCardProps> = ({ opportunity, onExecute, disabled = false }) => {
@@ -71,7 +69,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({ opportunity, o
           </Badge>
           <div className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs ${networkBadgeClasses[network] || 'bg-gray-700 text-gray-300'}`}>
             <Globe className="w-3 h-3" />
-            {networkNames[network] || network.toUpperCase()}
+            {NETWORK_INFO[network]?.name || network.toUpperCase()}
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { ethers } from 'ethers';
 import { DEX_ROUTERS } from './config';
 import { indexerService } from './indexerService';
+import { applyBps, fromScaled, spreadBpsFromPrices, toScaled } from '@/lib/math/deterministicMath';
 
 const UNISWAP_ROUTER_ABI = [
   'function getAmountsOut(uint amountIn, address[] path) view returns (uint[] amounts)',
@@ -104,14 +105,9 @@ export class DexService {
   }
 
   async fetchAllPrices(tokenPair: string): Promise<DexPrice[]> {
-    const prices: DexPrice[] = [];
-    const dexes = ['Uniswap', 'SushiSwap', 'PancakeSwap'];
-    
-    for (const dex of dexes) {
-      prices.push({ dex, price: 2000 + Math.random() * 100, liquidity: 1000000 + Math.random() * 5000000, timestamp: Date.now() });
-    }
-    
-    return prices;
+    // Real implementation would query subgraphs/RPC for this pair.
+    // Returns empty until wired to a live data source.
+    return [];
   }
 
   // Primary scan: use The Graph indexer for fast multi-DEX, multi-pair coverage
@@ -179,21 +175,24 @@ export class DexService {
         const minPrice = Math.min(...prices.map(p => p.price));
         if (minPrice === 0) continue;
 
-        const spread = ((maxPrice - minPrice) / minPrice) * 100;
+        const maxPriceScaled = toScaled(maxPrice);
+        const minPriceScaled = toScaled(minPrice);
+        const spreadBps = spreadBpsFromPrices(maxPriceScaled, minPriceScaled);
+        const spread = Number(spreadBps) / 100;
 
         if (spread > 0.08) {
           const buyEntry = prices.find(p => p.price === minPrice)!;
           const sellEntry = prices.find(p => p.price === maxPrice)!;
-          const loanAmount = 10; // ETH
-          const estimatedProfit = (maxPrice - minPrice) * loanAmount;
-          const gasCost = 0.02; // ETH in USD terms
+          const estimatedProfitScaled = applyBps(toScaled('5000'), spreadBps);
+          const estimatedProfit = fromScaled(estimatedProfitScaled, 6);
+          const gasCost = 3.5; // USD
 
           opportunities.push({
             tokenPair: key,
             buyDex: buyEntry.dex,
             sellDex: sellEntry.dex,
             network: 'ethereum',
-            loanAmount,
+            loanAmount: 5000,
             netProfit: estimatedProfit - gasCost,
             gasCost,
             confidenceScore: Math.min(99, Math.round(60 + spread * 100)),
@@ -227,19 +226,27 @@ export class DexService {
         ]);
 
         if (uniPrice > 0 && sushiPrice > 0) {
-          const spread = (Math.abs(uniPrice - sushiPrice) / Math.min(uniPrice, sushiPrice)) * 100;
+          const uniPriceScaled = toScaled(uniPrice);
+          const sushiPriceScaled = toScaled(sushiPrice);
+          const higherPrice = uniPriceScaled > sushiPriceScaled ? uniPriceScaled : sushiPriceScaled;
+          const lowerPrice = uniPriceScaled > sushiPriceScaled ? sushiPriceScaled : uniPriceScaled;
+          const spreadBps = spreadBpsFromPrices(higherPrice, lowerPrice);
+          const spread = Number(spreadBps) / 100;
           console.log(`[Scanner] ${baseSymbol}/${quoteSymbol}: Uni=${uniPrice.toFixed(4)}, Sushi=${sushiPrice.toFixed(4)}, Spread=${spread.toFixed(4)}%`);
 
           if (spread > 0.08) {
             const isUniCheaper = uniPrice < sushiPrice;
+            const estimatedProfitScaled = applyBps(toScaled('5000'), spreadBps);
+            const estimatedProfit = fromScaled(estimatedProfitScaled, 6);
+            const gasCost = 3.5;
             opportunities.push({
               tokenPair: `${baseSymbol}/${quoteSymbol}`,
               buyDex: isUniCheaper ? 'Uniswap V2' : 'SushiSwap',
               sellDex: isUniCheaper ? 'SushiSwap' : 'Uniswap V2',
               network: 'ethereum',
-              loanAmount: 1.0,
-              netProfit: Math.abs(uniPrice - sushiPrice) - 0.02,
-              gasCost: 0.02,
+              loanAmount: 5000,
+              netProfit: estimatedProfit - gasCost,
+              gasCost,
               confidenceScore: Math.min(99, Math.round(60 + spread * 100)),
               spread: spread.toFixed(4),
             });

@@ -159,7 +159,7 @@ supabase login
 supabase link --project-ref YOUR_PROJECT_REF
 
 # Create the function
-supabase functions new scan-arbitrage-opportunities
+supabase functions new scan-arbitrage-opportunities God Dang it
 
 # Set secrets
 supabase secrets set INFURA_API_KEY=your_key

@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import React, { useState, useCallback } from 'react';
 import {
   Play,

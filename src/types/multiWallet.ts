@@ -1,10 +1,10 @@
+
+import { NetworkName } from '../../shared/networks-tokens';
 import { ethers } from 'ethers';
 
 export type WalletConnectionType = 'metamask' | 'walletconnect' | 'coinbase' | 'trust';
 
 export type TradingStrategy = 'dex-arbitrage' | 'flash-loans' | 'cross-chain' | 'mev-protection' | 'sandwich-detection' | 'custom';
-
-export type NetworkDesignation = 'ethereum' | 'polygon' | 'arbitrum' | 'bsc' | 'optimism' | 'avalanche' | 'base' | 'all';
 
 export interface WalletStrategyConfig {
   strategy: TradingStrategy;
@@ -14,8 +14,9 @@ export interface WalletStrategyConfig {
   riskLevel: 'low' | 'medium' | 'high';
 }
 
+
 export interface WalletNetworkConfig {
-  network: NetworkDesignation;
+  network: NetworkName;
   isEnabled: boolean;
   gasLimitMultiplier: number;
   priorityFeeGwei: number;
@@ -79,7 +80,7 @@ export interface WalletGroup {
   createdAt: string;
   // New fields for group-level strategy designation
   defaultStrategy?: TradingStrategy;
-  defaultNetworks?: NetworkDesignation[];
+  defaultNetworks?: NetworkName[];
 }
 
 export interface PortfolioSummary {
@@ -194,13 +195,10 @@ export const STRATEGY_INFO: Record<TradingStrategy, { name: string; description:
   },
 };
 
-export const NETWORK_INFO: Record<NetworkDesignation, { name: string; chainId: number; color: string }> = {
+export const NETWORK_INFO: Record<NetworkName, { name: string; chainId: number; color: string }> = {
   'ethereum': { name: 'Ethereum', chainId: 1, color: '#627EEA' },
   'polygon': { name: 'Polygon', chainId: 137, color: '#8247E5' },
   'arbitrum': { name: 'Arbitrum', chainId: 42161, color: '#28A0F0' },
   'bsc': { name: 'BNB Chain', chainId: 56, color: '#F0B90B' },
-  'optimism': { name: 'Optimism', chainId: 10, color: '#FF0420' },
-  'avalanche': { name: 'Avalanche', chainId: 43114, color: '#E84142' },
   'base': { name: 'Base', chainId: 8453, color: '#0052FF' },
-  'all': { name: 'All Networks', chainId: 0, color: '#00F0FF' },
 };

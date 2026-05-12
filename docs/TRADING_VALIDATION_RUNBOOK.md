@@ -18,7 +18,7 @@ Prove the strategy has positive expectancy and stable execution behavior.
 
 1. Ensure app and required backend functions are running.
 2. Keep execution mode in simulation.
-3. Record each trade in [templates/trade-log.csv](templates/trade-log.csv).
+3. Record each trade in [templates/trade-log.csv](../templates/trade-log.csv).
 
 ### Minimum sample rules (Micro Live)
 

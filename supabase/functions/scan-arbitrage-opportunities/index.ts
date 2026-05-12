@@ -59,6 +59,10 @@ interface ScannerConfig {
   maxResults: number;
   loanAmountUsd: number;
   estimatedGasUsd: number;
+  gasUnits: number;
+  gasSafetyMultiplier: number;
+  gasPriceGweiByNetwork: Partial<Record<NetworkName, number>>;
+  nativeTokenUsdByNetwork: Partial<Record<NetworkName, number>>;
 }
 
 interface Opportunity {
@@ -82,6 +86,17 @@ interface Opportunity {
   routePenaltyBps: number;
   status: 'active' | 'watchlist';
   quoteSources: Array<'subgraph' | 'dexscreener' | 'gecko'>;
+  mathDiagnostics?: {
+    reservesUsd: { buy: number; sell: number };
+    expectedOutputUsd: number;
+    actualOutputUsd: number;
+    expectedGrossProfitUsd: number;
+    actualGrossProfitUsd: number;
+    slippageFraction: number;
+    liquidityUsageFraction: number;
+    gasEstimateUsd: number;
+    passReason: string;
+  };
   executionPayload?: Record<string, unknown>;
 }
 
@@ -229,6 +244,105 @@ const parseNumberInput = (value: unknown): number | undefined => {
   return Number.isFinite(parsed) ? parsed : undefined;
 };
 
+const FP_SCALE = 10n ** 18n;
+const USD_SCALE = 10n ** 6n;
+
+const decimalToFixed = (value: number | string, scale: bigint): bigint => {
+  const raw = String(value ?? '').trim();
+  if (!raw) return 0n;
+  const sign = raw.startsWith('-') ? -1n : 1n;
+  const normalized = raw.replace(/^[+-]/, '');
+  const [whole = '0', frac = ''] = normalized.split('.');
+  const scaleDigits = scale.toString().length - 1;
+  const fracNormalized = (frac + '0'.repeat(scaleDigits)).slice(0, scaleDigits);
+  const digits = `${whole}${fracNormalized}`.replace(/^0+(?=\d)/, '');
+  const base = digits ? BigInt(digits) : 0n;
+  return sign * base;
+};
+
+const fixedToNumber = (value: bigint, scale: bigint, precision = 6): number => {
+  const negative = value < 0n;
+  const abs = negative ? -value : value;
+  const whole = abs / scale;
+  const fraction = abs % scale;
+  const scaleDigits = scale.toString().length - 1;
+  const viewPrecision = Math.max(0, Math.min(scaleDigits, precision));
+  const divisor = 10n ** BigInt(scaleDigits - viewPrecision);
+  const compactFraction = fraction / divisor;
+  const asText = `${negative ? '-' : ''}${whole.toString()}.${compactFraction.toString().padStart(viewPrecision, '0')}`;
+  return Number(asText);
+};
+
+const clampNumber = (value: number, min: number, max: number): number => {
+  if (value < min) return min;
+  if (value > max) return max;
+  return value;
+};
+
+const roundDiv = (numerator: bigint, denominator: bigint): bigint => {
+  if (denominator === 0n) return 0n;
+  if (numerator >= 0n) return (numerator + (denominator / 2n)) / denominator;
+  return (numerator - (denominator / 2n)) / denominator;
+};
+
+const confidenceScoreDeterministic = ({
+  base,
+  spreadBps,
+  spreadMultiplier,
+  slippageBps,
+  slippageDivisor,
+  minScore,
+  maxScore,
+  netProfitUsd,
+  minProfitUsd,
+}: {
+  base: number;
+  spreadBps: bigint;
+  spreadMultiplier: number;
+  slippageBps: bigint;
+  slippageDivisor: number;
+  minScore: number;
+  maxScore: number;
+  netProfitUsd?: number;
+  minProfitUsd?: number;
+}): number => {
+  let scoreX100 = BigInt(base * 100) + (spreadBps * BigInt(spreadMultiplier));
+  scoreX100 -= roundDiv(slippageBps * 100n, BigInt(Math.max(1, slippageDivisor)));
+
+  if (typeof netProfitUsd === 'number' && typeof minProfitUsd === 'number') {
+    const netProfitFixed = decimalToFixed(netProfitUsd, USD_SCALE);
+    const minProfitFixed = decimalToFixed(Math.max(1, minProfitUsd), USD_SCALE);
+    scoreX100 += roundDiv(netProfitFixed * 100n, minProfitFixed);
+  }
+
+  const rounded = Number(roundDiv(scoreX100, 100n));
+  return clampNumber(rounded, minScore, maxScore);
+};
+
+const mulDiv = (a: bigint, b: bigint, denominator: bigint): bigint => {
+  if (denominator === 0n) return 0n;
+  return (a * b) / denominator;
+};
+
+const scaleTo = (value: bigint, fromScale: bigint, toScale: bigint): bigint => {
+  if (fromScale === toScale) return value;
+  if (fromScale > toScale) {
+    return mulDiv(value, toScale, fromScale);
+  }
+  return mulDiv(value, toScale, fromScale);
+};
+
+const sqrtBigInt = (value: bigint): bigint => {
+  if (value <= 0n) return 0n;
+  let x = value;
+  let y = (x + 1n) / 2n;
+  while (y < x) {
+    x = y;
+    y = (x + value / x) / 2n;
+  }
+  return x;
+};
+
 const parseMinNetProfitByNetwork = (input: unknown): Partial<Record<NetworkName, number>> => {
   if (!input || typeof input !== 'object') return {};
   const out: Partial<Record<NetworkName, number>> = {};
@@ -241,32 +355,46 @@ const parseMinNetProfitByNetwork = (input: unknown): Partial<Record<NetworkName,
   return out;
 };
 
+const parseNetworkNumberMap = (input: unknown): Partial<Record<NetworkName, number>> => {
+  if (!input || typeof input !== 'object') return {};
+  const out: Partial<Record<NetworkName, number>> = {};
+  for (const [key, value] of Object.entries(input as Record<string, unknown>)) {
+    const normalized = key.toLowerCase();
+    if (!isNetworkName(normalized)) continue;
+    const parsed = Number(value);
+    if (Number.isFinite(parsed) && parsed > 0) out[normalized] = parsed;
+  }
+  return out;
+};
+
 const parsePoolLiquidity = (pool: Pool): number => {
-  const reserve = parseFloat(pool.reserveUSD || '0');
-  if (Number.isFinite(reserve) && reserve > 0) return reserve;
-  const liquidity = parseFloat(pool.liquidity || '0');
+  const reserveFixed = decimalToFixed(pool.reserveUSD || '0', USD_SCALE);
+  if (reserveFixed > 0n) return fixedToNumber(reserveFixed, USD_SCALE, 6);
+  const liquidity = Number(pool.liquidity || '0');
   if (!Number.isFinite(liquidity) || liquidity <= 0) return 0;
   // Uniswap V3 liquidity is not USD-denominated; use a conservative heuristic proxy.
   return liquidity / 1e12;
 };
 
 const estimateSlippageBps = (tradeSizeUsd: number, liquidityUsd: number): number => {
-  if (liquidityUsd <= 0) return 10_000;
-  
-  // Exponential price impact model based on AMM constant product (x*y=k).
-  // As trade size increases relative to liquidity, impact grows exponentially, not linearly.
-  // Formula: impact = (1 - 1/sqrt(1 + ratio)) * 10000, where ratio = tradeSize / liquidity
-  // This matches Uniswap V2/V3 pricing behavior and other constant-product AMMs.
-  const ratio = tradeSizeUsd / liquidityUsd;
-  
-  if (ratio <= 0) return 1;
-  if (ratio >= 100) return 10_000; // Trade is ~100x larger than liquidity = 100% slippage
-  
-  // Use sqrt-based formula to model exponential impact
-  const impactFraction = 1 - (1 / Math.sqrt(1 + ratio));
-  const impactBps = Math.round(impactFraction * 10_000);
-  
-  return Math.max(1, Math.min(10_000, impactBps));
+  const trade = decimalToFixed(tradeSizeUsd, USD_SCALE);
+  const liquidity = decimalToFixed(liquidityUsd, USD_SCALE);
+  if (liquidity <= 0n || trade <= 0n) return 1;
+
+  const ratioScaled = mulDiv(trade, FP_SCALE, liquidity);
+  const hundredScaled = 100n * FP_SCALE;
+  if (ratioScaled >= hundredScaled) return 10_000;
+
+  // impact = 1 - 1/sqrt(1 + ratio)
+  const onePlusRatio = FP_SCALE + ratioScaled;
+  const sqrtTerm = sqrtBigInt(onePlusRatio * FP_SCALE);
+  if (sqrtTerm <= 0n) return 10_000;
+  const reciprocal = mulDiv(FP_SCALE, FP_SCALE, sqrtTerm);
+  const impact = FP_SCALE - reciprocal;
+  const impactBps = mulDiv(impact, 10_000n, FP_SCALE);
+
+  const bounded = impactBps < 1n ? 1n : impactBps > 10_000n ? 10_000n : impactBps;
+  return Number(bounded);
 };
 
 const dexPenaltyBps: Record<Opportunity['buyDex'], number> = {
@@ -278,6 +406,8 @@ const dexPenaltyBps: Record<Opportunity['buyDex'], number> = {
 };
 
 const DEFAULT_MAX_EXECUTABLE_LIQUIDITY_FRACTION = 0.35;
+const MAX_REASONABLE_SPREAD_FRACTION = 0.20; // 20%
+const MAX_REASONABLE_ROI_FRACTION = 0.20; // 20% net/gross on single arb leg is suspicious
 
 // Volume steps inspired by Flashbots simple-arbitrage - test multiple sizes
 const SIZE_STEPS = [1, 0.75, 0.56, 0.42, 0.31, 0.24, 0.18, 0.13, 0.1, 0.07, 0.05, 0.03, 0.02];
@@ -299,6 +429,12 @@ const evaluateSingleVolume = (
 ): ExecutionCandidate | null => {
   if (!Number.isFinite(executableLoanAmount) || executableLoanAmount <= 0) return null;
 
+  const buyPriceFixed = decimalToFixed(buyPrice, FP_SCALE);
+  const sellPriceFixed = decimalToFixed(sellPrice, FP_SCALE);
+  const loanFixed = decimalToFixed(executableLoanAmount, USD_SCALE);
+  const configLoanFixed = decimalToFixed(config.loanAmountUsd, USD_SCALE);
+  if (buyPriceFixed <= 0n || sellPriceFixed <= 0n || loanFixed <= 0n || configLoanFixed <= 0n) return null;
+
   const buyImpactBps = estimateSlippageBps(executableLoanAmount, buyLiquidityUsd);
   const sellImpactBps = estimateSlippageBps(executableLoanAmount, sellLiquidityUsd);
   const routePenaltyBps = dexPenaltyBps[buyDex] + dexPenaltyBps[sellDex];
@@ -308,19 +444,41 @@ const evaluateSingleVolume = (
     return null;
   }
 
-  const quotedBuyPrice = buyPrice * (1 + buyImpactBps / 10_000);
-  const quotedSellPrice = sellPrice * (1 - sellImpactBps / 10_000);
-  if (!Number.isFinite(quotedBuyPrice) || !Number.isFinite(quotedSellPrice) || quotedBuyPrice <= 0 || quotedSellPrice <= 0 || quotedSellPrice <= quotedBuyPrice) {
+  const quotedBuyPrice = mulDiv(buyPriceFixed, BigInt(10_000 + buyImpactBps), 10_000n);
+  const quotedSellPrice = mulDiv(sellPriceFixed, BigInt(10_000 - sellImpactBps), 10_000n);
+  if (quotedBuyPrice <= 0n || quotedSellPrice <= 0n || quotedSellPrice <= quotedBuyPrice) {
     return null;
   }
 
-  const quotedSpread = (quotedSellPrice - quotedBuyPrice) / quotedBuyPrice;
-  const grossProfit = quotedSpread * executableLoanAmount;
-  const routePenaltyCost = (routePenaltyBps / 10_000) * executableLoanAmount;
-  const step = executableLoanAmount / config.loanAmountUsd;
-  // Gas cost scales inversely with size step: smaller loans have proportionally higher gas impact
-  const gasCost = estimateGasUsdForNetwork(network, config.estimatedGasUsd) * Math.pow(Math.max(0.01, step), -0.5);
-  const netProfit = grossProfit - routePenaltyCost - gasCost;
+  const quotedSpreadFixed = mulDiv(quotedSellPrice - quotedBuyPrice, FP_SCALE, quotedBuyPrice);
+  const maxSpreadFixed = decimalToFixed(MAX_REASONABLE_SPREAD_FRACTION, FP_SCALE);
+  if (quotedSpreadFixed <= 0n || quotedSpreadFixed > maxSpreadFixed) {
+    return null;
+  }
+
+  const grossProfitFixed = mulDiv(quotedSpreadFixed, loanFixed, FP_SCALE);
+  const routePenaltyCostFixed = mulDiv(loanFixed, BigInt(routePenaltyBps), 10_000n);
+
+  // Gas cost scales inversely with trade-size ratio via deterministic sqrt(configLoan / loan)
+  const loanRatioScaled = mulDiv(configLoanFixed, FP_SCALE, loanFixed);
+  const gasMultiplierScaled = sqrtBigInt(loanRatioScaled * FP_SCALE);
+  const baseGasFixed = decimalToFixed(estimateGasUsdForNetwork(network, config), USD_SCALE);
+  const gasCostFixed = mulDiv(baseGasFixed, gasMultiplierScaled, FP_SCALE);
+
+  const netProfitFixed = grossProfitFixed - routePenaltyCostFixed - gasCostFixed;
+  const maxReasonableProfitFixed = mulDiv(loanFixed, decimalToFixed(MAX_REASONABLE_ROI_FRACTION, FP_SCALE), FP_SCALE);
+  if (grossProfitFixed > maxReasonableProfitFixed || netProfitFixed > maxReasonableProfitFixed) {
+    return null;
+  }
+
+  // Hard profitability gate: never allow candidates where gas dominates or net is non-positive.
+  if (grossProfitFixed <= gasCostFixed || netProfitFixed <= 0n) {
+    return null;
+  }
+
+  const grossProfit = fixedToNumber(grossProfitFixed, USD_SCALE, 6);
+  const gasCost = fixedToNumber(gasCostFixed, USD_SCALE, 6);
+  const netProfit = fixedToNumber(netProfitFixed, USD_SCALE, 6);
 
   return {
     executableLoanAmount,
@@ -454,6 +612,30 @@ const buildScannerConfig = (body: Record<string, unknown>): ScannerConfig => {
   const bodyMaxLiquidityUsageFraction = parseNumberInput(body.maxLiquidityUsageFraction);
   const bodyMaxResults = parseNumberInput(body.maxResults);
   const bodyEstimatedGasUsd = parseNumberInput(body.estimatedGasUsd);
+  const bodyGasUnits = parseNumberInput(body.gasUnits);
+  const bodyGasSafetyMultiplier = parseNumberInput(body.gasSafetyMultiplier);
+
+  const envGasPriceByNetworkRaw = Deno.env.get('SCANNER_GAS_PRICE_GWEI_BY_NETWORK');
+  let envGasPriceByNetwork: Partial<Record<NetworkName, number>> = {};
+  if (envGasPriceByNetworkRaw) {
+    try {
+      envGasPriceByNetwork = parseNetworkNumberMap(JSON.parse(envGasPriceByNetworkRaw));
+    } catch {
+      envGasPriceByNetwork = {};
+    }
+  }
+  const bodyGasPriceByNetwork = parseNetworkNumberMap((body.gasPriceGweiByNetwork ?? body.networkGasPriceGwei) as unknown);
+
+  const envNativeUsdByNetworkRaw = Deno.env.get('SCANNER_NATIVE_TOKEN_USD_BY_NETWORK');
+  let envNativeUsdByNetwork: Partial<Record<NetworkName, number>> = {};
+  if (envNativeUsdByNetworkRaw) {
+    try {
+      envNativeUsdByNetwork = parseNetworkNumberMap(JSON.parse(envNativeUsdByNetworkRaw));
+    } catch {
+      envNativeUsdByNetwork = {};
+    }
+  }
+  const bodyNativeUsdByNetwork = parseNetworkNumberMap((body.nativeTokenUsdByNetwork ?? body.networkNativeTokenUsd) as unknown);
 
   const envByNetworkRaw = Deno.env.get('SCANNER_MIN_NET_PROFIT_USD_BY_NETWORK');
   let envByNetwork: Partial<Record<NetworkName, number>> = {};
@@ -494,6 +676,16 @@ const buildScannerConfig = (body: Record<string, unknown>): ScannerConfig => {
     maxResults: Math.max(1, Math.min(50, bodyMaxResults ?? parseNumberEnv(Deno.env.get('SCANNER_MAX_RESULTS'), 25))),
     loanAmountUsd: bodyLoanAmountUsd ?? envLoanAmountUsd,
     estimatedGasUsd: bodyEstimatedGasUsd ?? parseNumberEnv(Deno.env.get('SCANNER_ESTIMATED_GAS_USD'), 18),
+    gasUnits: bodyGasUnits ?? parseNumberEnv(Deno.env.get('SCANNER_GAS_UNITS'), 350_000),
+    gasSafetyMultiplier: bodyGasSafetyMultiplier ?? parseNumberEnv(Deno.env.get('SCANNER_GAS_SAFETY_MULTIPLIER'), 1.15),
+    gasPriceGweiByNetwork: {
+      ...envGasPriceByNetwork,
+      ...bodyGasPriceByNetwork,
+    },
+    nativeTokenUsdByNetwork: {
+      ...envNativeUsdByNetwork,
+      ...bodyNativeUsdByNetwork,
+    },
   };
 };
 
@@ -694,17 +886,17 @@ const toPoolFromCurve = (pool: Record<string, unknown>): Pool | null => {
 
   const token0 = coins[0] || '';
   const token1 = coins[1] || '';
-  const b0 = parseFloat(String(balances[0] || '0'));
-  const b1 = parseFloat(String(balances[1] || '0'));
-  if (!token0 || !token1 || !Number.isFinite(b0) || !Number.isFinite(b1) || b0 <= 0 || b1 <= 0) return null;
+  const b0Fixed = decimalToFixed(String(balances[0] || '0'), FP_SCALE);
+  const b1Fixed = decimalToFixed(String(balances[1] || '0'), FP_SCALE);
+  if (!token0 || !token1 || b0Fixed <= 0n || b1Fixed <= 0n) return null;
 
-  const p01 = b1 / b0;
-  const p10 = b0 / b1;
+  const p01Fixed = mulDiv(b1Fixed, FP_SCALE, b0Fixed);
+  const p10Fixed = mulDiv(b0Fixed, FP_SCALE, b1Fixed);
   return {
     token0: { symbol: token0 },
     token1: { symbol: token1 },
-    token0Price: String(p01),
-    token1Price: String(p10),
+    token0Price: String(fixedToNumber(p01Fixed, FP_SCALE, 12)),
+    token1Price: String(fixedToNumber(p10Fixed, FP_SCALE, 12)),
     reserveUSD: String(pool.cumulativeVolumeUSD || '0'),
     network: 'ethereum',
     sourceType: 'subgraph',
@@ -727,6 +919,22 @@ const NETWORK_GAS_MULTIPLIER: Record<NetworkName, number> = {
   bsc: 0.22,
 };
 
+const DEFAULT_GAS_PRICE_GWEI_BY_NETWORK: Record<NetworkName, number> = {
+  ethereum: 20,
+  polygon: 60,
+  arbitrum: 0.2,
+  base: 0.2,
+  bsc: 3,
+};
+
+const DEFAULT_NATIVE_TOKEN_USD_BY_NETWORK: Record<NetworkName, number> = {
+  ethereum: 3200,
+  polygon: 0.8,
+  arbitrum: 3200,
+  base: 3200,
+  bsc: 600,
+};
+
 const GECKO_NETWORK_TO_APP: Record<string, NetworkName> = {
   eth: 'ethereum',
   ethereum: 'ethereum',
@@ -740,13 +948,7 @@ const GECKO_NETWORK_TO_APP: Record<string, NetworkName> = {
   binance_smart_chain: 'bsc',
 };
 
-const CORE_BASE_TOKENS: Record<NetworkName, Set<string>> = {
-  ethereum: new Set(['WETH', 'ETH', 'WBTC', 'BTC', 'LINK', 'UNI', 'AAVE', 'LDO', 'CRV', 'FRAX', 'MKR']),
-  polygon: new Set(['WMATIC', 'MATIC', 'WETH', 'ETH', 'WBTC', 'BTC', 'LINK', 'AAVE', 'GHST', 'CRV']),
-  arbitrum: new Set(['WETH', 'ETH', 'WBTC', 'BTC', 'ARB', 'GMX', 'MAGIC', 'LINK', 'RDNT']),
-  base: new Set(['WETH', 'ETH', 'WBTC', 'BTC', 'LINK', 'AERO', 'DEGEN', 'BRETT']),
-  bsc: new Set(['WBNB', 'BNB', 'BTCB', 'BTC', 'ETH', 'CAKE', 'XVS']),
-};
+import { CORE_BASE_TOKENS, SEARCH_TERMS_BY_NETWORK, NetworkName, isNetworkName } from '../../../shared/networks-tokens.ts';
 
 /**
  * DEX Router addresses for canonical execution payloads
@@ -789,17 +991,6 @@ const DEX_ROUTERS: Record<NetworkName, Partial<Record<'Uniswap V3' | 'Uniswap V2
   },
 };
 
-const SEARCH_TERMS_BY_NETWORK: Record<NetworkName, string[]> = {
-  ethereum: ['WETH USDC', 'WETH USDT', 'WBTC USDC', 'WBTC USDT', 'LINK USDC', 'UNI USDC', 'AAVE USDC', 'LDO USDC', 'CRV USDC', 'DAI USDC', 'USDC USDT', 'WETH', 'WBTC', 'LINK'],
-  polygon: ['WMATIC USDC', 'WMATIC USDT', 'WETH USDC', 'WBTC USDC', 'LINK USDC', 'AAVE USDC', 'GHST USDC', 'DAI USDC', 'USDC USDT', 'WMATIC', 'WETH'],
-  arbitrum: ['WETH USDC', 'WETH USDT', 'WBTC USDC', 'ARB USDC', 'GMX USDC', 'MAGIC USDC', 'LINK USDC', 'DAI USDC', 'USDC USDT', 'ARB', 'WETH', 'WBTC'],
-  base: ['WETH USDC', 'WETH USDT', 'WBTC USDC', 'LINK USDC', 'AERO USDC', 'DEGEN USDC', 'USDC USDT', 'WETH', 'AERO'],
-  bsc: ['WBNB USDT', 'WBNB USDC', 'BTCB USDT', 'ETH USDT', 'CAKE USDT', 'USDC USDT', 'WBNB', 'BTCB'],
-};
-
-const isNetworkName = (value: string): value is NetworkName => {
-  return value === 'ethereum' || value === 'polygon' || value === 'arbitrum' || value === 'base' || value === 'bsc';
-};
 
 const MIN_FALLBACK_LIQUIDITY_USD = 20_000;
 
@@ -809,8 +1000,33 @@ const toNetworkName = (value: string | undefined): NetworkName => {
   return 'ethereum';
 };
 
-const estimateGasUsdForNetwork = (network: NetworkName, estimatedGasUsd: number): number => {
-  return Math.max(1, estimatedGasUsd * NETWORK_GAS_MULTIPLIER[network]);
+const estimateGasUsdForNetwork = (network: NetworkName, config: ScannerConfig): number => {
+  const networkGasPriceGwei = config.gasPriceGweiByNetwork[network] ?? DEFAULT_GAS_PRICE_GWEI_BY_NETWORK[network];
+  const nativeTokenUsd = config.nativeTokenUsdByNetwork[network] ?? DEFAULT_NATIVE_TOKEN_USD_BY_NETWORK[network];
+
+  if (
+    Number.isFinite(config.gasUnits) && config.gasUnits > 0 &&
+    Number.isFinite(networkGasPriceGwei) && networkGasPriceGwei > 0 &&
+    Number.isFinite(nativeTokenUsd) && nativeTokenUsd > 0
+  ) {
+    const gasUnitsFixed = decimalToFixed(config.gasUnits, FP_SCALE);
+    const gasPriceGweiFixed = decimalToFixed(networkGasPriceGwei, FP_SCALE);
+    const nativeUsdFixed = decimalToFixed(nativeTokenUsd, FP_SCALE);
+    const safetyFixed = decimalToFixed(config.gasSafetyMultiplier, FP_SCALE);
+
+    // costEth = gasUnits * gasPriceGwei / 1e9
+    const gasCostGweiFixed = mulDiv(gasUnitsFixed, gasPriceGweiFixed, FP_SCALE);
+    const gasCostEthFixed = gasCostGweiFixed / 1_000_000_000n;
+    const gasCostUsdFixed = mulDiv(mulDiv(gasCostEthFixed, nativeUsdFixed, FP_SCALE), safetyFixed, FP_SCALE);
+    const gasUsd = fixedToNumber(gasCostUsdFixed, FP_SCALE, 6);
+
+    if (Number.isFinite(gasUsd) && gasUsd > 0) {
+      return gasUsd;
+    }
+  }
+
+  // Fallback path for compatibility when dynamic gas inputs are unavailable.
+  return Math.max(1, config.estimatedGasUsd * NETWORK_GAS_MULTIPLIER[network]);
 };
 
 /**
@@ -836,9 +1052,8 @@ const TOKEN_DECIMALS: Record<string, number> = {
 
 const formatTokenUnits = (amount: number, decimals = 18): bigint => {
   if (!Number.isFinite(amount) || amount <= 0) return 0n;
-  const [whole, fraction = ''] = amount.toFixed(decimals).split('.');
-  const paddedFraction = (fraction + '0'.repeat(decimals)).slice(0, decimals);
-  return BigInt(`${whole}${paddedFraction}`);
+  const tokenScale = 10n ** BigInt(Math.max(0, decimals));
+  return decimalToFixed(amount, tokenScale);
 };
 
 const getTokenDecimals = (symbol: string): number => {
@@ -852,15 +1067,24 @@ const calculateAmountBMin = (
   tokenBDecimals: number,
 ): bigint => {
   if (buyPrice <= 0) return 0n;
-  const expectedTokenB = assetAmountUsd / buyPrice;
-  const slippageBuffer = 1 + estimatedSlippageBps / 10_000 + 0.02;
-  return formatTokenUnits(expectedTokenB / slippageBuffer, tokenBDecimals);
+
+  const assetAmountFixed = decimalToFixed(assetAmountUsd, USD_SCALE);
+  const buyPriceFixed = decimalToFixed(buyPrice, FP_SCALE);
+  if (assetAmountFixed <= 0n || buyPriceFixed <= 0n) return 0n;
+
+  // Token amount with USD scale (6 decimals): amount = usd / price
+  const expectedTokenAmountUsdScale = mulDiv(assetAmountFixed, FP_SCALE, buyPriceFixed);
+  const slippageBufferBps = BigInt(10_000 + estimatedSlippageBps + 200); // +2% safety
+  const minTokenAmountUsdScale = mulDiv(expectedTokenAmountUsdScale, 10_000n, slippageBufferBps);
+
+  const tokenScale = 10n ** BigInt(Math.max(0, tokenBDecimals));
+  return scaleTo(minTokenAmountUsdScale, USD_SCALE, tokenScale);
 };
 
-const SOURCE_RELIABILITY: Record<'subgraph' | 'dexscreener' | 'gecko', number> = {
-  subgraph: 1.0,
-  dexscreener: 0.72,
-  gecko: 0.52,
+const SOURCE_RELIABILITY_BPS: Record<'subgraph' | 'dexscreener' | 'gecko', bigint> = {
+  subgraph: 10_000n,
+  dexscreener: 7_200n,
+  gecko: 5_200n,
 };
 
 const buildExecutionPayload = (
@@ -971,11 +1195,78 @@ const getMinNetProfitUsdForNetwork = (config: ScannerConfig, network: NetworkNam
 };
 
 const getRequiredActiveNetProfitUsd = (config: ScannerConfig, network: NetworkName): number => {
-  const base = getMinNetProfitUsdForNetwork(config, network);
-  const gasFactor = estimateGasUsdForNetwork(network, config.estimatedGasUsd) / Math.max(1, config.estimatedGasUsd);
-  const adjustment = Math.max(0, gasFactor - 1) * config.adaptiveProfitPressureMultiplier;
-  const adaptiveThreshold = Math.max(0, base * (1 + adjustment));
-  return Math.max(0, adaptiveThreshold);
+  const baseFixed = decimalToFixed(getMinNetProfitUsdForNetwork(config, network), USD_SCALE);
+  const networkGasFixed = decimalToFixed(estimateGasUsdForNetwork(network, config), USD_SCALE);
+  const baselineGasFixed = decimalToFixed(Math.max(1, config.estimatedGasUsd), USD_SCALE);
+  const multiplierFixed = decimalToFixed(config.adaptiveProfitPressureMultiplier, FP_SCALE);
+
+  const gasFactorFixed = baselineGasFixed > 0n
+    ? mulDiv(networkGasFixed, FP_SCALE, baselineGasFixed)
+    : FP_SCALE;
+  const gasExcessFixed = gasFactorFixed > FP_SCALE ? gasFactorFixed - FP_SCALE : 0n;
+  const adjustmentFixed = mulDiv(gasExcessFixed, multiplierFixed, FP_SCALE);
+  const adaptiveThresholdFixed = baseFixed + mulDiv(baseFixed, adjustmentFixed, FP_SCALE);
+  return fixedToNumber(adaptiveThresholdFixed > 0n ? adaptiveThresholdFixed : 0n, USD_SCALE, 6);
+};
+
+const buildMathDiagnostics = ({
+  loanAmountUsd,
+  spreadBps,
+  grossProfitUsd,
+  buyLiquidityUsd,
+  sellLiquidityUsd,
+  gasCostUsd,
+  passReason,
+}: {
+  loanAmountUsd: number;
+  spreadBps: bigint;
+  grossProfitUsd: number;
+  buyLiquidityUsd: number;
+  sellLiquidityUsd: number;
+  gasCostUsd: number;
+  passReason: string;
+}) => {
+  const loanFixed = decimalToFixed(loanAmountUsd, USD_SCALE);
+  const grossProfitFixed = decimalToFixed(grossProfitUsd, USD_SCALE);
+  const spreadFractionFixed = mulDiv(spreadBps, FP_SCALE, 10_000n);
+
+  const expectedGrossFixed = mulDiv(loanFixed, spreadFractionFixed, FP_SCALE);
+  const expectedOutputFixed = loanFixed + expectedGrossFixed;
+  const actualOutputFixed = loanFixed + grossProfitFixed;
+
+  const slippageFractionFixed = expectedGrossFixed > 0n
+    ? (() => {
+      const delta = expectedGrossFixed - grossProfitFixed;
+      const positiveDelta = delta > 0n ? delta : 0n;
+      return mulDiv(positiveDelta, FP_SCALE, expectedGrossFixed);
+    })()
+    : 0n;
+
+  const buyLiquidityFixed = decimalToFixed(buyLiquidityUsd, USD_SCALE);
+  const sellLiquidityFixed = decimalToFixed(sellLiquidityUsd, USD_SCALE);
+  const minLiquidityFixed = buyLiquidityFixed < sellLiquidityFixed ? buyLiquidityFixed : sellLiquidityFixed;
+  const oneFixed = FP_SCALE;
+  const liquidityUsageFixed = minLiquidityFixed > 0n
+    ? (() => {
+      const usage = mulDiv(loanFixed, FP_SCALE, minLiquidityFixed);
+      return usage > oneFixed ? oneFixed : usage;
+    })()
+    : oneFixed;
+
+  return {
+    reservesUsd: {
+      buy: fixedToNumber(buyLiquidityFixed, USD_SCALE, 6),
+      sell: fixedToNumber(sellLiquidityFixed, USD_SCALE, 6),
+    },
+    expectedOutputUsd: fixedToNumber(expectedOutputFixed, USD_SCALE, 6),
+    actualOutputUsd: fixedToNumber(actualOutputFixed, USD_SCALE, 6),
+    expectedGrossProfitUsd: fixedToNumber(expectedGrossFixed, USD_SCALE, 6),
+    actualGrossProfitUsd: fixedToNumber(grossProfitFixed, USD_SCALE, 6),
+    slippageFraction: fixedToNumber(slippageFractionFixed, FP_SCALE, 8),
+    liquidityUsageFraction: fixedToNumber(liquidityUsageFixed, FP_SCALE, 8),
+    gasEstimateUsd: fixedToNumber(decimalToFixed(gasCostUsd, USD_SCALE), USD_SCALE, 6),
+    passReason,
+  };
 };
 
 const STABLE_QUOTES = new Set(['USDC', 'USDT', 'DAI']);
@@ -1112,21 +1403,29 @@ const fetchDexScreenerFallback = async (networks: string[]) => {
         if (!trackablePair) continue;
 
         const { base, quote } = trackablePair;
-        const priceUsd = parseFloat(String(pair.priceUsd || '0'));
-        if (!Number.isFinite(priceUsd) || priceUsd <= 0) continue;
+        const priceUsdFixed = decimalToFixed(String(pair.priceUsd || '0'), FP_SCALE);
+        if (priceUsdFixed <= 0n) continue;
 
-        const inversePrice = 1 / priceUsd;
-        if (!Number.isFinite(inversePrice) || inversePrice <= 0) continue;
+        const liquidityUsdFixed = decimalToFixed(String(pair.liquidity?.usd || 0), USD_SCALE);
+        if (liquidityUsdFixed < decimalToFixed(MIN_FALLBACK_LIQUIDITY_USD, USD_SCALE)) continue;
 
-        const liquidityUsd = Number(pair.liquidity?.usd || 0);
-        if (!Number.isFinite(liquidityUsd) || liquidityUsd < MIN_FALLBACK_LIQUIDITY_USD) continue;
+        const dexBase = normalizeTokenSymbol(baseSymbol);
+        const canonicalBase = normalizeTokenSymbol(base);
+        if (dexBase !== canonicalBase) {
+          // DexScreener returned the stable token as base; priceUsd is not a usable exchange rate here.
+          continue;
+        }
+
+        const token0PriceFixed = priceUsdFixed;
+        const token1PriceFixed = mulDiv(FP_SCALE, FP_SCALE, token0PriceFixed);
+        if (token1PriceFixed <= 0n) continue;
+
         const pool: Pool = {
           token0: { symbol: base },
           token1: { symbol: quote },
-          // Normalize fallback prices to the same token0/token1 conventions used by subgraphs.
-          token0Price: priceUsd.toString(),
-          token1Price: inversePrice.toString(),
-          reserveUSD: Number.isFinite(liquidityUsd) ? liquidityUsd.toString() : '0',
+          token0Price: fixedToNumber(token0PriceFixed, FP_SCALE, 12).toString(),
+          token1Price: fixedToNumber(token1PriceFixed, FP_SCALE, 12).toString(),
+          reserveUSD: fixedToNumber(liquidityUsdFixed, USD_SCALE, 6).toString(),
           network,
           sourceType: 'dexscreener',
         };
@@ -1180,21 +1479,29 @@ const fetchGeckoTerminalFallback = async (networks: string[]) => {
         if (!trackablePair) continue;
 
         const { base, quote } = trackablePair;
-        const priceUsd = parseFloat(String(attrs.base_token_price_usd || attrs.price_in_usd || attrs.price_usd || '0'));
-        if (!Number.isFinite(priceUsd) || priceUsd <= 0) continue;
+        const priceUsdFixed = decimalToFixed(String(attrs.base_token_price_usd || attrs.price_in_usd || attrs.price_usd || '0'), FP_SCALE);
+        if (priceUsdFixed <= 0n) continue;
 
-        const inversePrice = 1 / priceUsd;
-        if (!Number.isFinite(inversePrice) || inversePrice <= 0) continue;
+        const liquidityUsdFixed = decimalToFixed(String(attrs.reserve_in_usd || attrs.liquidity_usd || '0'), USD_SCALE);
+        if (liquidityUsdFixed < decimalToFixed(MIN_FALLBACK_LIQUIDITY_USD, USD_SCALE)) continue;
 
-        const liquidityUsd = parseFloat(String(attrs.reserve_in_usd || attrs.liquidity_usd || '0'));
-        if (!Number.isFinite(liquidityUsd) || liquidityUsd < MIN_FALLBACK_LIQUIDITY_USD) continue;
+        const geckoBase = normalizeTokenSymbol(baseSymbol);
+        const canonicalBase = normalizeTokenSymbol(base);
+        if (geckoBase !== canonicalBase) {
+          // GeckoTerminal returned the stable quote as base; priceUsd is not a usable exchange rate here.
+          continue;
+        }
+
+        const token0PriceFixed = priceUsdFixed;
+        const token1PriceFixed = mulDiv(FP_SCALE, FP_SCALE, token0PriceFixed);
+        if (token1PriceFixed <= 0n) continue;
 
         const pool: Pool = {
           token0: { symbol: base },
           token1: { symbol: quote },
-          token0Price: priceUsd.toString(),
-          token1Price: inversePrice.toString(),
-          reserveUSD: liquidityUsd.toString(),
+          token0Price: fixedToNumber(token0PriceFixed, FP_SCALE, 12).toString(),
+          token1Price: fixedToNumber(token1PriceFixed, FP_SCALE, 12).toString(),
+          reserveUSD: fixedToNumber(liquidityUsdFixed, USD_SCALE, 6).toString(),
           network: mappedNetwork,
           sourceType: 'gecko',
         };
@@ -1231,24 +1538,56 @@ const findSpreads = (
   };
 
   const rankOpportunity = (opportunity: Opportunity): number => {
-    const networkMinNet = Math.max(1, getRequiredActiveNetProfitUsd(config, opportunity.network));
-    const normalizedProfit = Math.min(4, Math.max(0, opportunity.netProfit / networkMinNet));
-    const slippageBps = Math.max(0, parseNumeric(opportunity.estimatedSlippageBps, 0));
-    const liquidityUsd = Math.max(1, parseNumeric(opportunity.liquidity, 1));
-    const confidence = Math.max(1, Math.min(99, parseNumeric(opportunity.confidenceScore, 1)));
-    const distanceToExecutable = Math.max(0, parseNumeric(opportunity.distanceToExecutableUsd, 0));
-    const sourceQuality = (opportunity.quoteSources || []).reduce((sum, source) => sum + (SOURCE_RELIABILITY[source] ?? 0), 0) / Math.max(1, (opportunity.quoteSources || []).length);
+    const SCALE = 100n;
+    const networkMinNetFixed = decimalToFixed(Math.max(1, getRequiredActiveNetProfitUsd(config, opportunity.network)), USD_SCALE);
+    const netProfitFixed = decimalToFixed(Math.max(0, parseNumeric(opportunity.netProfit, 0)), USD_SCALE);
+    const normalizedProfitBps = networkMinNetFixed > 0n
+      ? mulDiv(netProfitFixed, 10_000n, networkMinNetFixed)
+      : 0n;
+    const cappedProfitBps = normalizedProfitBps > 40_000n ? 40_000n : normalizedProfitBps;
 
-    const profitComponent = normalizedProfit * 45;
-    const confidenceComponent = (confidence / 100) * 22;
-    const liquidityComponent = Math.min(1, Math.log10(liquidityUsd + 1) / 7) * 18;
-    const sourceComponent = Math.max(-15, Math.min(15, (sourceQuality - 0.7) * 20));
-    const slippagePenalty = Math.min(26, slippageBps / 6);
+    const slippageBps = BigInt(Math.max(0, Math.round(parseNumeric(opportunity.estimatedSlippageBps, 0))));
+    const liquidityUsdFixed = decimalToFixed(Math.max(1, parseNumeric(opportunity.liquidity, 1)), USD_SCALE);
+    const confidence = BigInt(Math.max(1, Math.min(99, Math.round(parseNumeric(opportunity.confidenceScore, 1)))));
+    const distanceToExecutableFixed = decimalToFixed(Math.max(0, parseNumeric(opportunity.distanceToExecutableUsd, 0)), USD_SCALE);
+
+    const quoteSources = opportunity.quoteSources || [];
+    const sourceQualityBps = quoteSources.length > 0
+      ? quoteSources.reduce((sum, source) => sum + (SOURCE_RELIABILITY_BPS[source] ?? 0n), 0n) / BigInt(quoteSources.length)
+      : 10_000n;
+
+    const profitComponent = mulDiv(cappedProfitBps, 45n * SCALE, 10_000n);
+    const confidenceComponent = mulDiv(confidence * 100n, 22n * SCALE, 10_000n);
+
+    // Linear liquidity score up to $1,000,000 depth (deterministic, avoids floating log math).
+    const liquidityRatioBps = mulDiv(liquidityUsdFixed, 10_000n, 1_000_000n * USD_SCALE);
+    const cappedLiquidityBps = liquidityRatioBps > 10_000n ? 10_000n : liquidityRatioBps;
+    const liquidityComponent = mulDiv(cappedLiquidityBps, 18n * SCALE, 10_000n);
+
+    // Source component centered around 7000 bps quality.
+    const sourceDeltaBps = sourceQualityBps - 7_000n;
+    const rawSourceComponent = mulDiv(sourceDeltaBps, 20n * SCALE, 10_000n);
+    const sourceComponent = rawSourceComponent < -(15n * SCALE)
+      ? -(15n * SCALE)
+      : rawSourceComponent > (15n * SCALE)
+        ? (15n * SCALE)
+        : rawSourceComponent;
+
+    const rawSlippagePenalty = mulDiv(slippageBps, SCALE, 6n);
+    const slippagePenalty = rawSlippagePenalty > (26n * SCALE) ? (26n * SCALE) : rawSlippagePenalty;
+
     const watchlistPenalty = opportunity.status === 'watchlist'
-      ? Math.min(30, (distanceToExecutable / Math.max(1, networkMinNet)) * 12)
-      : 0;
+      ? (() => {
+        const ratioBps = networkMinNetFixed > 0n
+          ? mulDiv(distanceToExecutableFixed, 10_000n, networkMinNetFixed)
+          : 0n;
+        const penalty = mulDiv(ratioBps, 12n * SCALE, 10_000n);
+        return penalty > (30n * SCALE) ? (30n * SCALE) : penalty;
+      })()
+      : 0n;
 
-    return profitComponent + confidenceComponent + liquidityComponent + sourceComponent - slippagePenalty - watchlistPenalty;
+    const total = profitComponent + confidenceComponent + liquidityComponent + sourceComponent - slippagePenalty - watchlistPenalty;
+    return Number(total) / Number(SCALE);
   };
 
   const mapPrice = (p: Pool) => {
@@ -1261,14 +1600,15 @@ const findSpreads = (
 
     // token1Price is used as the base quote, then inverted if pair order is reversed
     // so every DEX contributes to the same canonical token pair key.
-    const rawPrice = parseFloat(p.token1Price || '0');
-    if (!Number.isFinite(rawPrice) || rawPrice <= 0) {
+    const rawPriceFixed = decimalToFixed(p.token1Price || '0', FP_SCALE);
+    if (rawPriceFixed <= 0n) {
       return { key: '', price: 0, pool: p, network };
     }
 
     const isCanonical = token0 < token1;
     const key = isCanonical ? `${network}:${token0}/${token1}` : `${network}:${token1}/${token0}`;
-    const price = isCanonical ? rawPrice : 1 / rawPrice;
+    const canonicalPriceFixed = isCanonical ? rawPriceFixed : mulDiv(FP_SCALE, FP_SCALE, rawPriceFixed);
+    const price = fixedToNumber(canonicalPriceFixed, FP_SCALE, 12);
     return { key, price, pool: p, network };
   };
 
@@ -1392,7 +1732,7 @@ const findSpreads = (
     let bestPair: {
       buy: { dex: Opportunity['buyDex']; price: number; pool: Pool };
       sell: { dex: Opportunity['buyDex']; price: number; pool: Pool };
-      score: number;
+      score: bigint;
     } | null = null;
 
     for (const buy of buys) {
@@ -1401,9 +1741,19 @@ const findSpreads = (
         if (sell.price <= buy.price) continue;
         const buyLiquidity = parsePoolLiquidity(buy.pool);
         const sellLiquidity = parsePoolLiquidity(sell.pool);
-        const spread = (sell.price - buy.price) / buy.price;
-        const liquidityScore = Math.min(buyLiquidity, sellLiquidity);
-        const score = spread * 1_000_000 + Math.log10(Math.max(1, liquidityScore)) * 100;
+
+        const buyPriceFixed = decimalToFixed(buy.price, FP_SCALE);
+        const sellPriceFixed = decimalToFixed(sell.price, FP_SCALE);
+        if (buyPriceFixed <= 0n || sellPriceFixed <= buyPriceFixed) continue;
+
+        const spreadBps = mulDiv(sellPriceFixed - buyPriceFixed, 10_000n, buyPriceFixed);
+        const liquidityFloorUsdFixed = decimalToFixed(Math.min(buyLiquidity, sellLiquidity), USD_SCALE);
+        const liquidityCapUsdFixed = decimalToFixed(2_000_000, USD_SCALE);
+        const cappedLiquidityFixed = liquidityFloorUsdFixed > liquidityCapUsdFixed ? liquidityCapUsdFixed : liquidityFloorUsdFixed;
+        const liquidityBps = mulDiv(cappedLiquidityFixed, 10_000n, liquidityCapUsdFixed);
+
+        // Heavily prioritize spread, then use liquidity as deterministic tie-breaker.
+        const score = spreadBps * 100_000n + liquidityBps;
         if (!bestPair || score > bestPair.score) {
           bestPair = { buy, sell, score };
         }
@@ -1425,7 +1775,24 @@ const findSpreads = (
       continue;
     }
 
-    const spread = ((sellEntry.price - buyEntry.price) / buyEntry.price) * 100;
+    const sellPriceFixed = decimalToFixed(sellEntry.price, FP_SCALE);
+    const buyPriceFixed = decimalToFixed(buyEntry.price, FP_SCALE);
+    if (sellPriceFixed <= buyPriceFixed || buyPriceFixed <= 0n) {
+      diagnostics.droppedByBadQuotes++;
+      pushRejectionSample(diagnostics, { tokenPair: key, reason: 'badQuotes', buyDex: buyEntry.dex, sellDex: sellEntry.dex, spread: 0 });
+      continue;
+    }
+
+    const spreadFractionFixed = mulDiv(sellPriceFixed - buyPriceFixed, FP_SCALE, buyPriceFixed);
+    const maxSpreadFixed = decimalToFixed(MAX_REASONABLE_SPREAD_FRACTION, FP_SCALE);
+    if (spreadFractionFixed <= 0n || spreadFractionFixed > maxSpreadFixed) {
+      diagnostics.droppedByBadQuotes++;
+      pushRejectionSample(diagnostics, { tokenPair: key, reason: 'badQuotes', buyDex: buyEntry.dex, sellDex: sellEntry.dex, spread: fixedToNumber(mulDiv(spreadFractionFixed, 100n * FP_SCALE, FP_SCALE), FP_SCALE, 6) });
+      continue;
+    }
+
+    const spreadBps = mulDiv(spreadFractionFixed, 10_000n, FP_SCALE);
+    const spread = Number(spreadBps) / 100;
     if (spread < config.minSpreadPercent) {
       diagnostics.droppedBySpread++;
       pushRejectionSample(diagnostics, { tokenPair: key, reason: 'spread', buyDex: buyEntry.dex, sellDex: sellEntry.dex, spread });
@@ -1481,13 +1848,51 @@ const findSpreads = (
         });
       } else {
         const routePenaltyBps = dexPenaltyBps[buyEntry.dex] + dexPenaltyBps[sellEntry.dex];
-        const quotedBuyPrice = buyEntry.price * (1 + buyImpactBps / 10_000);
-        const quotedSellPrice = sellEntry.price * (1 - sellImpactBps / 10_000);
-        const gasCost = estimateGasUsdForNetwork(network, config.estimatedGasUsd);
-        const grossProfit = quotedSellPrice > quotedBuyPrice
-          ? ((quotedSellPrice - quotedBuyPrice) / quotedBuyPrice) * requestedLoanAmount
-          : 0;
-        const nearMissNetProfit = grossProfit - ((routePenaltyBps / 10_000) * requestedLoanAmount) - gasCost;
+        const quotedBuyPrice = mulDiv(decimalToFixed(buyEntry.price, FP_SCALE), BigInt(10_000 + buyImpactBps), 10_000n);
+        const quotedSellPrice = mulDiv(decimalToFixed(sellEntry.price, FP_SCALE), BigInt(10_000 - sellImpactBps), 10_000n);
+        const requestedLoanFixed = decimalToFixed(requestedLoanAmount, USD_SCALE);
+        const gasCostFixed = decimalToFixed(estimateGasUsdForNetwork(network, config), USD_SCALE);
+
+        const grossProfitFixed = quotedSellPrice > quotedBuyPrice
+          ? mulDiv(mulDiv(quotedSellPrice - quotedBuyPrice, FP_SCALE, quotedBuyPrice), requestedLoanFixed, FP_SCALE)
+          : 0n;
+        const nearMissNetProfitFixed = grossProfitFixed - mulDiv(requestedLoanFixed, BigInt(routePenaltyBps), 10_000n) - gasCostFixed;
+        const maxReasonableProfitFixed = mulDiv(requestedLoanFixed, decimalToFixed(MAX_REASONABLE_ROI_FRACTION, FP_SCALE), FP_SCALE);
+        if (grossProfitFixed > maxReasonableProfitFixed || nearMissNetProfitFixed > maxReasonableProfitFixed) {
+          diagnostics.droppedByBadQuotes++;
+          pushRejectionSample(diagnostics, {
+            tokenPair: key,
+            reason: 'badQuotes',
+            buyDex: buyEntry.dex,
+            sellDex: sellEntry.dex,
+            spread,
+            buyLiquidityUsd,
+            sellLiquidityUsd,
+            attemptedLoanAmount: requestedLoanAmount,
+          });
+          continue;
+        }
+
+        const gasCost = fixedToNumber(gasCostFixed, USD_SCALE, 6);
+        const grossProfit = fixedToNumber(grossProfitFixed, USD_SCALE, 6);
+        const nearMissNetProfit = fixedToNumber(nearMissNetProfitFixed, USD_SCALE, 6);
+
+        if (grossProfit <= gasCost || nearMissNetProfit <= 0) {
+          diagnostics.droppedByNetProfit++;
+          pushRejectionSample(diagnostics, {
+            tokenPair: key,
+            reason: 'netProfit',
+            buyDex: buyEntry.dex,
+            sellDex: sellEntry.dex,
+            spread,
+            buyLiquidityUsd,
+            sellLiquidityUsd,
+            attemptedLoanAmount: requestedLoanAmount,
+            buyImpactBps,
+            sellImpactBps,
+          });
+          continue;
+        }
 
         const quoteSources = [
           buyEntry.pool.sourceType || 'subgraph',
@@ -1506,7 +1911,15 @@ const findSpreads = (
           netProfit: nearMissNetProfit,
           distanceToExecutableUsd: Math.max(0, minNetProfitUsd - nearMissNetProfit),
           gasCost,
-          confidenceScore: Math.max(1, Math.min(89, Math.round(42 + spread * 65 - ((buyImpactBps + sellImpactBps + routePenaltyBps) / 6)))),
+          confidenceScore: confidenceScoreDeterministic({
+            base: 42,
+            spreadBps,
+            spreadMultiplier: 65,
+            slippageBps: BigInt(buyImpactBps + sellImpactBps + routePenaltyBps),
+            slippageDivisor: 6,
+            minScore: 1,
+            maxScore: 89,
+          }),
           confidenceTier: nearMissNetProfit >= 0 ? 'medium' : 'low',
           spread: spread.toFixed(4),
           liquidity: liquidityUsd.toFixed(0),
@@ -1515,6 +1928,15 @@ const findSpreads = (
           sellImpactBps,
           routePenaltyBps,
           quoteSources,
+          mathDiagnostics: buildMathDiagnostics({
+            loanAmountUsd: requestedLoanAmount,
+            spreadBps,
+            grossProfitUsd: grossProfit,
+            buyLiquidityUsd,
+            sellLiquidityUsd,
+            gasCostUsd: gasCost,
+            passReason: 'watchlist-net-profit-below-threshold',
+          }),
           status: 'watchlist',
         });
 
@@ -1539,6 +1961,23 @@ const findSpreads = (
     diagnostics.executionFeasible++;
 
     if (executionCandidate.netProfit < minNetProfitUsd) {
+      if (executionCandidate.grossProfit <= executionCandidate.gasCost || executionCandidate.netProfit <= 0) {
+        diagnostics.droppedByNetProfit++;
+        pushRejectionSample(diagnostics, {
+          tokenPair: key,
+          reason: 'netProfit',
+          buyDex: buyEntry.dex,
+          sellDex: sellEntry.dex,
+          spread,
+          buyLiquidityUsd,
+          sellLiquidityUsd,
+          attemptedLoanAmount: executionCandidate.executableLoanAmount,
+          buyImpactBps: executionCandidate.buyImpactBps,
+          sellImpactBps: executionCandidate.sellImpactBps,
+        });
+        continue;
+      }
+
       diagnostics.droppedByNetProfit++;
       const quoteSources = [
         buyEntry.pool.sourceType || 'subgraph',
@@ -1556,8 +1995,16 @@ const findSpreads = (
         grossProfit: executionCandidate.grossProfit,
         netProfit: executionCandidate.netProfit,
         distanceToExecutableUsd: Math.max(0, minNetProfitUsd - executionCandidate.netProfit),
-        gasCost: estimateGasUsdForNetwork(network, config.estimatedGasUsd),
-        confidenceScore: Math.max(1, Math.min(89, Math.round(48 + spread * 70 - (executionCandidate.estimatedSlippageBps / 6)))),
+        gasCost: estimateGasUsdForNetwork(network, config),
+        confidenceScore: confidenceScoreDeterministic({
+          base: 48,
+          spreadBps,
+          spreadMultiplier: 70,
+          slippageBps: BigInt(executionCandidate.estimatedSlippageBps),
+          slippageDivisor: 6,
+          minScore: 1,
+          maxScore: 89,
+        }),
         confidenceTier: executionCandidate.netProfit >= 0 ? 'medium' : 'low',
         spread: spread.toFixed(4),
         liquidity: liquidityUsd.toFixed(0),
@@ -1566,6 +2013,15 @@ const findSpreads = (
         sellImpactBps: executionCandidate.sellImpactBps,
         routePenaltyBps: executionCandidate.routePenaltyBps,
         quoteSources,
+        mathDiagnostics: buildMathDiagnostics({
+          loanAmountUsd: executionCandidate.executableLoanAmount,
+          spreadBps,
+          grossProfitUsd: executionCandidate.grossProfit,
+          buyLiquidityUsd,
+          sellLiquidityUsd,
+          gasCostUsd: executionCandidate.gasCost,
+          passReason: 'watchlist-net-profit-below-threshold',
+        }),
         status: 'watchlist',
       });
       pushRejectionSample(diagnostics, {
@@ -1589,8 +2045,17 @@ const findSpreads = (
       diagnostics.sizeAdjusted++;
     }
 
-    const confidenceRaw = 58 + spread * 90 - (executionCandidate.estimatedSlippageBps / 5) + (executionCandidate.netProfit / Math.max(1, config.minNetProfitUsd));
-    const confidenceScore = Math.max(1, Math.min(99, Math.round(confidenceRaw)));
+    const confidenceScore = confidenceScoreDeterministic({
+      base: 58,
+      spreadBps,
+      spreadMultiplier: 90,
+      slippageBps: BigInt(executionCandidate.estimatedSlippageBps),
+      slippageDivisor: 5,
+      minScore: 1,
+      maxScore: 99,
+      netProfitUsd: executionCandidate.netProfit,
+      minProfitUsd: config.minNetProfitUsd,
+    });
     const confidenceTier: Opportunity['confidenceTier'] = confidenceScore >= 80
       ? 'high'
       : confidenceScore >= 60
@@ -1619,6 +2084,23 @@ const findSpreads = (
     );
 
     if (!executionPayload) {
+      if (executionCandidate.grossProfit <= executionCandidate.gasCost || executionCandidate.netProfit <= 0) {
+        diagnostics.droppedByNetProfit++;
+        pushRejectionSample(diagnostics, {
+          tokenPair: key,
+          reason: 'netProfit',
+          buyDex: buyEntry.dex,
+          sellDex: sellEntry.dex,
+          spread,
+          buyLiquidityUsd,
+          sellLiquidityUsd,
+          attemptedLoanAmount: executionCandidate.executableLoanAmount,
+          buyImpactBps: executionCandidate.buyImpactBps,
+          sellImpactBps: executionCandidate.sellImpactBps,
+        });
+        continue;
+      }
+
       diagnostics.droppedByExecutionRisk++;
       diagnostics.watchlistCount++;
       pushRejectionSample(diagnostics, {
@@ -1644,7 +2126,15 @@ const findSpreads = (
         netProfit: executionCandidate.netProfit,
         distanceToExecutableUsd: Math.max(0, minNetProfitUsd - executionCandidate.netProfit),
         gasCost: executionCandidate.gasCost,
-        confidenceScore: Math.max(1, Math.min(79, Math.round(38 + spread * 70 - (executionCandidate.estimatedSlippageBps / 5)))),
+        confidenceScore: confidenceScoreDeterministic({
+          base: 38,
+          spreadBps,
+          spreadMultiplier: 70,
+          slippageBps: BigInt(executionCandidate.estimatedSlippageBps),
+          slippageDivisor: 5,
+          minScore: 1,
+          maxScore: 79,
+        }),
         confidenceTier: 'low',
         spread: spread.toFixed(4),
         liquidity: liquidityUsd.toFixed(0),
@@ -1653,6 +2143,15 @@ const findSpreads = (
         sellImpactBps: executionCandidate.sellImpactBps,
         routePenaltyBps: executionCandidate.routePenaltyBps,
         quoteSources,
+        mathDiagnostics: buildMathDiagnostics({
+          loanAmountUsd: executionCandidate.executableLoanAmount,
+          spreadBps,
+          grossProfitUsd: executionCandidate.grossProfit,
+          buyLiquidityUsd,
+          sellLiquidityUsd,
+          gasCostUsd: executionCandidate.gasCost,
+          passReason: 'watchlist-execution-payload-risk',
+        }),
         status: 'watchlist',
       });
       continue;
@@ -1679,6 +2178,15 @@ const findSpreads = (
       routePenaltyBps: executionCandidate.routePenaltyBps,
       quoteSources,
       status: 'active',
+      mathDiagnostics: buildMathDiagnostics({
+        loanAmountUsd: executionCandidate.executableLoanAmount,
+        spreadBps,
+        grossProfitUsd: executionCandidate.grossProfit,
+        buyLiquidityUsd,
+        sellLiquidityUsd,
+        gasCostUsd: executionCandidate.gasCost,
+        passReason: 'active-profit-qualified',
+      }),
       executionPayload: executionPayload || undefined,
     });
   }
@@ -1780,7 +2288,7 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    scanMode = Boolean((body as { scheduledRun?: boolean }).scheduledRun) ? 'scheduled' : 'manual';
+    scanMode = (body as { scheduledRun?: boolean }).scheduledRun ? 'scheduled' : 'manual';
     const test = Boolean(body.test);
     const enforceReadinessGates = parseBooleanEnv(
       Deno.env.get('SCANNER_ENFORCE_READINESS_GATES'),
@@ -1841,7 +2349,14 @@ Deno.serve(async (req) => {
     const networks = Array.isArray((body as { networks?: unknown[] }).networks)
       ? ((body as { networks?: unknown[] }).networks || []).map((n) => String(n).toLowerCase())
       : ['ethereum'];
+    // --- Enhanced Logging: Output config and diagnostics for debugging ---
+    console.log('[SCAN-DEBUG] Scanner config:', JSON.stringify(config, null, 2));
+    console.log('[SCAN-DEBUG] Networks:', JSON.stringify(networks));
     const { opportunities, diagnostics, watchlist } = await runScan(config, networks) as { opportunities: Opportunity[]; diagnostics: ScanDiagnostics; watchlist: Opportunity[] };
+    console.log('[SCAN-DEBUG] Diagnostics summary:', JSON.stringify(diagnostics, null, 2));
+    if (diagnostics.rejectionSamples && diagnostics.rejectionSamples.length > 0) {
+      console.log('[SCAN-DEBUG] Rejection samples:', JSON.stringify(diagnostics.rejectionSamples, null, 2));
+    }
     const quoteTimestamp = new Date().toISOString();
     const trackedOpportunities: TelemetryOpportunity[] = opportunities.map((opportunity) => ({
       ...opportunity,

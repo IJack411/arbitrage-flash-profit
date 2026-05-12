@@ -179,14 +179,23 @@ export const normalizeOpportunityToTrade = (
   opportunity: OpportunityLike,
   fallbackLoanAmount: number,
 ): ExecutableTrade => {
+  const loanAmount = opportunity.executableLoanAmount || opportunity.loanAmount || opportunity.loan_amount || fallbackLoanAmount;
+  let expectedProfit = opportunity.netProfit || opportunity.estimated_profit || opportunity.expectedProfit || 0;
+
+  // Sanity cap: profit cannot exceed loan amount (>100% return is a data error)
+  if (Math.abs(expectedProfit) > loanAmount) {
+    console.warn(`[normalizeOpportunityToTrade] Profit $${expectedProfit} exceeds loan $${loanAmount} — clamping to 0 (data error)`);
+    expectedProfit = 0;
+  }
+
   return {
     id: opportunity.id || `trade-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
     tokenPair: opportunity.tokenPair || opportunity.token_pair || 'WETH/USDC',
     buyDex: opportunity.buyDex || opportunity.buy_dex || 'Uniswap V3',
     sellDex: opportunity.sellDex || opportunity.sell_dex || 'SushiSwap',
     network: opportunity.network || 'ethereum',
-    loanAmount: opportunity.executableLoanAmount || opportunity.loanAmount || opportunity.loan_amount || fallbackLoanAmount,
-    expectedProfit: opportunity.netProfit || opportunity.estimated_profit || opportunity.expectedProfit || 0,
+    loanAmount,
+    expectedProfit,
     gasCost: opportunity.gasCost || opportunity.gas_cost || 0,
     confidence: opportunity.confidenceScore || opportunity.confidence_score || opportunity.confidence || 0,
     executionPayload: opportunity.executionPayload || opportunity.execution_payload,

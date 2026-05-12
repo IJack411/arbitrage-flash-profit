@@ -52,8 +52,13 @@ export const WalletConnect: React.FC = () => {
 
   const handleConnect = async () => {
     if (!walletAvailable) {
-      window.open('https://metamask.io/download/', '_blank');
-      return;
+      const shouldDownload = window.confirm(
+        "MetaMask wasn't detected in this browser context. If you're using VS Code's embedded browser, open localhost in your regular browser where MetaMask is installed. Click OK to download MetaMask, or Cancel to continue.",
+      );
+      if (shouldDownload) {
+        window.open('https://metamask.io/download/', '_blank', 'noopener,noreferrer');
+        return;
+      }
     }
 
     await connectWallet();

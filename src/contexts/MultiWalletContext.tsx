@@ -601,15 +601,13 @@ export const MultiWalletProvider: React.FC<{ children: React.ReactNode }> = ({ c
   );
 };
 
+import { NETWORK_INFO } from '../types/multiWallet';
+// If you need NetworkName, CORE_BASE_TOKENS, etc, import from '../shared/networks-tokens'
 function getNetworkName(chainId: number): string {
-  const networks: Record<number, string> = {
-    1: 'Ethereum',
-    137: 'Polygon',
-    42161: 'Arbitrum',
-    56: 'BSC',
-    10: 'Optimism',
-    43114: 'Avalanche',
-    8453: 'Base',
-  };
-  return networks[chainId] || `Chain ${chainId}`;
+  for (const key in NETWORK_INFO) {
+    if (NETWORK_INFO[key as keyof typeof NETWORK_INFO].chainId === chainId) {
+      return NETWORK_INFO[key as keyof typeof NETWORK_INFO].name;
+    }
+  }
+  return `Chain ${chainId}`;
 }

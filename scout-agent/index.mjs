@@ -8,10 +8,12 @@ import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
+
 import { analyzeContract } from './analyzers/contract.mjs';
 import { analyzeGas, detectNewPools } from './analyzers/market.mjs';
 import { recordGasSnapshot, recordScanResult, analyzePatterns, suggestConfigChanges } from './analyzers/optimizer.mjs';
 import { sendFindings } from './reporters/telegram.mjs';
+import { runSystemSimulation, proactiveTroubleshoot, optimizeCodebase, runMaintenanceChecks } from './analyzers/systemHelpers.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -57,6 +59,19 @@ if (!CONTRACT_ADDRESS) {
 async function runCycle() {
   const startTime = Date.now();
   console.log(`[${new Date().toISOString()}] Scout cycle starting...`);
+
+  // --- System Health & Maintenance (from Serena agent logic) ---
+  const simResult = await runSystemSimulation();
+  if (simResult.status !== 'ok') console.warn('Simulation warning:', simResult.message);
+
+  const troubleshootResult = await proactiveTroubleshoot();
+  if (troubleshootResult.status !== 'ok') console.warn('Troubleshooting warning:', troubleshootResult.message);
+
+  const optimizeResult = await optimizeCodebase();
+  if (optimizeResult.status !== 'ok') console.warn('Optimization warning:', optimizeResult.message);
+
+  const maintenanceResult = await runMaintenanceChecks();
+  if (maintenanceResult.status !== 'ok') console.warn('Maintenance warning:', maintenanceResult.message);
 
   const provider = new ethers.JsonRpcProvider(RPC_URL);
   const allFindings = [];

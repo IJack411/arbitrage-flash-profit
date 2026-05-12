@@ -57,7 +57,8 @@ interface DbWalletAlertHistoryRow {
 }
 
 class WalletAlertService {
-  private userId: string = 'default-user';
+  private userId: string = 'local-user';
+  private supabasePersistenceDisabled = false;
   private rules: WalletAlertRule[] = [];
   private history: WalletAlertHistory[] = [];
   private notifications: AlertNotification[] = [];
@@ -67,6 +68,32 @@ class WalletAlertService {
 
   constructor() {
     this.loadFromStorage();
+  }
+
+  private isValidUuid(value: string | null | undefined): boolean {
+    if (!value) return false;
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+  }
+
+  private async resolveSupabaseUserId(): Promise<string | null> {
+    try {
+      const { data } = await supabase.auth.getUser();
+      const id = data?.user?.id;
+      return this.isValidUuid(id) ? id : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private shouldUseSupabasePersistence(): boolean {
+    return isSupabaseConfigured() && !this.supabasePersistenceDisabled && this.isValidUuid(this.userId);
+  }
+
+  private disableSupabasePersistence(reason: unknown) {
+    if (!this.supabasePersistenceDisabled) {
+      console.warn('Disabling wallet alert Supabase persistence. Falling back to local storage.', reason);
+    }
+    this.supabasePersistenceDisabled = true;
   }
 
   setUserId(userId: string) {
@@ -88,6 +115,12 @@ class WalletAlertService {
   private async loadFromStorage() {
     try {
       if (isSupabaseConfigured()) {
+        const resolvedUserId = await this.resolveSupabaseUserId();
+        if (!resolvedUserId) {
+          this.loadFromLocalStorage();
+          return;
+        }
+        this.userId = resolvedUserId;
         await this.loadFromSupabase();
       } else {
         this.loadFromLocalStorage();
@@ -109,6 +142,11 @@ class WalletAlertService {
   }
 
   private async loadFromSupabase() {
+    if (!this.isValidUuid(this.userId)) {
+      this.loadFromLocalStorage();
+      return;
+    }
+
     const { data: rulesData } = await supabase
       .from('wallet_alert_rules')
       .select('*')
@@ -205,27 +243,34 @@ class WalletAlertService {
       },
     };
 
-    if (isSupabaseConfigured()) {
-      const { data, error } = await supabase
-        .from('wallet_alert_rules')
-        .insert({
-          user_id: newRule.userId,
-          wallet_address: newRule.walletAddress,
-          wallet_group_id: newRule.walletGroupId,
-          alert_type: newRule.alertType,
-          is_enabled: newRule.isEnabled,
-          threshold_value: newRule.thresholdValue,
-          threshold_percentage: newRule.thresholdPercentage,
-          comparison_operator: newRule.comparisonOperator,
-          notification_channels: newRule.notificationChannels,
-          cooldown_minutes: newRule.cooldownMinutes,
-          config: newRule.config,
-        })
-        .select()
-        .single();
+    if (this.shouldUseSupabasePersistence()) {
+      try {
+        const { data, error } = await supabase
+          .from('wallet_alert_rules')
+          .insert({
+            user_id: newRule.userId,
+            wallet_address: newRule.walletAddress,
+            wallet_group_id: newRule.walletGroupId,
+            alert_type: newRule.alertType,
+            is_enabled: newRule.isEnabled,
+            threshold_value: newRule.thresholdValue,
+            threshold_percentage: newRule.thresholdPercentage,
+            comparison_operator: newRule.comparisonOperator,
+            notification_channels: newRule.notificationChannels,
+            cooldown_minutes: newRule.cooldownMinutes,
+            config: newRule.config,
+          })
+          .select()
+          .single();
 
-      if (error) throw error;
-      if (data) newRule.id = data.id;
+        if (error) {
+          this.disableSupabasePersistence(error);
+        } else if (data) {
+          newRule.id = data.id;
+        }
+      } catch (error) {
+        this.disableSupabasePersistence(error);
+      }
     }
 
     this.rules.push(newRule);
@@ -244,22 +289,26 @@ class WalletAlertService {
       updatedAt: new Date().toISOString(),
     };
 
-    if (isSupabaseConfigured()) {
-      const { error } = await supabase
-        .from('wallet_alert_rules')
-        .update({
-          is_enabled: updatedRule.isEnabled,
-          threshold_value: updatedRule.thresholdValue,
-          threshold_percentage: updatedRule.thresholdPercentage,
-          comparison_operator: updatedRule.comparisonOperator,
-          notification_channels: updatedRule.notificationChannels,
-          cooldown_minutes: updatedRule.cooldownMinutes,
-          config: updatedRule.config,
-          updated_at: updatedRule.updatedAt,
-        })
-        .eq('id', ruleId);
+    if (this.shouldUseSupabasePersistence()) {
+      try {
+        const { error } = await supabase
+          .from('wallet_alert_rules')
+          .update({
+            is_enabled: updatedRule.isEnabled,
+            threshold_value: updatedRule.thresholdValue,
+            threshold_percentage: updatedRule.thresholdPercentage,
+            comparison_operator: updatedRule.comparisonOperator,
+            notification_channels: updatedRule.notificationChannels,
+            cooldown_minutes: updatedRule.cooldownMinutes,
+            config: updatedRule.config,
+            updated_at: updatedRule.updatedAt,
+          })
+          .eq('id', ruleId);
 
-      if (error) throw error;
+        if (error) this.disableSupabasePersistence(error);
+      } catch (error) {
+        this.disableSupabasePersistence(error);
+      }
     }
 
     this.rules[index] = updatedRule;
@@ -271,13 +320,17 @@ class WalletAlertService {
     const index = this.rules.findIndex(r => r.id === ruleId);
     if (index === -1) return false;
 
-    if (isSupabaseConfigured()) {
-      const { error } = await supabase
-        .from('wallet_alert_rules')
-        .delete()
-        .eq('id', ruleId);
+    if (this.shouldUseSupabasePersistence()) {
+      try {
+        const { error } = await supabase
+          .from('wallet_alert_rules')
+          .delete()
+          .eq('id', ruleId);
 
-      if (error) throw error;
+        if (error) this.disableSupabasePersistence(error);
+      } catch (error) {
+        this.disableSupabasePersistence(error);
+      }
     }
 
     this.rules.splice(index, 1);
@@ -356,14 +409,20 @@ class WalletAlertService {
     this.history[index].acknowledged = true;
     this.history[index].acknowledgedAt = new Date().toISOString();
 
-    if (isSupabaseConfigured()) {
-      await supabase
-        .from('wallet_alert_history')
-        .update({
-          acknowledged: true,
-          acknowledged_at: this.history[index].acknowledgedAt,
-        })
-        .eq('id', historyId);
+    if (this.shouldUseSupabasePersistence()) {
+      try {
+        const { error } = await supabase
+          .from('wallet_alert_history')
+          .update({
+            acknowledged: true,
+            acknowledged_at: this.history[index].acknowledgedAt,
+          })
+          .eq('id', historyId);
+
+        if (error) this.disableSupabasePersistence(error);
+      } catch (error) {
+        this.disableSupabasePersistence(error);
+      }
     }
 
     this.saveToStorage();
@@ -513,32 +572,43 @@ class WalletAlertService {
     };
 
     // Save to database
-    if (isSupabaseConfigured()) {
-      const { data } = await supabase
-        .from('wallet_alert_history')
-        .insert({
-          rule_id: rule.id,
-          wallet_address: wallet.address,
-          alert_type: rule.alertType,
-          current_value: currentValue,
-          threshold_value: rule.thresholdValue,
-          message,
-          notification_channels: rule.notificationChannels,
-          metadata: historyEntry.metadata,
-        })
-        .select()
-        .single();
+    if (this.shouldUseSupabasePersistence()) {
+      try {
+        const { data, error } = await supabase
+          .from('wallet_alert_history')
+          .insert({
+            rule_id: rule.id,
+            wallet_address: wallet.address,
+            alert_type: rule.alertType,
+            current_value: currentValue,
+            threshold_value: rule.thresholdValue,
+            message,
+            notification_channels: rule.notificationChannels,
+            metadata: historyEntry.metadata,
+          })
+          .select()
+          .single();
 
-      if (data) historyEntry.id = data.id;
+        if (error) {
+          this.disableSupabasePersistence(error);
+        } else if (data) {
+          historyEntry.id = data.id;
+        }
 
-      // Update rule
-      await supabase
-        .from('wallet_alert_rules')
-        .update({
-          last_triggered_at: now,
-          trigger_count: rule.triggerCount + 1,
-        })
-        .eq('id', rule.id);
+        if (!this.supabasePersistenceDisabled) {
+          const { error: updateError } = await supabase
+            .from('wallet_alert_rules')
+            .update({
+              last_triggered_at: now,
+              trigger_count: rule.triggerCount + 1,
+            })
+            .eq('id', rule.id);
+
+          if (updateError) this.disableSupabasePersistence(updateError);
+        }
+      } catch (error) {
+        this.disableSupabasePersistence(error);
+      }
     }
 
     // Update local state

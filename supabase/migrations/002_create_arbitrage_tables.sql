@@ -55,28 +55,70 @@ CREATE TABLE IF NOT EXISTS user_settings (
 );
 
 -- Indexes
-CREATE INDEX idx_opp_status ON opportunities(status);
-CREATE INDEX idx_opp_network ON opportunities(network);
-CREATE INDEX idx_opp_created ON opportunities(created_at DESC);
-CREATE INDEX idx_tx_wallet ON transactions(wallet_address);
-CREATE INDEX idx_tx_status ON transactions(status);
-CREATE INDEX idx_tx_created ON transactions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_opp_status ON opportunities(status);
+CREATE INDEX IF NOT EXISTS idx_opp_network ON opportunities(network);
+CREATE INDEX IF NOT EXISTS idx_opp_created ON opportunities(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tx_wallet ON transactions(wallet_address);
+CREATE INDEX IF NOT EXISTS idx_tx_status ON transactions(status);
+CREATE INDEX IF NOT EXISTS idx_tx_created ON transactions(created_at DESC);
 
--- Enable RLS
-ALTER TABLE opportunities ENABLE ROW LEVEL SECURITY;
-ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies for opportunities (public read)
-CREATE POLICY "Public read opportunities" ON opportunities FOR SELECT TO anon USING (true);
-CREATE POLICY "Auth read opportunities" ON opportunities FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Auth insert opportunities" ON opportunities FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Anon insert opportunities" ON opportunities FOR INSERT TO anon WITH CHECK (true);
+ALTER TABLE public.opportunities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_settings ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies for transactions (user-specific)
-CREATE POLICY "Users read own transactions" ON transactions FOR SELECT USING (true);
-CREATE POLICY "Users insert transactions" ON transactions FOR INSERT WITH CHECK (true);
+DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'opportunities' AND policyname = 'Public read opportunities') THEN
+        EXECUTE 'DROP POLICY "Public read opportunities" ON public.opportunities';
+    END IF;
+END $$;
+CREATE POLICY "Public read opportunities" ON public.opportunities FOR SELECT TO anon USING (true);
 
--- RLS Policies for user_settings
-CREATE POLICY "Users read own settings" ON user_settings FOR SELECT USING (true);
-CREATE POLICY "Users manage own settings" ON user_settings FOR ALL USING (true);
+DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'opportunities' AND policyname = 'Auth read opportunities') THEN
+        EXECUTE 'DROP POLICY "Auth read opportunities" ON public.opportunities';
+    END IF;
+END $$;
+CREATE POLICY "Auth read opportunities" ON public.opportunities FOR SELECT TO authenticated USING (true);
+
+DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'opportunities' AND policyname = 'Auth insert opportunities') THEN
+        EXECUTE 'DROP POLICY "Auth insert opportunities" ON public.opportunities';
+    END IF;
+END $$;
+CREATE POLICY "Auth insert opportunities" ON public.opportunities FOR INSERT TO authenticated WITH CHECK (true);
+
+DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'opportunities' AND policyname = 'Anon insert opportunities') THEN
+        EXECUTE 'DROP POLICY "Anon insert opportunities" ON public.opportunities';
+    END IF;
+END $$;
+CREATE POLICY "Anon insert opportunities" ON public.opportunities FOR INSERT TO anon WITH CHECK (true);
+
+DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'transactions' AND policyname = 'Users read own transactions') THEN
+        EXECUTE 'DROP POLICY "Users read own transactions" ON public.transactions';
+    END IF;
+END $$;
+CREATE POLICY "Users read own transactions" ON public.transactions FOR SELECT USING (true);
+
+DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'transactions' AND policyname = 'Users insert transactions') THEN
+        EXECUTE 'DROP POLICY "Users insert transactions" ON public.transactions';
+    END IF;
+END $$;
+CREATE POLICY "Users insert transactions" ON public.transactions FOR INSERT WITH CHECK (true);
+
+DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'user_settings' AND policyname = 'Users read own settings') THEN
+        EXECUTE 'DROP POLICY "Users read own settings" ON public.user_settings';
+    END IF;
+END $$;
+CREATE POLICY "Users read own settings" ON public.user_settings FOR SELECT USING (true);
+
+DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'user_settings' AND policyname = 'Users manage own settings') THEN
+        EXECUTE 'DROP POLICY "Users manage own settings" ON public.user_settings';
+    END IF;
+END $$;
+CREATE POLICY "Users manage own settings" ON public.user_settings FOR ALL USING (true);

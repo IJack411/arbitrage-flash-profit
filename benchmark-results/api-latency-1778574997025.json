@@ -1,0 +1,612 @@
+{
+  "benchmark_run": "2026-05-12T08:35:04.170Z",
+  "scanners": {
+    "1inch": {
+      "samples": [
+        {
+          "test_id": 1,
+          "success": false,
+          "latency": 2209,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:35:06.380Z"
+        },
+        {
+          "test_id": 2,
+          "success": false,
+          "latency": 967,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:35:07.855Z"
+        },
+        {
+          "test_id": 3,
+          "success": false,
+          "latency": 860,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:35:09.228Z"
+        },
+        {
+          "test_id": 4,
+          "success": false,
+          "latency": 872,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:35:10.608Z"
+        },
+        {
+          "test_id": 5,
+          "success": false,
+          "latency": 933,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:35:12.050Z"
+        },
+        {
+          "test_id": 6,
+          "success": false,
+          "latency": 924,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:35:13.490Z"
+        },
+        {
+          "test_id": 7,
+          "success": false,
+          "latency": 918,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:35:14.912Z"
+        },
+        {
+          "test_id": 8,
+          "success": false,
+          "latency": 1009,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:35:16.430Z"
+        },
+        {
+          "test_id": 9,
+          "success": false,
+          "latency": 1692,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:35:18.628Z"
+        },
+        {
+          "test_id": 10,
+          "success": true,
+          "latency": 2058,
+          "statusCode": 200,
+          "timestamp": "2026-05-12T08:35:21.197Z"
+        },
+        {
+          "test_id": 11,
+          "success": true,
+          "latency": 332,
+          "statusCode": 200,
+          "timestamp": "2026-05-12T08:35:22.037Z"
+        },
+        {
+          "test_id": 12,
+          "success": false,
+          "latency": 1212,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:35:23.751Z"
+        },
+        {
+          "test_id": 13,
+          "success": false,
+          "latency": 1431,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:35:25.687Z"
+        },
+        {
+          "test_id": 14,
+          "success": false,
+          "latency": 1318,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:35:27.519Z"
+        },
+        {
+          "test_id": 15,
+          "success": true,
+          "latency": 1054,
+          "statusCode": 200,
+          "timestamp": "2026-05-12T08:35:29.081Z"
+        },
+        {
+          "test_id": 16,
+          "success": true,
+          "latency": 2377,
+          "statusCode": 200,
+          "timestamp": "2026-05-12T08:35:31.964Z"
+        },
+        {
+          "test_id": 17,
+          "success": true,
+          "latency": 911,
+          "statusCode": 200,
+          "timestamp": "2026-05-12T08:35:33.377Z"
+        },
+        {
+          "test_id": 18,
+          "success": false,
+          "latency": 11189,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:35:45.074Z"
+        },
+        {
+          "test_id": 19,
+          "success": false,
+          "latency": 1872,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:35:47.453Z"
+        },
+        {
+          "test_id": 20,
+          "success": false,
+          "latency": 812,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:35:48.767Z"
+        }
+      ],
+      "summary": {
+        "total_samples": 20,
+        "successful_samples": 5,
+        "error_rate_percent": "75.00",
+        "mean_latency_ms": 1346,
+        "p50_latency_ms": 1054,
+        "p95_latency_ms": 2377,
+        "p99_latency_ms": 2377,
+        "min_latency_ms": 332,
+        "max_latency_ms": 2377
+      }
+    },
+    "CoW Swap": {
+      "samples": [
+        {
+          "test_id": 1,
+          "success": false,
+          "latency": 1695,
+          "statusCode": 422,
+          "error": "Unprocessable Entity",
+          "timestamp": "2026-05-12T08:35:50.976Z"
+        },
+        {
+          "test_id": 2,
+          "success": false,
+          "latency": 1492,
+          "statusCode": 422,
+          "error": "Unprocessable Entity",
+          "timestamp": "2026-05-12T08:35:52.975Z"
+        },
+        {
+          "test_id": 3,
+          "success": false,
+          "latency": 872,
+          "statusCode": 422,
+          "error": "Unprocessable Entity",
+          "timestamp": "2026-05-12T08:35:54.363Z"
+        },
+        {
+          "test_id": 4,
+          "success": false,
+          "latency": 1210,
+          "statusCode": 422,
+          "error": "Unprocessable Entity",
+          "timestamp": "2026-05-12T08:35:56.078Z"
+        },
+        {
+          "test_id": 5,
+          "success": false,
+          "latency": 532,
+          "statusCode": 422,
+          "error": "Unprocessable Entity",
+          "timestamp": "2026-05-12T08:35:57.112Z"
+        },
+        {
+          "test_id": 6,
+          "success": false,
+          "latency": 520,
+          "statusCode": 422,
+          "error": "Unprocessable Entity",
+          "timestamp": "2026-05-12T08:35:58.145Z"
+        },
+        {
+          "test_id": 7,
+          "success": false,
+          "latency": 518,
+          "statusCode": 422,
+          "error": "Unprocessable Entity",
+          "timestamp": "2026-05-12T08:35:59.171Z"
+        },
+        {
+          "test_id": 8,
+          "success": false,
+          "latency": 558,
+          "statusCode": 422,
+          "error": "Unprocessable Entity",
+          "timestamp": "2026-05-12T08:36:00.229Z"
+        },
+        {
+          "test_id": 9,
+          "success": false,
+          "latency": 253,
+          "statusCode": 422,
+          "error": "Unprocessable Entity",
+          "timestamp": "2026-05-12T08:36:00.994Z"
+        },
+        {
+          "test_id": 10,
+          "success": false,
+          "latency": 153,
+          "statusCode": 422,
+          "error": "Unprocessable Entity",
+          "timestamp": "2026-05-12T08:36:01.658Z"
+        },
+        {
+          "test_id": 11,
+          "success": false,
+          "latency": 176,
+          "statusCode": 422,
+          "error": "Unprocessable Entity",
+          "timestamp": "2026-05-12T08:36:02.349Z"
+        },
+        {
+          "test_id": 12,
+          "success": false,
+          "latency": 154,
+          "statusCode": 422,
+          "error": "Unprocessable Entity",
+          "timestamp": "2026-05-12T08:36:03.010Z"
+        },
+        {
+          "test_id": 13,
+          "success": false,
+          "latency": 643,
+          "statusCode": 422,
+          "error": "Unprocessable Entity",
+          "timestamp": "2026-05-12T08:36:04.156Z"
+        },
+        {
+          "test_id": 14,
+          "success": false,
+          "latency": 869,
+          "statusCode": 422,
+          "error": "Unprocessable Entity",
+          "timestamp": "2026-05-12T08:36:05.532Z"
+        },
+        {
+          "test_id": 15,
+          "success": false,
+          "latency": 373,
+          "statusCode": 422,
+          "error": "Unprocessable Entity",
+          "timestamp": "2026-05-12T08:36:06.421Z"
+        },
+        {
+          "test_id": 16,
+          "success": false,
+          "latency": 157,
+          "statusCode": 422,
+          "error": "Unprocessable Entity",
+          "timestamp": "2026-05-12T08:36:07.081Z"
+        },
+        {
+          "test_id": 17,
+          "success": false,
+          "latency": 3774,
+          "statusCode": 422,
+          "error": "Unprocessable Entity",
+          "timestamp": "2026-05-12T08:36:11.362Z"
+        },
+        {
+          "test_id": 18,
+          "success": false,
+          "latency": 563,
+          "statusCode": 422,
+          "error": "Unprocessable Entity",
+          "timestamp": "2026-05-12T08:36:12.436Z"
+        },
+        {
+          "test_id": 19,
+          "success": false,
+          "latency": 526,
+          "statusCode": 422,
+          "error": "Unprocessable Entity",
+          "timestamp": "2026-05-12T08:36:13.465Z"
+        },
+        {
+          "test_id": 20,
+          "success": false,
+          "latency": 520,
+          "statusCode": 422,
+          "error": "Unprocessable Entity",
+          "timestamp": "2026-05-12T08:36:14.500Z"
+        }
+      ]
+    },
+    "Uniswap v3": {
+      "samples": [
+        {
+          "test_id": 1,
+          "success": false,
+          "latency": 163,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:15.178Z"
+        },
+        {
+          "test_id": 2,
+          "success": false,
+          "latency": 43,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:15.724Z"
+        },
+        {
+          "test_id": 3,
+          "success": false,
+          "latency": 72,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:16.310Z"
+        },
+        {
+          "test_id": 4,
+          "success": false,
+          "latency": 39,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:16.863Z"
+        },
+        {
+          "test_id": 5,
+          "success": false,
+          "latency": 39,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:17.408Z"
+        },
+        {
+          "test_id": 6,
+          "success": false,
+          "latency": 40,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:17.951Z"
+        },
+        {
+          "test_id": 7,
+          "success": false,
+          "latency": 38,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:18.491Z"
+        },
+        {
+          "test_id": 8,
+          "success": false,
+          "latency": 79,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:19.072Z"
+        },
+        {
+          "test_id": 9,
+          "success": false,
+          "latency": 64,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:19.647Z"
+        },
+        {
+          "test_id": 10,
+          "success": false,
+          "latency": 54,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:20.209Z"
+        },
+        {
+          "test_id": 11,
+          "success": false,
+          "latency": 43,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:20.755Z"
+        },
+        {
+          "test_id": 12,
+          "success": false,
+          "latency": 44,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:21.299Z"
+        },
+        {
+          "test_id": 13,
+          "success": false,
+          "latency": 42,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:21.856Z"
+        },
+        {
+          "test_id": 14,
+          "success": false,
+          "latency": 44,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:22.401Z"
+        },
+        {
+          "test_id": 15,
+          "success": false,
+          "latency": 40,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:22.942Z"
+        },
+        {
+          "test_id": 16,
+          "success": false,
+          "latency": 38,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:23.487Z"
+        },
+        {
+          "test_id": 17,
+          "success": false,
+          "latency": 41,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:24.032Z"
+        },
+        {
+          "test_id": 18,
+          "success": false,
+          "latency": 61,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:24.596Z"
+        },
+        {
+          "test_id": 19,
+          "success": false,
+          "latency": 85,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:25.187Z"
+        },
+        {
+          "test_id": 20,
+          "success": false,
+          "latency": 74,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:25.799Z"
+        }
+      ]
+    },
+    "Osmosis": {
+      "samples": [
+        {
+          "test_id": 1,
+          "success": false,
+          "latency": 159,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:26.496Z"
+        },
+        {
+          "test_id": 2,
+          "success": false,
+          "latency": 23,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:27.037Z"
+        },
+        {
+          "test_id": 3,
+          "success": false,
+          "latency": 9,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:27.560Z"
+        },
+        {
+          "test_id": 4,
+          "success": false,
+          "latency": 2,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:28.065Z"
+        },
+        {
+          "test_id": 5,
+          "success": false,
+          "latency": 2,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:28.582Z"
+        },
+        {
+          "test_id": 6,
+          "success": false,
+          "latency": 2,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:29.093Z"
+        },
+        {
+          "test_id": 7,
+          "success": false,
+          "latency": 4,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:29.609Z"
+        },
+        {
+          "test_id": 8,
+          "success": false,
+          "latency": 6,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:30.124Z"
+        },
+        {
+          "test_id": 9,
+          "success": false,
+          "latency": 3,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:30.631Z"
+        },
+        {
+          "test_id": 10,
+          "success": false,
+          "latency": 6,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:31.152Z"
+        },
+        {
+          "test_id": 11,
+          "success": false,
+          "latency": 15,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:31.675Z"
+        },
+        {
+          "test_id": 12,
+          "success": false,
+          "latency": 4,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:32.189Z"
+        },
+        {
+          "test_id": 13,
+          "success": false,
+          "latency": 4,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:32.697Z"
+        },
+        {
+          "test_id": 14,
+          "success": false,
+          "latency": 10,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:33.210Z"
+        },
+        {
+          "test_id": 15,
+          "success": false,
+          "latency": 17,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:33.738Z"
+        },
+        {
+          "test_id": 16,
+          "success": false,
+          "latency": 33,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:34.287Z"
+        },
+        {
+          "test_id": 17,
+          "success": false,
+          "latency": 8,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:34.811Z"
+        },
+        {
+          "test_id": 18,
+          "success": false,
+          "latency": 19,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:35.340Z"
+        },
+        {
+          "test_id": 19,
+          "success": false,
+          "latency": 4,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:35.856Z"
+        },
+        {
+          "test_id": 20,
+          "success": false,
+          "latency": 79,
+          "error": "fetch failed",
+          "timestamp": "2026-05-12T08:36:36.518Z"
+        }
+      ]
+    }
+  }
+}

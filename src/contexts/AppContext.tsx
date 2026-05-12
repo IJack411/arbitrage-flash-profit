@@ -30,10 +30,10 @@ interface AppContextType {
 }
 
 const defaultStrategySettings: StrategySettings = {
-  minProfit: 50,
+  minProfit: 15,
   slippage: 0.5,
-  maxGas: 100,
-  loanSize: 50000,
+  maxGas: 8,
+  loanSize: 8000,
   enabledDexes: {
     Uniswap: true,
     SushiSwap: true,

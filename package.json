@@ -21,7 +21,8 @@
     "trades:append": "node scripts/append-trade.mjs",
     "trades:summary": "node scripts/trades-summary.mjs",
     "trades:sync": "node scripts/sync-trades-from-supabase.mjs",
-    "phase2a:benchmark": "node scripts/phase-2a-latency-benchmark.mjs --part all --network arbitrum"
+    "phase2a:benchmark": "node scripts/phase-2a-latency-benchmark.mjs",
+    "phase2a:benchmark:all": "node scripts/phase-2a-latency-benchmark.mjs --part all --network arbitrum"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

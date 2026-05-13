@@ -11,12 +11,43 @@
  * Usage: node phase-2a-latency-benchmark.mjs [--part A|B|C|all] [--network arbitrum|ethereum]
  */
 
-import { mkdirSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
+
+const parseDotEnv = (fileText) => {
+  const out = {};
+  for (const line of fileText.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eq = trimmed.indexOf('=');
+    if (eq === -1) continue;
+    const key = trimmed.slice(0, eq).trim();
+    const raw = trimmed.slice(eq + 1).trim();
+    const value = (raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))
+      ? raw.slice(1, -1)
+      : raw;
+    out[key] = value;
+  }
+  return out;
+};
+
+const loadEnvFallbacks = () => {
+  const files = ['.env', 'supabase/.env.local'];
+  for (const file of files) {
+    if (!existsSync(file)) continue;
+    const parsed = parseDotEnv(readFileSync(file, 'utf8'));
+    for (const [k, v] of Object.entries(parsed)) {
+      if (!(k in process.env)) process.env[k] = v;
+    }
+  }
+};
+
+loadEnvFallbacks();
 
 const ARBITRUM_RPC = process.env.ARBITRUM_RPC || 'https://arb1.arbitrum.io/rpc';
 const ETHEREUM_RPC = process.env.ETHEREUM_RPC || 'https://eth.rpc.blxrbdn.com';
 const RESULTS_DIR = './benchmark-results';
+const THEGRAPH_API_KEY = process.env.THEGRAPH_API_KEY || process.env.VITE_GRAPH_API_KEY || '';
 
 // Ensure results directory exists (cross-platform)
 mkdirSync(RESULTS_DIR, { recursive: true });
@@ -28,18 +59,36 @@ const LOG = {
   debug: (msg) => process.env.DEBUG && console.log(`[DEBUG] ${new Date().toISOString()} - ${msg}`),
 };
 
+const isGraphGatewayUrl = (url) => url.includes('gateway.thegraph.com');
+
+const withGraphAuth = (url, headers = {}) => {
+  if (!isGraphGatewayUrl(url) || !THEGRAPH_API_KEY) return headers;
+  return {
+    ...headers,
+    Authorization: `Bearer ${THEGRAPH_API_KEY}`,
+  };
+};
+
+const buildGraphGatewayUrl = (subgraphId) => {
+  if (THEGRAPH_API_KEY) {
+    // Keep compatibility with existing edge-function convention.
+    return `https://gateway.thegraph.com/api/${THEGRAPH_API_KEY}/subgraphs/id/${subgraphId}`;
+  }
+  return `https://gateway.thegraph.com/api/subgraphs/id/${subgraphId}`;
+};
+
 // ============================================================================
 // PART A: SUBGRAPH QUERY LATENCY TESTING
 // ============================================================================
 
 const SUBGRAPH_ENDPOINTS = {
   arbitrum: {
-    'Uniswap V3': 'https://gateway.thegraph.com/api/subgraphs/id/5zvR82QoaXYFyDEKLZ9t6v9adgnptxYpKpSbxtgVENFV',
+    'Uniswap V3': buildGraphGatewayUrl('5zvR82QoaXYFyDEKLZ9t6v9adgnptxYpKpSbxtgVENFV'),
     'SushiSwap': 'https://api.thegraph.com/subgraphs/name/sushiswap/arbitrum-exchange',
     'Curve': 'https://api.thegraph.com/subgraphs/name/convex-community/curve-arbitrum',
   },
   ethereum: {
-    'Uniswap V3': 'https://gateway.thegraph.com/api/subgraphs/id/5zvR82QoaXYFyDEKLZ9t6v9adgnptxYpKpSbxtgVENFV',
+    'Uniswap V3': buildGraphGatewayUrl('5zvR82QoaXYFyDEKLZ9t6v9adgnptxYpKpSbxtgVENFV'),
     'SushiSwap': 'https://api.thegraph.com/subgraphs/name/sushiswap/exchange',
     'Curve': 'https://api.thegraph.com/subgraphs/name/curve-community/curve-ethereum',
   }
@@ -54,7 +103,7 @@ async function testSubgraphLatency(name, endpoint, query) {
   try {
     const response = await fetch(endpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: withGraphAuth(endpoint, { 'Content-Type': 'application/json' }),
       body: JSON.stringify({ query }),
       timeout: 10000,
     });
@@ -194,7 +243,7 @@ const SCANNER_APIS = {
     method: 'POST',
   },
   'Uniswap v3': {
-    endpoint: 'https://gateway.thegraph.com/api/subgraphs/id/5zvR82QoaXYFyDEKLZ9t6v9adgnptxYpKpSbxtgVENFV',
+    endpoint: buildGraphGatewayUrl('5zvR82QoaXYFyDEKLZ9t6v9adgnptxYpKpSbxtgVENFV'),
     query: `{
       swaps(first: 1, orderBy: timestamp, orderDirection: desc) {
         id
@@ -240,7 +289,7 @@ async function testAPILatency(scannerName, config) {
     } else if (config.method === 'SUBGRAPH') {
       response = await fetch(config.endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: withGraphAuth(config.endpoint, { 'Content-Type': 'application/json' }),
         body: JSON.stringify({ query: config.query }),
         timeout: 15000,
       });
@@ -374,6 +423,17 @@ async function main() {
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--part') part = args[i + 1];
     if (args[i] === '--network') network = args[i + 1];
+  }
+
+  // Support positional usage (e.g. npm run ... -- A arbitrum)
+  if (args.length > 0 && !args[0].startsWith('--')) {
+    const positionalPart = String(args[0]).toLowerCase();
+    if (positionalPart === 'a' || positionalPart === 'b' || positionalPart === 'c' || positionalPart === 'all') {
+      part = positionalPart === 'a' ? 'A' : positionalPart === 'b' ? 'B' : positionalPart === 'c' ? 'C' : 'all';
+    }
+  }
+  if (args.length > 1 && !args[1].startsWith('--')) {
+    network = String(args[1]).toLowerCase();
   }
   
   LOG.info('='.repeat(70));

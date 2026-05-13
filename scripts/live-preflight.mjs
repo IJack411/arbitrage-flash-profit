@@ -3,6 +3,7 @@ import path from 'node:path';
 
 const ROOT = process.cwd();
 const ENV_PATH = path.join(ROOT, '.env');
+const SUPABASE_ENV_PATH = path.join(ROOT, 'supabase', '.env.local');
 
 const REQUIRED_ENV = [
   'VITE_SUPABASE_URL',
@@ -61,6 +62,18 @@ function printSection(title) {
   console.log(`\n=== ${title} ===`);
 }
 
+function parseBoolean(value, fallback = false) {
+  if (value === undefined || value === null || value === '') return fallback;
+  const normalized = String(value).trim().toLowerCase();
+  return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on';
+}
+
+function resolveEnvValue(primaryEnv, secondaryEnv, key) {
+  const primary = primaryEnv[key];
+  if (primary !== undefined && primary !== '') return primary;
+  return secondaryEnv[key];
+}
+
 function run() {
   const failures = [];
   const warnings = [];
@@ -72,6 +85,9 @@ function run() {
 
   const envText = fs.readFileSync(ENV_PATH, 'utf8');
   const env = parseDotEnv(envText);
+  const supabaseEnv = fs.existsSync(SUPABASE_ENV_PATH)
+    ? parseDotEnv(fs.readFileSync(SUPABASE_ENV_PATH, 'utf8'))
+    : {};
 
   printSection('Environment Checks');
 
@@ -155,6 +171,44 @@ function run() {
   const maxGasToProfit = Number(env.LIVE_MAX_GAS_TO_PROFIT_RATIO || '0.4');
   if (Number.isFinite(maxGasToProfit) && maxGasToProfit > 0.6) {
     failures.push('LIVE_MAX_GAS_TO_PROFIT_RATIO is too permissive (must be <= 0.6)');
+  }
+
+  printSection('Scanner Production Gates');
+
+  const graphApiKey = resolveEnvValue(env, supabaseEnv, 'THEGRAPH_API_KEY');
+  if (!graphApiKey) {
+    failures.push('THEGRAPH_API_KEY is missing (required for scanner production readiness)');
+  } else if (isPlaceholder(graphApiKey)) {
+    failures.push('THEGRAPH_API_KEY still contains a placeholder value');
+  } else {
+    console.log('PASS THEGRAPH_API_KEY');
+  }
+
+  const scannerGatesEnabled = parseBoolean(resolveEnvValue(env, supabaseEnv, 'SCANNER_ENFORCE_READINESS_GATES'), false);
+  if (!scannerGatesEnabled) {
+    failures.push('SCANNER_ENFORCE_READINESS_GATES must be true before production live trading');
+  } else {
+    console.log('PASS SCANNER_ENFORCE_READINESS_GATES=true');
+  }
+
+  const minHealthySourcesRaw = resolveEnvValue(env, supabaseEnv, 'SCANNER_MIN_GRAPH_SOURCES_HEALTHY') || '3';
+  const minHealthySources = Number(minHealthySourcesRaw);
+  if (!Number.isFinite(minHealthySources) || minHealthySources < 3) {
+    failures.push('SCANNER_MIN_GRAPH_SOURCES_HEALTHY must be a number >= 3');
+  } else {
+    console.log(`PASS SCANNER_MIN_GRAPH_SOURCES_HEALTHY=${minHealthySources}`);
+  }
+
+  const maxFallbackSourcesRaw = resolveEnvValue(env, supabaseEnv, 'SCANNER_MAX_GRAPH_FALLBACK_SOURCES') || '2';
+  const maxFallbackSources = Number(maxFallbackSourcesRaw);
+  if (!Number.isFinite(maxFallbackSources) || maxFallbackSources < 0 || maxFallbackSources > 2) {
+    failures.push('SCANNER_MAX_GRAPH_FALLBACK_SOURCES must be between 0 and 2 for initial production rollout');
+  } else {
+    console.log(`PASS SCANNER_MAX_GRAPH_FALLBACK_SOURCES=${maxFallbackSources}`);
+  }
+
+  if (!fs.existsSync(SUPABASE_ENV_PATH)) {
+    warnings.push('supabase/.env.local not found; relying on root .env values only. For local edge testing, create supabase/.env.local from supabase/.env.local.example');
   }
 
   printSection('Result');

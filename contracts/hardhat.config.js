@@ -45,6 +45,21 @@ module.exports = {
       url: "http://127.0.0.1:8545",
       chainId: 31337,
     },
+
+    // ── Hardhat in-process network (used by `npx hardhat test`) ─────────────
+    hardhat: {
+      // If FORK_RPC_URL is set, run against a live-state fork so Aave V3 /
+      // Uniswap V3 pool contracts are available without local mocks.
+      forking: process.env.FORK_RPC_URL
+        ? {
+            url: process.env.FORK_RPC_URL,
+            blockNumber: process.env.FORK_BLOCK_NUMBER
+              ? parseInt(process.env.FORK_BLOCK_NUMBER, 10)
+              : undefined,
+          }
+        : undefined,
+      chainId: 31337,
+    },
   },
 
   etherscan: {

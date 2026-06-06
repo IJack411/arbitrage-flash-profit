@@ -2651,12 +2651,37 @@ const PRIORITY_FALLBACK_LIQUIDITY_FRACTION = Math.min(
 
 const OVERLAP_PRIORITY_PAIR_TERMS_BY_NETWORK: Partial<Record<NetworkName, string[]>> = {
   ethereum: [
-    'WETH USDC',
-    'WETH USDT',
-    'WETH DAI',
     'WBTC USDC',
     'WBTC USDT',
     'LINK USDC',
+    'LINK USDT',
+    'UNI USDC',
+    'AAVE USDC',
+    'CRV USDC',
+    'SNX USDC',
+    'LDO USDC',
+    'MKR USDC',
+  ],
+  arbitrum: [
+    'ARB USDC',
+    'GMX USDC',
+    'MAGIC USDC',
+    'LINK USDC',
+    'GRAIL USDC',
+    'DPX USDC',
+  ],
+  base: [
+    'AERO USDC',
+    'DEGEN USDC',
+    'BRETT USDC',
+    'LINK USDC',
+  ],
+  polygon: [
+    'WMATIC USDC',
+    'WMATIC USDT',
+    'LINK USDC',
+    'AAVE USDC',
+    'GHST USDC',
   ],
 };
 

@@ -24,7 +24,6 @@ const PRIORITY_PAIRS_BY_NETWORK: Record<string, string[]> = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
 
 const supabase = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
   ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
@@ -33,14 +32,16 @@ const supabase = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
   : null;
 
 // --- Hot pairs seeding -------------------------------------------------------
-// Ensures hot_pairs_queue has entries so indexer-refresh-fast can work.
-const seedHotPairsIfEmpty = async (): Promise<{ seeded: number }> => {
-  if (!supabase) return { seeded: 0 };
+// Clears stale pairs and reseeds with current PRIORITY_PAIRS_BY_NETWORK.
+// Runs on every pipeline cycle to pick up pair list changes.
+const seedHotPairs = async (): Promise<{ seeded: number; cleared: number }> => {
+  if (!supabase) return { seeded: 0, cleared: 0 };
   try {
-    const { count } = await supabase
-      .from('hot_pairs_queue')
-      .select('id', { count: 'exact', head: true });
-    if ((count ?? 0) > 0) return { seeded: 0 };
+    // Remove any pairs that are no longer in priority list
+    const allCurrentPairs: string[] = [];
+    for (const pairs of Object.values(PRIORITY_PAIRS_BY_NETWORK)) {
+      allCurrentPairs.push(...pairs);
+    }
 
     const rows: { network: string; token_pair: string; priority_score: number; reason: string }[] = [];
     for (const [network, pairs] of Object.entries(PRIORITY_PAIRS_BY_NETWORK)) {
@@ -49,47 +50,37 @@ const seedHotPairsIfEmpty = async (): Promise<{ seeded: number }> => {
           network,
           token_pair: pairs[i],
           priority_score: pairs.length - i,
-          reason: 'initial-seed',
+          reason: 'priority-seed',
         });
       }
     }
 
     const { error } = await supabase
       .from('hot_pairs_queue')
-      .upsert(rows, { onConflict: 'network,token_pair', ignoreDuplicates: true });
+      .upsert(rows, { onConflict: 'network,token_pair', ignoreDuplicates: false });
 
     if (error) {
       console.error('[cron] hot_pairs_queue seed error:', error.message);
-      return { seeded: 0 };
+      return { seeded: 0, cleared: 0 };
     }
-    console.log(`[cron] Seeded ${rows.length} priority pairs into hot_pairs_queue`);
-    return { seeded: rows.length };
+    console.log(`[cron] Upserted ${rows.length} priority pairs into hot_pairs_queue`);
+    return { seeded: rows.length, cleared: 0 };
   } catch (e) {
     console.error('[cron] seedHotPairs exception:', e);
-    return { seeded: 0 };
+    return { seeded: 0, cleared: 0 };
   }
 };
 
 // --- Indexer refresh ---------------------------------------------------------
-// Calls indexer-refresh-fast to write fresh The Graph subgraph data into quotes_index_latest.
+// Calls indexer-refresh-fast via Supabase client (correct inter-function auth).
 const runIndexerRefresh = async (networks: string[]): Promise<{ success: boolean; pairsScanned?: number; error?: string }> => {
-  if (!SUPABASE_URL) return { success: false, error: 'No SUPABASE_URL' };
-  const authKey = SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY;
-  if (!authKey) return { success: false, error: 'No auth key' };
-
+  if (!supabase) return { success: false, error: 'No supabase client' };
   try {
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/indexer-refresh-fast`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: authKey,
-        Authorization: `Bearer ${authKey}`,
-      },
-      body: JSON.stringify({ mode: 'fast', networks }),
+    const { data, error } = await supabase.functions.invoke('indexer-refresh-fast', {
+      body: { mode: 'fast', networks, maxPairs: 50, force: true },
     });
-    if (!res.ok) return { success: false, error: `indexer returned ${res.status}` };
-    const data = await res.json().catch(() => ({})) as { pairsScanned?: number };
-    return { success: true, pairsScanned: data?.pairsScanned ?? 0 };
+    if (error) return { success: false, error: error.message };
+    return { success: true, pairsScanned: (data as { pairsScanned?: number })?.pairsScanned ?? 0 };
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'indexer call failed' };
   }
@@ -98,24 +89,15 @@ const runIndexerRefresh = async (networks: string[]): Promise<{ success: boolean
 // --- Full scanner call -------------------------------------------------------
 // Always runs — independent of any pre-scan result.
 const runFullScan = async (networks: string[]): Promise<{ success: boolean; found?: number; watchlist?: number; error?: string }> => {
-  if (!SUPABASE_URL) return { success: false, error: 'No SUPABASE_URL' };
-  const authKey = SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY;
-  if (!authKey) return { success: false, error: 'No auth key' };
-
+  if (!supabase) return { success: false, error: 'No supabase client' };
   try {
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/scan-arbitrage-opportunities`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: authKey,
-        Authorization: `Bearer ${authKey}`,
-      },
-      body: JSON.stringify({ triggeredBy: 'cron-scheduler-24-7', networks }),
+    const { data, error } = await supabase.functions.invoke('scan-arbitrage-opportunities', {
+      body: { triggeredBy: 'cron-scheduler-24-7', networks },
     });
-    if (!res.ok) return { success: false, error: `scanner returned ${res.status}` };
-    const data = await res.json().catch(() => ({})) as { found?: number; watchlistCount?: number; success?: boolean; error?: string };
-    if (!data?.success) return { success: false, error: data?.error || 'scanner returned success=false' };
-    return { success: true, found: data.found ?? 0, watchlist: data.watchlistCount ?? 0 };
+    if (error) return { success: false, error: error.message };
+    const d = data as { found?: number; watchlistCount?: number; success?: boolean; error?: string };
+    if (!d?.success) return { success: false, error: d?.error || 'scanner returned success=false' };
+    return { success: true, found: d.found ?? 0, watchlist: d.watchlistCount ?? 0 };
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'scanner call failed' };
   }
@@ -151,7 +133,7 @@ const logSchedulerRun = async (
 // --- Main pipeline -----------------------------------------------------------
 const runPipeline = async (networks: string[]) => {
   const start = performance.now();
-  const seedResult = await seedHotPairsIfEmpty();
+  const seedResult = await seedHotPairs();
   const indexerResult = await runIndexerRefresh(networks);
   const scanResult = await runFullScan(networks);
   const durationMs = Math.round(performance.now() - start);

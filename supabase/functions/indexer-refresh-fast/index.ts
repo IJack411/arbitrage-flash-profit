@@ -158,8 +158,11 @@ const clamp = (value: number, min: number, max: number): number => {
 const nowIso = () => new Date().toISOString();
 
 const parsePair = (tokenPair: string): { tokenA: string; tokenB: string } => {
-  const [, pairPart = ''] = String(tokenPair || '').split(':');
-  const [tokenA = '', tokenB = ''] = pairPart.split('/');
+  // Handle both 'ethereum:WETH/USDC' and 'WETH/USDC' formats
+  const pairPart = String(tokenPair || '').includes(':')
+    ? String(tokenPair).split(':')[1]
+    : String(tokenPair);
+  const [tokenA = '', tokenB = ''] = (pairPart || '').split('/');
   return { tokenA: tokenA.trim().toUpperCase(), tokenB: tokenB.trim().toUpperCase() };
 };
 

@@ -18,21 +18,53 @@ const SUSHI_SUBGRAPH_PUBLIC = 'https://api.thegraph.com/subgraphs/name/sushiswap
 const BALANCER_SUBGRAPH_PUBLIC = 'https://api.thegraph.com/subgraphs/name/balancer-labs/balancer-v2';
 const CURVE_SUBGRAPH_PUBLIC = 'https://api.thegraph.com/subgraphs/name/curvefi/curve';
 
-const UNI_V3_SUBGRAPH = Deno.env.get('THEGRAPH_UNI_V3') ||
-  (Deno.env.get('THEGRAPH_API_KEY')
-    ? `https://gateway.thegraph.com/api/${Deno.env.get('THEGRAPH_API_KEY')}/subgraphs/id/5zvR82QoaXYFyDEKLZ9t6v9adgnptxYpKpSbxtgVENFV`
-    : UNI_V3_SUBGRAPH_PUBLIC);
+const THEGRAPH_API_KEY = (Deno.env.get('THEGRAPH_API_KEY') || '').trim();
+const LEGACY_GRAPH_HOST = 'api.thegraph.com/subgraphs/name/';
 
-const SUSHI_SUBGRAPH = Deno.env.get('THEGRAPH_SUSHI') ||
-  (Deno.env.get('THEGRAPH_API_KEY')
-    ? `https://gateway.thegraph.com/api/${Deno.env.get('THEGRAPH_API_KEY')}/subgraphs/id/6NUtT5mGjZ1tSshKLf5Q3uEEJtjBZJo1TpL5MXsUBqrT`
-    : SUSHI_SUBGRAPH_PUBLIC);
+const buildGraphEndpoint = (
+  overrideEnvKey: string,
+  publicUrl: string,
+  options?: {
+    defaultGatewayId?: string;
+    gatewayIdEnvKey?: string;
+  },
+): string => {
+  const overrideUrl = (Deno.env.get(overrideEnvKey) || '').trim();
+  const envGatewayId = options?.gatewayIdEnvKey
+    ? (Deno.env.get(options.gatewayIdEnvKey) || '').trim()
+    : '';
+  const gatewayId = envGatewayId || (options?.defaultGatewayId || '');
+  const overrideIsLegacyHosted = overrideUrl.includes(LEGACY_GRAPH_HOST);
 
-const UNI_V2_SUBGRAPH = Deno.env.get('THEGRAPH_UNI_V2') || UNI_V2_SUBGRAPH_PUBLIC;
-const BALANCER_SUBGRAPH = Deno.env.get('THEGRAPH_BALANCER') || BALANCER_SUBGRAPH_PUBLIC;
-const CURVE_SUBGRAPH = Deno.env.get('THEGRAPH_CURVE') || CURVE_SUBGRAPH_PUBLIC;
+  // Prefer gateway endpoint when we have an API key + gateway ID and override is missing or legacy-hosted.
+  if (THEGRAPH_API_KEY && gatewayId && (!overrideUrl || overrideIsLegacyHosted)) {
+    return `https://gateway.thegraph.com/api/${THEGRAPH_API_KEY}/subgraphs/id/${gatewayId}`;
+  }
+
+  return overrideUrl || publicUrl;
+};
+
+const UNI_V3_SUBGRAPH = buildGraphEndpoint('THEGRAPH_UNI_V3', UNI_V3_SUBGRAPH_PUBLIC, {
+  defaultGatewayId: '5zvR82QoaXYFyDEKLZ9t6v9adgnptxYpKpSbxtgVENFV',
+  gatewayIdEnvKey: 'THEGRAPH_UNI_V3_ID',
+});
+const SUSHI_SUBGRAPH = buildGraphEndpoint('THEGRAPH_SUSHI', SUSHI_SUBGRAPH_PUBLIC, {
+  defaultGatewayId: '6NUtT5mGjZ1tSshKLf5Q3uEEJtjBZJo1TpL5MXsUBqrT',
+  gatewayIdEnvKey: 'THEGRAPH_SUSHI_ID',
+});
+const UNI_V2_SUBGRAPH = buildGraphEndpoint('THEGRAPH_UNI_V2', UNI_V2_SUBGRAPH_PUBLIC, {
+  defaultGatewayId: 'EYCKATKGBKLWvSfwvBjzfCBmGwYNdVkduYXVivCsLRFu',
+  gatewayIdEnvKey: 'THEGRAPH_UNI_V2_ID',
+});
+const BALANCER_SUBGRAPH = buildGraphEndpoint('THEGRAPH_BALANCER', BALANCER_SUBGRAPH_PUBLIC, {
+  gatewayIdEnvKey: 'THEGRAPH_BALANCER_ID',
+});
+const CURVE_SUBGRAPH = buildGraphEndpoint('THEGRAPH_CURVE', CURVE_SUBGRAPH_PUBLIC, {
+  gatewayIdEnvKey: 'THEGRAPH_CURVE_ID',
+});
 
 type NetworkName = 'ethereum' | 'polygon' | 'arbitrum' | 'base' | 'bsc';
+type SourcePolicyMode = 'neutral' | 'prefer_subgraph' | 'prefer_external_raw';
 
 type Pool = {
   token0: { symbol: string; address?: string };
@@ -53,7 +85,11 @@ interface ScannerConfig {
   minLiquidityUsd: number;
   minNetProfitUsd: number;
   minNetProfitUsdByNetwork: Partial<Record<NetworkName, number>>;
+  minNetEdgeBpsByNetwork: Partial<Record<NetworkName, number>>;
+  executionRiskBufferUsdByNetwork: Partial<Record<NetworkName, number>>;
   adaptiveProfitPressureMultiplier: number;
+  adaptiveProfitReliefMultiplier: number;
+  adaptiveMinNetFloorFraction: number;
   maxSlippageBps: number;
   maxLiquidityUsageFraction: number;
   maxResults: number;
@@ -63,6 +99,11 @@ interface ScannerConfig {
   gasSafetyMultiplier: number;
   gasPriceGweiByNetwork: Partial<Record<NetworkName, number>>;
   nativeTokenUsdByNetwork: Partial<Record<NetworkName, number>>;
+  enableDexScreenerFallback: boolean;
+  enableGeckoFallback: boolean;
+  enableCycleShadow: boolean;
+  sourcePolicyMode: SourcePolicyMode;
+  useExternalRawFeed: boolean;
 }
 
 interface Opportunity {
@@ -104,15 +145,32 @@ interface DexScreenerPair {
   chainId?: string;
   dexId?: string;
   priceUsd?: string;
+  priceNative?: string;
   liquidity?: { usd?: number };
-  baseToken?: { symbol?: string };
-  quoteToken?: { symbol?: string };
+  baseToken?: { symbol?: string; address?: string };
+  quoteToken?: { symbol?: string; address?: string };
 }
 
 interface GeckoSearchPool {
+  id?: string;
   attributes?: Record<string, unknown>;
   relationships?: {
     network?: {
+      data?: {
+        id?: string;
+      };
+    };
+    base_token?: {
+      data?: {
+        id?: string;
+      };
+    };
+    quote_token?: {
+      data?: {
+        id?: string;
+      };
+    };
+    dex?: {
       data?: {
         id?: string;
       };
@@ -147,6 +205,302 @@ interface ScanDiagnostics {
     dexscreener: number;
     gecko: number;
   };
+  canonicalizationStats?: {
+    totalPoolsSeen: number;
+    mapped: number;
+    droppedMissingSymbols: number;
+    droppedUntrackablePair: number;
+    droppedNonPositiveCanonicalPrice: number;
+    bySource: {
+      subgraph: number;
+      dexscreener: number;
+      gecko: number;
+    };
+  };
+  sourcePolicy?: {
+    mode: SourcePolicyMode;
+    useExternalRawFeed: boolean;
+    notes: string;
+  };
+  quoteFilterStats?: {
+    dexscreenerOutliersDropped: number;
+  };
+  badQuoteDetails?: {
+    reasons: {
+      invalidPriceSet: number;
+      nonPositiveOrInvalidCross: number;
+      unreasonableSpread: number;
+      unreasonableNearMissRoi: number;
+    };
+    sourceComposition: {
+      subgraphOnly: number;
+      fallbackOnly: number;
+      mixed: number;
+      subgraphDexscreener: number;
+      subgraphGecko: number;
+      dexscreenerOnly: number;
+      geckoOnly: number;
+      crossFallback: number;
+      unknownRoute: number;
+    };
+    samples: Array<{
+      tokenPair: string;
+      reason: 'invalidPriceSet' | 'nonPositiveOrInvalidCross' | 'unreasonableSpread' | 'unreasonableNearMissRoi';
+      buyDex?: Opportunity['buyDex'];
+      sellDex?: Opportunity['sellDex'];
+      buySource?: 'subgraph' | 'dexscreener' | 'gecko';
+      sellSource?: 'subgraph' | 'dexscreener' | 'gecko';
+      spread?: number;
+    }>;
+  };
+  routeAlternativeInsights?: {
+    inspectedPairs: number;
+    samples: Array<{
+      tokenPair: string;
+      selected: {
+        buyDex: Opportunity['buyDex'];
+        sellDex: Opportunity['buyDex'];
+        buySource: 'subgraph' | 'dexscreener' | 'gecko';
+        sellSource: 'subgraph' | 'dexscreener' | 'gecko';
+        spreadBps: number;
+        minLiquidityUsd: number;
+        score: number;
+      };
+      alternate?: {
+        buyDex: Opportunity['buyDex'];
+        sellDex: Opportunity['buyDex'];
+        buySource: 'subgraph' | 'dexscreener' | 'gecko';
+        sellSource: 'subgraph' | 'dexscreener' | 'gecko';
+        spreadBps: number;
+        minLiquidityUsd: number;
+        score: number;
+      };
+      decisionTag: 'selected_mixed_extreme' | 'selected_mixed' | 'selected_subgraph_anchored' | 'selected_other';
+    }>;
+  };
+  policyDryRun?: {
+    enabled: boolean;
+    summary: {
+      preferSubgraph: {
+        differentFromSelected: number;
+        selectedMixedExtreme: number;
+        selectedSubgraphAnchored: number;
+        medianFlipMarginScore: number;
+        minFlipMarginScore: number;
+        medianFlipMarginDistinctRouteScore: number;
+        minFlipMarginDistinctRouteScore: number;
+        medianFlipThresholdScore: number;
+        minFlipThresholdScore: number;
+        topTiePairs: number;
+      };
+      preferExternalRaw: {
+        differentFromSelected: number;
+        selectedMixedExtreme: number;
+        selectedSubgraphAnchored: number;
+        medianFlipMarginScore: number;
+        minFlipMarginScore: number;
+        medianFlipMarginDistinctRouteScore: number;
+        minFlipMarginDistinctRouteScore: number;
+        medianFlipThresholdScore: number;
+        minFlipThresholdScore: number;
+        topTiePairs: number;
+      };
+    };
+    calibrationHints: {
+      preferSubgraph: {
+        easiestPairs: Array<{
+          tokenPair: string;
+          liveDecisionTag: 'selected_mixed_extreme' | 'selected_mixed' | 'selected_subgraph_anchored' | 'selected_other';
+          flipThresholdScore: number;
+          marginToDistinctRouteScore: number;
+          challenger?: {
+            buyDex: Opportunity['buyDex'];
+            sellDex: Opportunity['buyDex'];
+            buySource: 'subgraph' | 'dexscreener' | 'gecko';
+            sellSource: 'subgraph' | 'dexscreener' | 'gecko';
+            decisionTag: 'selected_mixed_extreme' | 'selected_mixed' | 'selected_subgraph_anchored' | 'selected_other';
+            earlyGate: 'pass' | 'badQuotes' | 'spread';
+            spreadPercent: number;
+          };
+        }>;
+      };
+      preferExternalRaw: {
+        easiestPairs: Array<{
+          tokenPair: string;
+          liveDecisionTag: 'selected_mixed_extreme' | 'selected_mixed' | 'selected_subgraph_anchored' | 'selected_other';
+          flipThresholdScore: number;
+          marginToDistinctRouteScore: number;
+          challenger?: {
+            buyDex: Opportunity['buyDex'];
+            sellDex: Opportunity['buyDex'];
+            buySource: 'subgraph' | 'dexscreener' | 'gecko';
+            sellSource: 'subgraph' | 'dexscreener' | 'gecko';
+            decisionTag: 'selected_mixed_extreme' | 'selected_mixed' | 'selected_subgraph_anchored' | 'selected_other';
+            earlyGate: 'pass' | 'badQuotes' | 'spread';
+            spreadPercent: number;
+          };
+        }>;
+      };
+    };
+    samples: Array<{
+      tokenPair: string;
+      liveDecisionTag: 'selected_mixed_extreme' | 'selected_mixed' | 'selected_subgraph_anchored' | 'selected_other';
+      live: {
+        buyDex: Opportunity['buyDex'];
+        sellDex: Opportunity['buyDex'];
+        buySource: 'subgraph' | 'dexscreener' | 'gecko';
+        sellSource: 'subgraph' | 'dexscreener' | 'gecko';
+        spreadBps: number;
+        score: number;
+      };
+      preferSubgraph?: {
+        buyDex: Opportunity['buyDex'];
+        sellDex: Opportunity['buyDex'];
+        buySource: 'subgraph' | 'dexscreener' | 'gecko';
+        sellSource: 'subgraph' | 'dexscreener' | 'gecko';
+        spreadBps: number;
+        score: number;
+        marginToDistinctRouteScore: number;
+        flipThresholdScore: number;
+        challenger?: {
+          buyDex: Opportunity['buyDex'];
+          sellDex: Opportunity['buyDex'];
+          buySource: 'subgraph' | 'dexscreener' | 'gecko';
+          sellSource: 'subgraph' | 'dexscreener' | 'gecko';
+          decisionTag: 'selected_mixed_extreme' | 'selected_mixed' | 'selected_subgraph_anchored' | 'selected_other';
+          earlyGate: 'pass' | 'badQuotes' | 'spread';
+          spreadPercent: number;
+        };
+      };
+      preferExternalRaw?: {
+        buyDex: Opportunity['buyDex'];
+        sellDex: Opportunity['buyDex'];
+        buySource: 'subgraph' | 'dexscreener' | 'gecko';
+        sellSource: 'subgraph' | 'dexscreener' | 'gecko';
+        spreadBps: number;
+        score: number;
+        marginToDistinctRouteScore: number;
+        flipThresholdScore: number;
+        challenger?: {
+          buyDex: Opportunity['buyDex'];
+          sellDex: Opportunity['buyDex'];
+          buySource: 'subgraph' | 'dexscreener' | 'gecko';
+          sellSource: 'subgraph' | 'dexscreener' | 'gecko';
+          decisionTag: 'selected_mixed_extreme' | 'selected_mixed' | 'selected_subgraph_anchored' | 'selected_other';
+          earlyGate: 'pass' | 'badQuotes' | 'spread';
+          spreadPercent: number;
+        };
+      };
+    }>;
+  };
+  fallbackPoolCounts?: {
+    dexscreener: {
+      uniV3: number;
+      uniV2: number;
+      sushi: number;
+      balancer: number;
+      curve: number;
+      total: number;
+    };
+    gecko: {
+      uniV3: number;
+      uniV2: number;
+      sushi: number;
+      balancer: number;
+      curve: number;
+      total: number;
+    };
+  };
+  fallbackSourcesEnabled?: {
+    dexscreener: boolean;
+    gecko: boolean;
+  };
+  subgraphFetchStats?: {
+    uniswapV3: { status: 'ok' | 'failed'; entries: number; error?: string };
+    uniswapV2: { status: 'ok' | 'failed'; entries: number; error?: string };
+    sushiswap: { status: 'ok' | 'failed'; entries: number; error?: string };
+    balancer: { status: 'ok' | 'failed'; entries: number; error?: string };
+    curve: { status: 'ok' | 'failed'; entries: number; error?: string };
+  };
+  priorityPairSubgraphStats?: {
+    targets: number;
+    queries: number;
+    responsesOk: number;
+    errors: number;
+    entriesAccepted: number;
+  };
+  dynamicPriorityStats?: {
+    runs: number;
+    samples: number;
+    pairs: number;
+    penalizedPairs: number;
+  };
+  fallbackFetchStats?: {
+    dexscreener: {
+      queries: number;
+      responsesOk: number;
+      errors: number;
+      entriesSeen: number;
+      entriesAccepted: number;
+    };
+    gecko: {
+      queries: number;
+      responsesOk: number;
+      errors: number;
+      entriesSeen: number;
+      entriesAccepted: number;
+      rejectionReasons?: {
+        invalidNetworkMap: number;
+        networkNotRequested: number;
+        nonTrackablePair: number;
+        priceParseFail: number;
+        liquidityBelowMin: number;
+        baseQuoteOrientationMismatch: number;
+        orientationRecovered: number;
+        inversePriceFail: number;
+      };
+    };
+  };
+  sourceHardening?: {
+    autoDisableFailedSubgraphs: boolean;
+    envDisabledDexes: string[];
+    activeDisabledDexes: string[];
+    droppedPoolCounts: {
+      uniV3: number;
+      uniV2: number;
+      sushi: number;
+      balancer: number;
+      curve: number;
+      total: number;
+    };
+    sourceReliabilityBps?: {
+      subgraph: number;
+      dexscreener: number;
+      gecko: number;
+    };
+    sourceReliabilityWindowRuns?: number;
+  };
+  sameDexDetails?: {
+    reasons: {
+      insufficientQuotes: number;
+      insufficientValidPrices: number;
+      insufficientDexOverlap: number;
+      noCrossDexPositiveSpread: number;
+      missingBestPairEntries: number;
+    };
+    sourceComposition: {
+      subgraphOnly: number;
+      fallbackOnly: number;
+      mixed: number;
+    };
+    samples: Array<{
+      tokenPair: string;
+      reason: 'insufficientQuotes' | 'insufficientValidPrices' | 'insufficientDexOverlap' | 'noCrossDexPositiveSpread' | 'missingBestPairEntries';
+      quoteCount: number;
+      dexes: string[];
+      sources: Array<'subgraph' | 'dexscreener' | 'gecko'>;
+    }>;
+  };
   rejectionSamples: Array<{
     tokenPair: string;
     reason: 'badQuotes' | 'sameDex' | 'spread' | 'liquidity' | 'slippage' | 'netProfit' | 'executionRisk';
@@ -159,6 +513,117 @@ interface ScanDiagnostics {
     buyImpactBps?: number;
     sellImpactBps?: number;
   }>;
+  routeMemory?: {
+    loadedRoutes: number;
+    suppressedByCooldown: number;
+    penalizedByHistory: number;
+    maxPenaltyUsd: number;
+    suppressedSamples: Array<{
+      routeKey: string;
+      tokenPair: string;
+      buyDex: Opportunity['buyDex'];
+      sellDex: Opportunity['sellDex'];
+      cooldownUntil?: string;
+    }>;
+    penalizedSamples: Array<{
+      routeKey: string;
+      tokenPair: string;
+      buyDex: Opportunity['buyDex'];
+      sellDex: Opportunity['sellDex'];
+      avgRealizedNet: number;
+      penaltyUsd: number;
+    }>;
+  };
+  executionRiskDetails?: {
+    reasons: {
+      routeCooldown: number;
+      noExecutableSize: number;
+      payloadBuildFailed: number;
+    };
+    noExecutableByGate?: Record<NoExecutableReason, number>;
+    samples: Array<{
+      tokenPair: string;
+      buyDex: Opportunity['buyDex'];
+      sellDex: Opportunity['sellDex'];
+      cause: 'routeCooldown' | 'noExecutableSize' | 'payloadBuildFailed';
+      detail?: string;
+    }>;
+  };
+  cycleShadow?: {
+    enabled: boolean;
+    networksAnalyzed: number;
+    testedTriangles: number;
+    candidatePaths: number;
+    topCycles: Array<{
+      network: NetworkName;
+      path: string;
+      grossReturnBps: number;
+      minLiquidityUsd: number;
+      sources: string[];
+    }>;
+  };
+  indexCache?: {
+    enabled: boolean;
+    requestedRows: number;
+    acceptedRows: number;
+    hitPairs: number;
+    missPairs: number;
+    stalePairs: number;
+    fallbackFetches: number;
+    upstreamCallsSaved: number;
+    avgIndexedRowAgeMs: number;
+    p90IndexedRowAgeMs: number;
+  };
+  ingestionHeartbeat?: {
+    status: 'ok' | 'starved';
+    networksRequested: number;
+    pairKeys: number;
+    usablePools: number;
+    subgraphEntries: number;
+    fallbackEntriesAccepted: number;
+    subgraphSourcesOk: number;
+    starvationReason?: string;
+  };
+}
+
+interface RouteMemoryRecord {
+  routeKey: string;
+  avgRealizedNet: number;
+  cooldownUntil?: string;
+  failedExecutions: number;
+  successfulExecutions: number;
+}
+
+interface RouteExecutionFeedbackRecord {
+  routeKey: string;
+  attempts: number;
+  included: number;
+  failed: number;
+  simulationFailures: number;
+  avgLatencyMs: number;
+  successRate: number;
+  penaltyUsd: number;
+  reliefUsd: number;
+}
+
+interface IndexedQuotePoolLoadResult {
+  uniV3Pools: Pool[];
+  uniV2Pools: Pool[];
+  sushiPools: Pool[];
+  balancerPools: Pool[];
+  curvePools: Pool[];
+  stats: {
+    enabled: boolean;
+    requestedRows: number;
+    acceptedRows: number;
+    hitPairs: number;
+    missPairs: number;
+    stalePairs: number;
+    fallbackFetches: number;
+    upstreamCallsSaved: number;
+    avgIndexedRowAgeMs: number;
+    p90IndexedRowAgeMs: number;
+  };
 }
 
 interface ExecutionCandidate {
@@ -172,6 +637,56 @@ interface ExecutionCandidate {
   routePenaltyBps: number;
 }
 
+type NoExecutableReason =
+  | 'noLiquidity'
+  | 'noRawCross'
+  | 'invalidLoanOrScale'
+  | 'slippageExceeded'
+  | 'noCrossAfterSlippage'
+  | 'unreasonableSpread'
+  | 'unrealisticRoi'
+  | 'gasDominatesOrNonPositive';
+
+interface ExecutionEvaluationResult {
+  candidate: ExecutionCandidate | null;
+  noExecutableReasons?: Record<NoExecutableReason, number>;
+}
+
+const NO_EXECUTABLE_REASON_KEYS: NoExecutableReason[] = [
+  'noLiquidity',
+  'noRawCross',
+  'invalidLoanOrScale',
+  'slippageExceeded',
+  'noCrossAfterSlippage',
+  'unreasonableSpread',
+  'unrealisticRoi',
+  'gasDominatesOrNonPositive',
+];
+
+const createNoExecutableReasonCounts = (): Record<NoExecutableReason, number> => ({
+  noLiquidity: 0,
+  noRawCross: 0,
+  invalidLoanOrScale: 0,
+  slippageExceeded: 0,
+  noCrossAfterSlippage: 0,
+  unreasonableSpread: 0,
+  unrealisticRoi: 0,
+  gasDominatesOrNonPositive: 0,
+});
+
+const topNoExecutableReason = (counts: Record<NoExecutableReason, number> | undefined): NoExecutableReason | undefined => {
+  if (!counts) return undefined;
+  let top: NoExecutableReason | undefined;
+  let topCount = -1;
+  for (const key of NO_EXECUTABLE_REASON_KEYS) {
+    if ((counts[key] || 0) > topCount) {
+      top = key;
+      topCount = counts[key] || 0;
+    }
+  }
+  return topCount > 0 ? top : undefined;
+};
+
 type TelemetryOpportunity = Opportunity & {
   scanRunId: string;
   candidateId: string;
@@ -181,18 +696,374 @@ type TelemetryOpportunity = Opportunity & {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
+const SUPABASE_REST_KEY = SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY;
 
-const canPersistTelemetry = () => Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
+const canAccessSupabaseRest = () => Boolean(SUPABASE_URL && SUPABASE_REST_KEY);
+
+const buildRouteMemoryKey = (
+  network: string,
+  tokenPair: string,
+  buyDex: Opportunity['buyDex'],
+  sellDex: Opportunity['sellDex'],
+): string => {
+  const normalizedNetwork = String(network || 'unknown').toLowerCase();
+  const normalizedPair = String(tokenPair || 'unknown').toLowerCase();
+  const [dexA, dexB] = [String(buyDex || 'unknown').toLowerCase(), String(sellDex || 'unknown').toLowerCase()]
+    .sort((a, b) => a.localeCompare(b));
+  return `${normalizedNetwork}|${normalizedPair}|${dexA}|${dexB}`;
+};
+
+const loadRouteMemoryByKey = async (): Promise<Map<string, RouteMemoryRecord>> => {
+  const map = new Map<string, RouteMemoryRecord>();
+  if (!canAccessSupabaseRest()) return map;
+
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/route_memory?select=route_key,avg_realized_net,cooldown_until,failed_executions,successful_executions`,
+      {
+        headers: {
+          apikey: SUPABASE_REST_KEY,
+          Authorization: `Bearer ${SUPABASE_REST_KEY}`,
+          Accept: 'application/json',
+        },
+      },
+    );
+
+    if (!res.ok) return map;
+
+    const rows = await res.json() as Array<Record<string, unknown>>;
+    for (const row of rows || []) {
+      const routeKey = String(row.route_key || '').trim().toLowerCase();
+      if (!routeKey) continue;
+      const avgRealizedNet = Number(row.avg_realized_net ?? 0);
+      const failedExecutions = Number(row.failed_executions ?? 0);
+      const successfulExecutions = Number(row.successful_executions ?? 0);
+      const cooldownUntil = typeof row.cooldown_until === 'string' ? row.cooldown_until : undefined;
+      map.set(routeKey, {
+        routeKey,
+        avgRealizedNet: Number.isFinite(avgRealizedNet) ? avgRealizedNet : 0,
+        cooldownUntil,
+        failedExecutions: Number.isFinite(failedExecutions) ? failedExecutions : 0,
+        successfulExecutions: Number.isFinite(successfulExecutions) ? successfulExecutions : 0,
+      });
+    }
+  } catch {
+    // Best-effort enrichment.
+  }
+
+  return map;
+};
+
+const isDexName = (value: unknown): value is Opportunity['buyDex'] => {
+  return value === 'Uniswap V3'
+    || value === 'Uniswap V2'
+    || value === 'SushiSwap'
+    || value === 'Balancer'
+    || value === 'Curve';
+};
+
+const loadExecutionFeedbackByRoute = async (): Promise<Map<string, RouteExecutionFeedbackRecord>> => {
+  const map = new Map<string, RouteExecutionFeedbackRecord>();
+  if (!canAccessSupabaseRest()) return map;
+
+  const limit = Math.max(20, Math.min(500, Math.round(parseNumberEnv(Deno.env.get('SCANNER_EXEC_FEEDBACK_WINDOW_ATTEMPTS'), 200))));
+
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/execution_attempts?select=included,failure_reason,latency_ms,metadata&order=submitted_at.desc&limit=${limit}`,
+      {
+        headers: {
+          apikey: SUPABASE_REST_KEY,
+          Authorization: `Bearer ${SUPABASE_REST_KEY}`,
+          Accept: 'application/json',
+        },
+      },
+    );
+    if (!res.ok) return map;
+
+    const rows = await res.json() as Array<Record<string, unknown>>;
+    if (!Array.isArray(rows)) return map;
+
+    for (const row of rows) {
+      const metadata = toObjectSafe(row.metadata);
+      if (!metadata) continue;
+
+      const network = String(metadata.network || '').trim().toLowerCase();
+      const tokenPair = String(metadata.tokenPair || '').trim().toLowerCase();
+      const buyDexRaw = metadata.buyDex;
+      const sellDexRaw = metadata.sellDex;
+      if (!network || !tokenPair || !isDexName(buyDexRaw) || !isDexName(sellDexRaw)) continue;
+
+      const routeKey = buildRouteMemoryKey(network, tokenPair, buyDexRaw, sellDexRaw);
+      const existing = map.get(routeKey) || {
+        routeKey,
+        attempts: 0,
+        included: 0,
+        failed: 0,
+        simulationFailures: 0,
+        avgLatencyMs: 0,
+        successRate: 0,
+        penaltyUsd: 0,
+        reliefUsd: 0,
+      };
+
+      existing.attempts += 1;
+      if (row.included === true) {
+        existing.included += 1;
+      } else if (row.included === false) {
+        existing.failed += 1;
+      }
+
+      const failureReason = String(row.failure_reason || '').toLowerCase();
+      if (failureReason.includes('simulation')) {
+        existing.simulationFailures += 1;
+      }
+
+      const latencyMs = toNumberSafe(row.latency_ms, 0);
+      if (latencyMs > 0) {
+        existing.avgLatencyMs = existing.avgLatencyMs <= 0
+          ? latencyMs
+          : ((existing.avgLatencyMs * (existing.attempts - 1)) + latencyMs) / existing.attempts;
+      }
+
+      map.set(routeKey, existing);
+    }
+
+    for (const feedback of map.values()) {
+      if (feedback.attempts <= 0) continue;
+      feedback.successRate = feedback.included / feedback.attempts;
+      const simulationFailRate = feedback.simulationFailures / feedback.attempts;
+
+      // Require evidence before applying strong route-level adaptations.
+      if (feedback.attempts >= 3) {
+        const failPressure = Math.max(0, 0.62 - feedback.successRate);
+        const simPressure = Math.max(0, simulationFailRate - 0.1);
+        feedback.penaltyUsd = clampNumber((failPressure * 18) + (simPressure * 10), 0, 10);
+
+        const successEdge = Math.max(0, feedback.successRate - 0.82);
+        feedback.reliefUsd = clampNumber(successEdge * 8, 0, 3);
+      }
+    }
+  } catch {
+    // Best-effort enrichment.
+  }
+
+  return map;
+};
+
+const emptyIndexedQuotePoolLoadResult = (enabled = false): IndexedQuotePoolLoadResult => ({
+  uniV3Pools: [],
+  uniV2Pools: [],
+  sushiPools: [],
+  balancerPools: [],
+  curvePools: [],
+  stats: {
+    enabled,
+    requestedRows: 0,
+    acceptedRows: 0,
+    hitPairs: 0,
+    missPairs: 0,
+    stalePairs: 0,
+    fallbackFetches: 0,
+    upstreamCallsSaved: 0,
+    avgIndexedRowAgeMs: 0,
+    p90IndexedRowAgeMs: 0,
+  },
+});
+
+const parseDexName = (value: unknown): Opportunity['buyDex'] | null => {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (!normalized) return null;
+  if (normalized.includes('uniswap') && normalized.includes('v3')) return 'Uniswap V3';
+  if (normalized.includes('uniswap') && normalized.includes('v2')) return 'Uniswap V2';
+  if (normalized === 'uniswap' || normalized.startsWith('uniswap-')) return 'Uniswap V3';
+  if (normalized.includes('sushi')) return 'SushiSwap';
+  if (normalized.includes('balancer')) return 'Balancer';
+  if (normalized.includes('curve')) return 'Curve';
+  if (normalized === 'uniswap v3') return 'Uniswap V3';
+  if (normalized === 'uniswap v2') return 'Uniswap V2';
+  if (normalized === 'sushiswap') return 'SushiSwap';
+  return null;
+};
+
+const toSourceType = (value: unknown): Pool['sourceType'] => {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (normalized === 'dexscreener') return 'dexscreener';
+  if (normalized === 'gecko') return 'gecko';
+  return 'subgraph';
+};
+
+const routeIndexedPoolByDex = (
+  dex: Opportunity['buyDex'],
+  pool: Pool,
+  sets: {
+    uniV3Pools: Pool[];
+    uniV2Pools: Pool[];
+    sushiPools: Pool[];
+    balancerPools: Pool[];
+    curvePools: Pool[];
+  },
+) => {
+  if (dex === 'Uniswap V3') sets.uniV3Pools.push(pool);
+  else if (dex === 'Uniswap V2') sets.uniV2Pools.push(pool);
+  else if (dex === 'SushiSwap') sets.sushiPools.push(pool);
+  else if (dex === 'Balancer') sets.balancerPools.push(pool);
+  else if (dex === 'Curve') sets.curvePools.push(pool);
+};
+
+const loadIndexedQuotePools = async (networks: string[]): Promise<IndexedQuotePoolLoadResult> => {
+  const enabled = parseBooleanEnv(Deno.env.get('SCANNER_ENABLE_INDEX_READ_THROUGH'), true);
+  if (!enabled || !canAccessSupabaseRest()) return emptyIndexedQuotePoolLoadResult(enabled);
+
+  const ttlSeconds = Math.max(5, Math.min(300, Math.round(parseNumberEnv(Deno.env.get('SCANNER_INDEX_READ_THROUGH_TTL_SECONDS'), 30))));
+  const selectedNetworks = (networks.length > 0 ? networks : ['ethereum'])
+    .map((network) => toNetworkName(CHAIN_MAP[network] || network));
+
+  if (selectedNetworks.length === 0) return emptyIndexedQuotePoolLoadResult(enabled);
+
+  const result = emptyIndexedQuotePoolLoadResult(enabled);
+
+  try {
+    const parseLooseNumber = (value: unknown): number => {
+      if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+      const normalized = String(value ?? '').replace(/,/g, '').trim();
+      const parsed = Number(normalized);
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+    const splitPairSymbols = (pairText: string): [string, string] | null => {
+      const normalized = String(pairText || '').trim();
+      if (!normalized) return null;
+      const delimiter = ['/', '-', '_'].find((candidate) => normalized.includes(candidate));
+      if (delimiter) {
+        const [left, right] = normalized.split(delimiter, 2);
+        return [normalizeTokenSymbol(left), normalizeTokenSymbol(right)];
+      }
+      const byWhitespace = normalized.split(/\s+/).filter(Boolean);
+      if (byWhitespace.length >= 2) {
+        return [normalizeTokenSymbol(byWhitespace[0]), normalizeTokenSymbol(byWhitespace[1])];
+      }
+      return null;
+    };
+
+    const networkSet = Array.from(new Set(selectedNetworks.map((network) => network.toLowerCase())));
+    const networkFilter = `(${networkSet.join(',')})`;
+    const sinceIso = new Date(Date.now() - ttlSeconds * 1000).toISOString();
+
+    const url = `${SUPABASE_URL}/rest/v1/quotes_index_latest`
+      + `?select=network,token_pair,buy_dex,sell_dex,buy_price,sell_price,buy_liquidity_usd,sell_liquidity_usd,source,indexed_at`
+      + `&network=in.${networkFilter}`
+      + `&indexed_at=gte.${encodeURIComponent(sinceIso)}`
+      + `&limit=1000`;
+
+    const response = await fetch(url, {
+      headers: {
+        apikey: SUPABASE_REST_KEY,
+        Authorization: `Bearer ${SUPABASE_REST_KEY}`,
+        Accept: 'application/json',
+      },
+    });
+
+    if (!response.ok) return result;
+
+    const rows = await response.json() as Array<Record<string, unknown>>;
+    if (!Array.isArray(rows) || rows.length === 0) return result;
+
+    result.stats.requestedRows = rows.length;
+    const pairHits = new Set<string>();
+    const rowAges: number[] = [];
+
+    for (const row of rows) {
+      const network = toNetworkName(String(row.network || ''));
+      const tokenPairRaw = String(row.token_pair || '').toLowerCase();
+      const hasNetworkPrefix = tokenPairRaw.includes(':');
+      const [pairNetworkPart, pairSymbolsRaw] = hasNetworkPrefix
+        ? tokenPairRaw.split(':', 2)
+        : ['', tokenPairRaw];
+      const pairSymbols = pairSymbolsRaw || '';
+      if (!pairSymbols) continue;
+      const parsedPair = splitPairSymbols(pairSymbols);
+      if (!parsedPair) continue;
+      const [base, quote] = parsedPair;
+      if (!base || !quote) continue;
+
+      // Ensure row belongs to requested networks, even if token_pair network prefix drifts.
+      if (!networkSet.includes(String(network).toLowerCase()) && !networkSet.includes(String(pairNetworkPart || '').toLowerCase())) {
+        continue;
+      }
+
+      const buyDex = parseDexName(row.buy_dex);
+      const sellDex = parseDexName(row.sell_dex);
+      const buyPrice = parseLooseNumber(row.buy_price);
+      const sellPrice = parseLooseNumber(row.sell_price);
+      const buyLiquidityUsd = parseLooseNumber(row.buy_liquidity_usd);
+      const sellLiquidityUsd = parseLooseNumber(row.sell_liquidity_usd);
+      if (!buyDex || !sellDex || !Number.isFinite(buyPrice) || !Number.isFinite(sellPrice) || buyPrice <= 0 || sellPrice <= 0) {
+        continue;
+      }
+
+      const indexedAt = Date.parse(String(row.indexed_at || ''));
+      if (Number.isFinite(indexedAt)) {
+        const ageMs = Math.max(0, Date.now() - indexedAt);
+        rowAges.push(ageMs);
+      }
+
+      const sourceType = toSourceType(row.source);
+      const buyPool: Pool = {
+        token0: { symbol: base },
+        token1: { symbol: quote },
+        token0Price: String(1 / buyPrice),
+        token1Price: String(buyPrice),
+        reserveUSD: String(Math.max(0, buyLiquidityUsd)),
+        network,
+        poolAddress: `indexed:${network}:${base}/${quote}:${buyDex}:buy`,
+        dex: buyDex,
+        sourceType,
+      };
+      const sellPool: Pool = {
+        token0: { symbol: base },
+        token1: { symbol: quote },
+        token0Price: String(1 / sellPrice),
+        token1Price: String(sellPrice),
+        reserveUSD: String(Math.max(0, sellLiquidityUsd)),
+        network,
+        poolAddress: `indexed:${network}:${base}/${quote}:${sellDex}:sell`,
+        dex: sellDex,
+        sourceType,
+      };
+
+      routeIndexedPoolByDex(buyDex, buyPool, result);
+      routeIndexedPoolByDex(sellDex, sellPool, result);
+
+      result.stats.acceptedRows += 1;
+      pairHits.add(`${network}:${base}/${quote}`.toLowerCase());
+    }
+
+    result.stats.hitPairs = pairHits.size;
+    result.stats.upstreamCallsSaved = pairHits.size;
+
+    if (rowAges.length > 0) {
+      rowAges.sort((a, b) => a - b);
+      const totalAges = rowAges.reduce((sum, age) => sum + age, 0);
+      result.stats.avgIndexedRowAgeMs = Math.round(totalAges / rowAges.length);
+      result.stats.p90IndexedRowAgeMs = rowAges[Math.min(rowAges.length - 1, Math.floor(rowAges.length * 0.9))];
+    }
+  } catch {
+    // Best-effort enrichment, never fail scanner.
+  }
+
+  return result;
+};
 
 const persistTelemetryRows = async (table: string, rows: Record<string, unknown>[]) => {
-  if (!canPersistTelemetry() || rows.length === 0) return;
+  if (!canAccessSupabaseRest() || rows.length === 0) return;
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        apikey: SUPABASE_SERVICE_ROLE_KEY,
-        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        apikey: SUPABASE_REST_KEY,
+        Authorization: `Bearer ${SUPABASE_REST_KEY}`,
         Prefer: 'return=minimal',
       },
       body: JSON.stringify(rows),
@@ -234,6 +1105,34 @@ const pushRejectionSample = (
   }
 };
 
+const summarizeRejections = (diagnostics: ScanDiagnostics) => {
+  const counts = new Map<string, number>();
+  for (const sample of diagnostics.rejectionSamples) {
+    counts.set(sample.reason, (counts.get(sample.reason) || 0) + 1);
+  }
+
+  const ranked = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+  const topRejectionReason = ranked.length > 0 ? ranked[0][0] : '';
+
+  const topRejectedPairs = diagnostics.rejectionSamples.map((sample) => ({
+    pair: sample.tokenPair,
+    reason: sample.reason,
+    buyDex: sample.buyDex,
+    sellDex: sample.sellDex,
+    spread: sample.spread,
+    buyLiquidityUsd: sample.buyLiquidityUsd,
+    sellLiquidityUsd: sample.sellLiquidityUsd,
+    attemptedLoanAmount: sample.attemptedLoanAmount,
+    buyImpactBps: sample.buyImpactBps,
+    sellImpactBps: sample.sellImpactBps,
+  }));
+
+  return {
+    topRejectionReason,
+    topRejectedPairs,
+  };
+};
+
 const parseNumberEnv = (value: string | undefined, fallback: number): number => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
@@ -244,14 +1143,78 @@ const parseNumberInput = (value: unknown): number | undefined => {
   return Number.isFinite(parsed) ? parsed : undefined;
 };
 
+const parseBooleanInput = (value: unknown): boolean | undefined => {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+    if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+  }
+  return undefined;
+};
+
+const parseSourcePolicyMode = (value: unknown): SourcePolicyMode | undefined => {
+  if (typeof value !== 'string') return undefined;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'neutral') return 'neutral';
+  if (normalized === 'prefer_subgraph' || normalized === 'prefer-subgraph') return 'prefer_subgraph';
+  if (normalized === 'prefer_external_raw' || normalized === 'prefer-external-raw') return 'prefer_external_raw';
+  return undefined;
+};
+
+const extractEvmAddress = (value: unknown): string | undefined => {
+  if (!value) return undefined;
+  const raw = String(value).trim();
+  if (!raw) return undefined;
+  const exact = raw.match(/^(0x[a-fA-F0-9]{40})$/);
+  if (exact) return exact[1];
+  const embedded = raw.match(/(0x[a-fA-F0-9]{40})/);
+  return embedded ? embedded[1] : undefined;
+};
+
 const FP_SCALE = 10n ** 18n;
 const USD_SCALE = 10n ** 6n;
+
+const expandScientificNotation = (rawValue: string): string => {
+  const match = rawValue.match(/^([+-]?)(\d+)(?:\.(\d+))?[eE]([+-]?\d+)$/);
+  if (!match) return rawValue;
+
+  const sign = match[1] || '';
+  const integerPart = match[2] || '0';
+  const fractionalPart = match[3] || '';
+  const exponent = Number(match[4] || '0');
+  if (!Number.isFinite(exponent)) return rawValue;
+
+  if (exponent >= 0) {
+    if (exponent >= fractionalPart.length) {
+      const zeros = '0'.repeat(exponent - fractionalPart.length);
+      return `${sign}${integerPart}${fractionalPart}${zeros}`;
+    }
+    const whole = `${integerPart}${fractionalPart.slice(0, exponent)}`;
+    const frac = fractionalPart.slice(exponent);
+    return `${sign}${whole}.${frac}`;
+  }
+
+  const shift = Math.abs(exponent);
+  if (shift >= integerPart.length) {
+    const zeros = '0'.repeat(shift - integerPart.length);
+    return `${sign}0.${zeros}${integerPart}${fractionalPart}`;
+  }
+
+  const split = integerPart.length - shift;
+  const whole = integerPart.slice(0, split);
+  const frac = `${integerPart.slice(split)}${fractionalPart}`;
+  return `${sign}${whole}.${frac}`;
+};
 
 const decimalToFixed = (value: number | string, scale: bigint): bigint => {
   const raw = String(value ?? '').trim();
   if (!raw) return 0n;
-  const sign = raw.startsWith('-') ? -1n : 1n;
-  const normalized = raw.replace(/^[+-]/, '');
+  const expandedRaw = raw.includes('e') || raw.includes('E')
+    ? expandScientificNotation(raw)
+    : raw;
+  const sign = expandedRaw.startsWith('-') ? -1n : 1n;
+  const normalized = expandedRaw.replace(/^[+-]/, '');
   const [whole = '0', frac = ''] = normalized.split('.');
   const scaleDigits = scale.toString().length - 1;
   const fracNormalized = (frac + '0'.repeat(scaleDigits)).slice(0, scaleDigits);
@@ -397,12 +1360,86 @@ const estimateSlippageBps = (tradeSizeUsd: number, liquidityUsd: number): number
   return Number(bounded);
 };
 
+const dexSwapFeeBps: Record<Opportunity['buyDex'], number> = {
+  'Uniswap V3': Math.max(1, Math.round(parseNumberEnv(Deno.env.get('SCANNER_SWAP_FEE_BPS_UNIV3'), 30))),
+  'Uniswap V2': Math.max(1, Math.round(parseNumberEnv(Deno.env.get('SCANNER_SWAP_FEE_BPS_UNIV2'), 30))),
+  'SushiSwap': Math.max(1, Math.round(parseNumberEnv(Deno.env.get('SCANNER_SWAP_FEE_BPS_SUSHI'), 30))),
+  'Balancer': Math.max(1, Math.round(parseNumberEnv(Deno.env.get('SCANNER_SWAP_FEE_BPS_BALANCER'), 10))),
+  'Curve': Math.max(1, Math.round(parseNumberEnv(Deno.env.get('SCANNER_SWAP_FEE_BPS_CURVE'), 4))),
+};
+
+const applySwapFee = (amount: number, feeBps: number): number => {
+  if (!Number.isFinite(amount) || amount <= 0) return 0;
+  const clampedFee = clampNumber(feeBps, 0, 9_500);
+  return amount * ((10_000 - clampedFee) / 10_000);
+};
+
+const simulateVirtualCpmmRoundTrip = (
+  buyPrice: number,
+  sellPrice: number,
+  buyLiquidityUsd: number,
+  sellLiquidityUsd: number,
+  loanAmountUsd: number,
+  buyFeeBps: number,
+  sellFeeBps: number,
+): {
+  grossProfitUsd: number;
+  buyImpactBps: number;
+  sellImpactBps: number;
+} | null => {
+  if (
+    !Number.isFinite(buyPrice) || buyPrice <= 0 ||
+    !Number.isFinite(sellPrice) || sellPrice <= 0 ||
+    !Number.isFinite(buyLiquidityUsd) || buyLiquidityUsd <= 0 ||
+    !Number.isFinite(sellLiquidityUsd) || sellLiquidityUsd <= 0 ||
+    !Number.isFinite(loanAmountUsd) || loanAmountUsd <= 0
+  ) {
+    return null;
+  }
+
+  // Build virtual reserves from pool TVL and mid price (quote/base).
+  const buyQuoteReserveUsd = buyLiquidityUsd * 0.5;
+  const buyBaseReserve = buyQuoteReserveUsd / buyPrice;
+  const sellQuoteReserveUsd = sellLiquidityUsd * 0.5;
+  const sellBaseReserve = sellQuoteReserveUsd / sellPrice;
+  if (buyQuoteReserveUsd <= 0 || buyBaseReserve <= 0 || sellQuoteReserveUsd <= 0 || sellBaseReserve <= 0) {
+    return null;
+  }
+
+  const buyInputAfterFee = applySwapFee(loanAmountUsd, buyFeeBps);
+  if (buyInputAfterFee <= 0) return null;
+
+  // Swap quote -> base on buy pool.
+  const baseOut = (buyBaseReserve * buyInputAfterFee) / (buyQuoteReserveUsd + buyInputAfterFee);
+  if (!Number.isFinite(baseOut) || baseOut <= 0) return null;
+
+  const buyExecPrice = loanAmountUsd / baseOut;
+  const buyImpact = ((buyExecPrice / buyPrice) - 1) * 10_000;
+  const buyImpactBps = clampNumber(Number.isFinite(buyImpact) ? buyImpact : 10_000, 0, 10_000);
+
+  // Swap base -> quote on sell pool.
+  const sellInputAfterFee = applySwapFee(baseOut, sellFeeBps);
+  if (sellInputAfterFee <= 0) return null;
+  const quoteOut = (sellQuoteReserveUsd * sellInputAfterFee) / (sellBaseReserve + sellInputAfterFee);
+  if (!Number.isFinite(quoteOut) || quoteOut <= 0) return null;
+
+  const sellExecPrice = quoteOut / baseOut;
+  const sellImpact = ((sellPrice - sellExecPrice) / sellPrice) * 10_000;
+  const sellImpactBps = clampNumber(Number.isFinite(sellImpact) ? sellImpact : 10_000, 0, 10_000);
+
+  return {
+    grossProfitUsd: quoteOut - loanAmountUsd,
+    buyImpactBps,
+    sellImpactBps,
+  };
+};
+
 const dexPenaltyBps: Record<Opportunity['buyDex'], number> = {
-  'Uniswap V3': 4,
-  'Uniswap V2': 8,
-  'SushiSwap': 9,
-  'Balancer': 6,
-  'Curve': 3,
+  'Uniswap V3': Math.max(0, Math.round(parseNumberEnv(Deno.env.get('SCANNER_ROUTE_PENALTY_BPS_UNIV3'), 2))),
+  'Uniswap V2': Math.max(0, Math.round(parseNumberEnv(Deno.env.get('SCANNER_ROUTE_PENALTY_BPS_UNIV2'), 4))),
+  'SushiSwap': Math.max(0, Math.round(parseNumberEnv(Deno.env.get('SCANNER_ROUTE_PENALTY_BPS_SUSHI'), 4))),
+  'Balancer': Math.max(0, Math.round(parseNumberEnv(Deno.env.get('SCANNER_ROUTE_PENALTY_BPS_BALANCER'), 2))),
+  'Curve': Math.max(0, Math.round(parseNumberEnv(Deno.env.get('SCANNER_ROUTE_PENALTY_BPS_CURVE'), 1))),
 };
 
 const DEFAULT_MAX_EXECUTABLE_LIQUIDITY_FRACTION = 0.35;
@@ -427,36 +1464,83 @@ const evaluateSingleVolume = (
   config: ScannerConfig,
   executableLoanAmount: number,
 ): ExecutionCandidate | null => {
-  if (!Number.isFinite(executableLoanAmount) || executableLoanAmount <= 0) return null;
+  const detailed = evaluateSingleVolumeDetailed(
+    buyPrice,
+    sellPrice,
+    buyLiquidityUsd,
+    sellLiquidityUsd,
+    buyDex,
+    sellDex,
+    network,
+    config,
+    executableLoanAmount,
+  );
+  return detailed.candidate;
+};
+
+const evaluateSingleVolumeDetailed = (
+  buyPrice: number,
+  sellPrice: number,
+  buyLiquidityUsd: number,
+  sellLiquidityUsd: number,
+  buyDex: Opportunity['buyDex'],
+  sellDex: Opportunity['sellDex'],
+  network: NetworkName,
+  config: ScannerConfig,
+  executableLoanAmount: number,
+): { candidate: ExecutionCandidate | null; reason: NoExecutableReason | null } => {
+  if (!Number.isFinite(executableLoanAmount) || executableLoanAmount <= 0) {
+    return { candidate: null, reason: 'invalidLoanOrScale' };
+  }
 
   const buyPriceFixed = decimalToFixed(buyPrice, FP_SCALE);
   const sellPriceFixed = decimalToFixed(sellPrice, FP_SCALE);
   const loanFixed = decimalToFixed(executableLoanAmount, USD_SCALE);
   const configLoanFixed = decimalToFixed(config.loanAmountUsd, USD_SCALE);
-  if (buyPriceFixed <= 0n || sellPriceFixed <= 0n || loanFixed <= 0n || configLoanFixed <= 0n) return null;
+  if (buyPriceFixed <= 0n || sellPriceFixed <= 0n || loanFixed <= 0n || configLoanFixed <= 0n) {
+    return { candidate: null, reason: 'invalidLoanOrScale' };
+  }
 
-  const buyImpactBps = estimateSlippageBps(executableLoanAmount, buyLiquidityUsd);
-  const sellImpactBps = estimateSlippageBps(executableLoanAmount, sellLiquidityUsd);
+  const buyFeeBps = dexSwapFeeBps[buyDex];
+  const sellFeeBps = dexSwapFeeBps[sellDex];
+  const cpmmRoundTrip = simulateVirtualCpmmRoundTrip(
+    buyPrice,
+    sellPrice,
+    buyLiquidityUsd,
+    sellLiquidityUsd,
+    executableLoanAmount,
+    buyFeeBps,
+    sellFeeBps,
+  );
+  if (!cpmmRoundTrip) {
+    return { candidate: null, reason: 'invalidLoanOrScale' };
+  }
+
+  const buyImpactBps = Math.round(cpmmRoundTrip.buyImpactBps);
+  const sellImpactBps = Math.round(cpmmRoundTrip.sellImpactBps);
   const routePenaltyBps = dexPenaltyBps[buyDex] + dexPenaltyBps[sellDex];
   const estimatedSlippageBps = buyImpactBps + sellImpactBps + routePenaltyBps;
 
   if (buyImpactBps > config.maxSlippageBps || sellImpactBps > config.maxSlippageBps) {
-    return null;
+    return { candidate: null, reason: 'slippageExceeded' };
   }
 
   const quotedBuyPrice = mulDiv(buyPriceFixed, BigInt(10_000 + buyImpactBps), 10_000n);
   const quotedSellPrice = mulDiv(sellPriceFixed, BigInt(10_000 - sellImpactBps), 10_000n);
   if (quotedBuyPrice <= 0n || quotedSellPrice <= 0n || quotedSellPrice <= quotedBuyPrice) {
-    return null;
+    return { candidate: null, reason: 'noCrossAfterSlippage' };
   }
 
   const quotedSpreadFixed = mulDiv(quotedSellPrice - quotedBuyPrice, FP_SCALE, quotedBuyPrice);
   const maxSpreadFixed = decimalToFixed(MAX_REASONABLE_SPREAD_FRACTION, FP_SCALE);
   if (quotedSpreadFixed <= 0n || quotedSpreadFixed > maxSpreadFixed) {
-    return null;
+    return { candidate: null, reason: 'unreasonableSpread' };
   }
 
-  const grossProfitFixed = mulDiv(quotedSpreadFixed, loanFixed, FP_SCALE);
+  const grossProfitFixed = decimalToFixed(cpmmRoundTrip.grossProfitUsd, USD_SCALE);
+  if (grossProfitFixed <= 0n) {
+    return { candidate: null, reason: 'noCrossAfterSlippage' };
+  }
   const routePenaltyCostFixed = mulDiv(loanFixed, BigInt(routePenaltyBps), 10_000n);
 
   // Gas cost scales inversely with trade-size ratio via deterministic sqrt(configLoan / loan)
@@ -468,12 +1552,12 @@ const evaluateSingleVolume = (
   const netProfitFixed = grossProfitFixed - routePenaltyCostFixed - gasCostFixed;
   const maxReasonableProfitFixed = mulDiv(loanFixed, decimalToFixed(MAX_REASONABLE_ROI_FRACTION, FP_SCALE), FP_SCALE);
   if (grossProfitFixed > maxReasonableProfitFixed || netProfitFixed > maxReasonableProfitFixed) {
-    return null;
+    return { candidate: null, reason: 'unrealisticRoi' };
   }
 
   // Hard profitability gate: never allow candidates where gas dominates or net is non-positive.
   if (grossProfitFixed <= gasCostFixed || netProfitFixed <= 0n) {
-    return null;
+    return { candidate: null, reason: 'gasDominatesOrNonPositive' };
   }
 
   const grossProfit = fixedToNumber(grossProfitFixed, USD_SCALE, 6);
@@ -481,14 +1565,17 @@ const evaluateSingleVolume = (
   const netProfit = fixedToNumber(netProfitFixed, USD_SCALE, 6);
 
   return {
-    executableLoanAmount,
-    grossProfit,
-    netProfit,
-    gasCost,
-    estimatedSlippageBps,
-    buyImpactBps,
-    sellImpactBps,
-    routePenaltyBps,
+    candidate: {
+      executableLoanAmount,
+      grossProfit,
+      netProfit,
+      gasCost,
+      estimatedSlippageBps,
+      buyImpactBps,
+      sellImpactBps,
+      routePenaltyBps,
+    },
+    reason: null,
   };
 };
 
@@ -547,15 +1634,22 @@ const evaluateExecutionCandidate = (
   sellDex: Opportunity['sellDex'],
   network: NetworkName,
   config: ScannerConfig,
-): ExecutionCandidate | null => {
+): ExecutionEvaluationResult => {
+  const noExecutableReasons = createNoExecutableReasonCounts();
   const buyLiquidityUsd = parsePoolLiquidity(buyPool);
   const sellLiquidityUsd = parsePoolLiquidity(sellPool);
   const executableLiquidityUsd = Math.min(buyLiquidityUsd, sellLiquidityUsd);
-  if (executableLiquidityUsd <= 0) return null;
+  if (executableLiquidityUsd <= 0) {
+    noExecutableReasons.noLiquidity += 1;
+    return { candidate: null, noExecutableReasons };
+  }
 
   // Pre-check: verify prices cross (sellPrice > buyPrice) before volume search
   // Inspired by Flashbots simple-arbitrage crossed market detection
-  if (sellPrice <= buyPrice) return null;
+  if (sellPrice <= buyPrice) {
+    noExecutableReasons.noRawCross += 1;
+    return { candidate: null, noExecutableReasons };
+  }
 
   let best: ExecutionCandidate | null = null;
   let prevCandidate: ExecutionCandidate | null = null;
@@ -565,12 +1659,16 @@ const evaluateExecutionCandidate = (
     const requestedLoanAmount = config.loanAmountUsd * step;
     const executableLoanAmount = Math.min(requestedLoanAmount, executableLiquidityUsd * config.maxLiquidityUsageFraction);
 
-    const candidate = evaluateSingleVolume(
+    const detailed = evaluateSingleVolumeDetailed(
       buyPrice, sellPrice, buyLiquidityUsd, sellLiquidityUsd,
       buyDex, sellDex, network, config, executableLoanAmount
     );
+    const candidate = detailed.candidate;
 
     if (!candidate) {
+      if (detailed.reason) {
+        noExecutableReasons[detailed.reason] += 1;
+      }
       prevVolume = executableLoanAmount;
       prevCandidate = null;
       continue;
@@ -597,16 +1695,238 @@ const evaluateExecutionCandidate = (
     prevCandidate = candidate;
   }
 
-  return best;
+  return {
+    candidate: best,
+    noExecutableReasons: best ? undefined : noExecutableReasons,
+  };
+};
+
+const buildCycleShadowDiagnostics = (
+  quoteMaps: Array<{
+    dex: Opportunity['buyDex'];
+    map: Map<string, { price: number; pool: Pool }>;
+  }>,
+): ScanDiagnostics['cycleShadow'] => {
+  type Edge = {
+    to: string;
+    rate: number;
+    liquidityUsd: number;
+    sourceDex: Opportunity['buyDex'];
+    sourceType: 'subgraph' | 'dexscreener' | 'gecko';
+  };
+
+  const adjacency = new Map<string, Edge[]>();
+  const tokenDegree = new Map<string, number>();
+  const tokenLiquidity = new Map<string, number>();
+
+  const pushEdge = (from: string, edge: Edge) => {
+    if (!Number.isFinite(edge.rate) || edge.rate <= 0) return;
+    if (!adjacency.has(from)) adjacency.set(from, []);
+    adjacency.get(from)!.push(edge);
+    tokenDegree.set(from, (tokenDegree.get(from) || 0) + 1);
+    tokenLiquidity.set(from, Math.max(tokenLiquidity.get(from) || 0, edge.liquidityUsd));
+  };
+
+  const seenPairs = new Set<string>();
+  for (const { dex, map } of quoteMaps) {
+    for (const [pairKey, quote] of map.entries()) {
+      const [networkPart, symbols] = pairKey.split(':');
+      if (!networkPart || !symbols) continue;
+      const [base, quoteSymbol] = symbols.split('/').map((s) => normalizeTokenSymbol(s));
+      if (!base || !quoteSymbol || base === quoteSymbol) continue;
+
+      const price = Number(quote.price);
+      if (!Number.isFinite(price) || price <= 0) continue;
+
+      const liq = parsePoolLiquidity(quote.pool);
+      if (!Number.isFinite(liq) || liq <= 0) continue;
+
+      const sourceType = quote.pool.sourceType || 'subgraph';
+      const net = toNetworkName(networkPart);
+      const fromBase = `${net}:${base}`;
+      const fromQuote = `${net}:${quoteSymbol}`;
+      const pairId = `${net}:${base}/${quoteSymbol}:${dex}`;
+      if (seenPairs.has(pairId)) continue;
+      seenPairs.add(pairId);
+
+      pushEdge(fromBase, {
+        to: fromQuote,
+        rate: price,
+        liquidityUsd: liq,
+        sourceDex: dex,
+        sourceType,
+      });
+      pushEdge(fromQuote, {
+        to: fromBase,
+        rate: 1 / price,
+        liquidityUsd: liq,
+        sourceDex: dex,
+        sourceType,
+      });
+    }
+  }
+
+  const tokensByNetwork = new Map<NetworkName, string[]>();
+  for (const token of adjacency.keys()) {
+    const [networkPart] = token.split(':');
+    const network = toNetworkName(networkPart);
+    if (!tokensByNetwork.has(network)) tokensByNetwork.set(network, []);
+    tokensByNetwork.get(network)!.push(token);
+  }
+
+  const topCycles: NonNullable<ScanDiagnostics['cycleShadow']>['topCycles'] = [];
+  let testedTriangles = 0;
+  let candidatePaths = 0;
+
+  for (const [network, tokens] of tokensByNetwork.entries()) {
+    const ranked = [...tokens]
+      .sort((a, b) => {
+        const degreeDiff = (tokenDegree.get(b) || 0) - (tokenDegree.get(a) || 0);
+        if (degreeDiff !== 0) return degreeDiff;
+        return (tokenLiquidity.get(b) || 0) - (tokenLiquidity.get(a) || 0);
+      })
+      .slice(0, 28);
+
+    for (const start of ranked) {
+      const level1 = (adjacency.get(start) || [])
+        .sort((a, b) => b.liquidityUsd - a.liquidityUsd)
+        .slice(0, 10);
+      for (const e1 of level1) {
+        if (e1.to === start) continue;
+        const level2 = (adjacency.get(e1.to) || [])
+          .sort((a, b) => b.liquidityUsd - a.liquidityUsd)
+          .slice(0, 10);
+        for (const e2 of level2) {
+          if (e2.to === start || e2.to === e1.to) continue;
+          const level3 = adjacency.get(e2.to) || [];
+          const backEdge = level3.find((e3) => e3.to === start);
+          testedTriangles += 1;
+          if (!backEdge) continue;
+          const grossReturn = e1.rate * e2.rate * backEdge.rate;
+          if (!Number.isFinite(grossReturn) || grossReturn <= 1) continue;
+          candidatePaths += 1;
+
+          const grossReturnBps = (grossReturn - 1) * 10_000;
+          const minLiquidityUsd = Math.min(e1.liquidityUsd, e2.liquidityUsd, backEdge.liquidityUsd);
+          const path = `${start.split(':')[1]}->${e1.to.split(':')[1]}->${e2.to.split(':')[1]}->${start.split(':')[1]}`;
+          const sources = [e1.sourceDex, e2.sourceDex, backEdge.sourceDex].map((s) => String(s));
+
+          if (grossReturnBps < 1) continue;
+          topCycles.push({
+            network,
+            path,
+            grossReturnBps,
+            minLiquidityUsd,
+            sources,
+          });
+        }
+      }
+    }
+  }
+
+  return {
+    enabled: true,
+    networksAnalyzed: tokensByNetwork.size,
+    testedTriangles,
+    candidatePaths,
+    topCycles: topCycles
+      .sort((a, b) => {
+        if (b.grossReturnBps !== a.grossReturnBps) return b.grossReturnBps - a.grossReturnBps;
+        return b.minLiquidityUsd - a.minLiquidityUsd;
+      })
+      .slice(0, 12)
+      .map((c) => ({
+        ...c,
+        grossReturnBps: Number(c.grossReturnBps.toFixed(2)),
+        minLiquidityUsd: Number(c.minLiquidityUsd.toFixed(0)),
+      })),
+  };
+};
+
+const buildCycleShadowWatchlist = (
+  cycleShadow: NonNullable<ScanDiagnostics['cycleShadow']> | undefined,
+  config: ScannerConfig,
+): Opportunity[] => {
+  if (!cycleShadow?.enabled || !Array.isArray(cycleShadow.topCycles) || cycleShadow.topCycles.length === 0) {
+    return [];
+  }
+
+  const scoredCycles = cycleShadow.topCycles
+    .map((cycle) => {
+      const liquidityScore = Math.min(30, Math.log10(Math.max(1, cycle.minLiquidityUsd)) * 10);
+      const grossReturnScore = Math.min(70, cycle.grossReturnBps * 2.5);
+      const qualityScore = grossReturnScore + liquidityScore;
+      return { cycle, qualityScore };
+    })
+    .filter(({ cycle, qualityScore }) => cycle.grossReturnBps >= 4 && cycle.minLiquidityUsd >= Math.max(50_000, config.minLiquidityUsd * 0.25) && qualityScore >= 42)
+    .sort((left, right) => {
+      if (right.qualityScore !== left.qualityScore) return right.qualityScore - left.qualityScore;
+      if (right.cycle.grossReturnBps !== left.cycle.grossReturnBps) return right.cycle.grossReturnBps - left.cycle.grossReturnBps;
+      return right.cycle.minLiquidityUsd - left.cycle.minLiquidityUsd;
+    })
+    .slice(0, 2);
+
+  return scoredCycles.map(({ cycle }, index) => {
+    const routeDexes = cycle.sources.filter((source): source is Opportunity['buyDex'] => (
+      source === 'Uniswap V3'
+      || source === 'Uniswap V2'
+      || source === 'SushiSwap'
+      || source === 'Balancer'
+      || source === 'Curve'
+    ));
+    const primaryDex = routeDexes[0] ?? 'Uniswap V3';
+    const terminalDex = routeDexes[routeDexes.length - 1] ?? primaryDex;
+    const grossReturnFraction = Math.max(0, cycle.grossReturnBps / 10_000);
+    const cappedShadowGross = Math.min(config.loanAmountUsd * grossReturnFraction, config.minNetProfitUsd * 0.5);
+    const grossProfit = Number.isFinite(cappedShadowGross) ? cappedShadowGross : 0;
+    const syntheticGasCost = Math.max(config.estimatedGasUsd, config.minNetProfitUsd);
+
+    return {
+      tokenPair: `CYCLE ${cycle.path}`,
+      buyDex: primaryDex,
+      sellDex: terminalDex,
+      network: cycle.network,
+      loanAmount: Math.max(500, Math.min(config.loanAmountUsd * 0.35, cycle.minLiquidityUsd * 0.08)),
+      executableLoanAmount: 0,
+      grossProfit,
+      netProfit: -Math.max(config.minNetProfitUsd, syntheticGasCost),
+      distanceToExecutableUsd: Math.max(config.minNetProfitUsd * 2, 25 + (index * 5)),
+      gasCost: syntheticGasCost,
+      confidenceScore: Math.min(55, Math.max(18, Math.round(cycle.grossReturnBps / 3))),
+      confidenceTier: 'low',
+      spread: (cycle.grossReturnBps / 100).toFixed(3),
+      liquidity: cycle.minLiquidityUsd.toFixed(0),
+      estimatedSlippageBps: 0,
+      buyImpactBps: 0,
+      sellImpactBps: 0,
+      routePenaltyBps: Math.max(0, Math.round(100 - Math.min(100, cycle.grossReturnBps + (cycle.minLiquidityUsd / 100000)))),
+      status: 'watchlist',
+      quoteSources: ['subgraph'],
+      mathDiagnostics: {
+        reservesUsd: { buy: cycle.minLiquidityUsd, sell: cycle.minLiquidityUsd },
+        expectedOutputUsd: 0,
+        actualOutputUsd: 0,
+        expectedGrossProfitUsd: grossProfit,
+        actualGrossProfitUsd: 0,
+        slippageFraction: 0,
+        liquidityUsageFraction: 0,
+        gasEstimateUsd: syntheticGasCost,
+        passReason: `cycle shadow ${cycle.path} via ${cycle.sources.join(' -> ')} (quality ${Math.round(cycle.grossReturnBps + Math.min(30, Math.log10(Math.max(1, cycle.minLiquidityUsd)) * 10))})`,
+      },
+    };
+  });
 };
 
 const buildScannerConfig = (body: Record<string, unknown>): ScannerConfig => {
-  const envLoanAmountUsd = parseNumberEnv(Deno.env.get('SCANNER_LOAN_AMOUNT_USD'), 10_000);
+  const envLoanAmountUsd = parseNumberEnv(Deno.env.get('SCANNER_LOAN_AMOUNT_USD'), 6_000);
   const bodyLoanAmountUsd = parseNumberInput(body.loanAmountUsd);
   const bodyMinSpreadPercent = parseNumberInput(body.minSpreadPercent);
   const bodyMinLiquidityUsd = parseNumberInput(body.minLiquidityUsd);
   const bodyMinNetProfitUsd = parseNumberInput(body.minNetProfitUsd);
   const bodyAdaptiveProfitPressureMultiplier = parseNumberInput(body.adaptiveProfitPressureMultiplier);
+  const bodyAdaptiveProfitReliefMultiplier = parseNumberInput(body.adaptiveProfitReliefMultiplier);
+  const bodyAdaptiveMinNetFloorPercent = parseNumberInput(body.adaptiveMinNetFloorPercent);
+  const bodyAdaptiveMinNetFloorFraction = parseNumberInput(body.adaptiveMinNetFloorFraction);
   const bodyMaxSlippageBps = parseNumberInput(body.maxSlippageBps);
   const bodyMaxLiquidityUsagePercent = parseNumberInput(body.maxLiquidityUsagePercent);
   const bodyMaxLiquidityUsageFraction = parseNumberInput(body.maxLiquidityUsageFraction);
@@ -614,6 +1934,19 @@ const buildScannerConfig = (body: Record<string, unknown>): ScannerConfig => {
   const bodyEstimatedGasUsd = parseNumberInput(body.estimatedGasUsd);
   const bodyGasUnits = parseNumberInput(body.gasUnits);
   const bodyGasSafetyMultiplier = parseNumberInput(body.gasSafetyMultiplier);
+  const bodyEnableDexScreenerFallback = parseBooleanInput(
+    body.enableDexScreener ?? body.enableDexScreenerFallback,
+  );
+  const bodyEnableGeckoFallback = parseBooleanInput(
+    body.enableGecko ?? body.enableGeckoFallback,
+  );
+  const bodyEnableCycleShadow = parseBooleanInput(body.enableCycleShadow);
+  const bodySourcePolicyMode = parseSourcePolicyMode(
+    body.sourcePolicyMode ?? body.sourcePriorityMode,
+  );
+  const bodyUseExternalRawFeed = parseBooleanInput(
+    body.useExternalRawFeed ?? body.externalRawDataEnabled,
+  );
 
   const envGasPriceByNetworkRaw = Deno.env.get('SCANNER_GAS_PRICE_GWEI_BY_NETWORK');
   let envGasPriceByNetwork: Partial<Record<NetworkName, number>> = {};
@@ -636,6 +1969,28 @@ const buildScannerConfig = (body: Record<string, unknown>): ScannerConfig => {
     }
   }
   const bodyNativeUsdByNetwork = parseNetworkNumberMap((body.nativeTokenUsdByNetwork ?? body.networkNativeTokenUsd) as unknown);
+
+  const envMinNetEdgeBpsRaw = Deno.env.get('SCANNER_MIN_NET_EDGE_BPS_BY_NETWORK');
+  let envMinNetEdgeBpsByNetwork: Partial<Record<NetworkName, number>> = {};
+  if (envMinNetEdgeBpsRaw) {
+    try {
+      envMinNetEdgeBpsByNetwork = parseNetworkNumberMap(JSON.parse(envMinNetEdgeBpsRaw));
+    } catch {
+      envMinNetEdgeBpsByNetwork = {};
+    }
+  }
+  const bodyMinNetEdgeBpsByNetwork = parseNetworkNumberMap((body.minNetEdgeBpsByNetwork ?? body.netEdgeBpsByNetwork) as unknown);
+
+  const envExecutionRiskBufferRaw = Deno.env.get('SCANNER_EXECUTION_RISK_BUFFER_USD_BY_NETWORK');
+  let envExecutionRiskBufferByNetwork: Partial<Record<NetworkName, number>> = {};
+  if (envExecutionRiskBufferRaw) {
+    try {
+      envExecutionRiskBufferByNetwork = parseNetworkNumberMap(JSON.parse(envExecutionRiskBufferRaw));
+    } catch {
+      envExecutionRiskBufferByNetwork = {};
+    }
+  }
+  const bodyExecutionRiskBufferByNetwork = parseNetworkNumberMap((body.executionRiskBufferUsdByNetwork ?? body.executionBufferUsdByNetwork) as unknown);
 
   const envByNetworkRaw = Deno.env.get('SCANNER_MIN_NET_PROFIT_USD_BY_NETWORK');
   let envByNetwork: Partial<Record<NetworkName, number>> = {};
@@ -662,16 +2017,41 @@ const buildScannerConfig = (body: Record<string, unknown>): ScannerConfig => {
     Math.min(0.95, normalizedMaxLiquidityUsagePercent / 100),
   );
 
+  const envAdaptiveMinNetFloorPercent = parseNumberEnv(
+    Deno.env.get('SCANNER_MIN_NET_PROFIT_FLOOR_PERCENT'),
+    60,
+  );
+  const normalizedAdaptiveMinNetFloorPercent = bodyAdaptiveMinNetFloorPercent
+    ?? (Number.isFinite(bodyAdaptiveMinNetFloorFraction)
+      ? (bodyAdaptiveMinNetFloorFraction as number) * 100
+      : envAdaptiveMinNetFloorPercent);
+  const adaptiveMinNetFloorFraction = Math.max(
+    0,
+    Math.min(1, normalizedAdaptiveMinNetFloorPercent / 100),
+  );
+
   return {
     minSpreadPercent: bodyMinSpreadPercent ?? parseNumberEnv(Deno.env.get('SCANNER_MIN_SPREAD_PERCENT'), 0.075),
-    minLiquidityUsd: bodyMinLiquidityUsd ?? parseNumberEnv(Deno.env.get('SCANNER_MIN_LIQUIDITY_USD'), 175_000),
-    minNetProfitUsd: bodyMinNetProfitUsd ?? parseNumberEnv(Deno.env.get('SCANNER_MIN_NET_PROFIT_USD'), 14),
+    minLiquidityUsd: bodyMinLiquidityUsd ?? parseNumberEnv(Deno.env.get('SCANNER_MIN_LIQUIDITY_USD'), 50_000),
+    minNetProfitUsd: bodyMinNetProfitUsd ?? parseNumberEnv(Deno.env.get('SCANNER_MIN_NET_PROFIT_USD'), 10),
     minNetProfitUsdByNetwork: {
       ...envByNetwork,
       ...bodyByNetwork,
     },
+    minNetEdgeBpsByNetwork: {
+      ...DEFAULT_MIN_NET_EDGE_BPS_BY_NETWORK,
+      ...envMinNetEdgeBpsByNetwork,
+      ...bodyMinNetEdgeBpsByNetwork,
+    },
+    executionRiskBufferUsdByNetwork: {
+      ...DEFAULT_EXECUTION_RISK_BUFFER_USD_BY_NETWORK,
+      ...envExecutionRiskBufferByNetwork,
+      ...bodyExecutionRiskBufferByNetwork,
+    },
     adaptiveProfitPressureMultiplier: bodyAdaptiveProfitPressureMultiplier ?? parseNumberEnv(Deno.env.get('SCANNER_NET_PROFIT_GAS_MULTIPLIER'), 0.35),
-    maxSlippageBps: bodyMaxSlippageBps ?? parseNumberEnv(Deno.env.get('SCANNER_MAX_SLIPPAGE_BPS'), 40),
+    adaptiveProfitReliefMultiplier: bodyAdaptiveProfitReliefMultiplier ?? parseNumberEnv(Deno.env.get('SCANNER_NET_PROFIT_GAS_RELIEF_MULTIPLIER'), 0.25),
+    adaptiveMinNetFloorFraction,
+    maxSlippageBps: bodyMaxSlippageBps ?? parseNumberEnv(Deno.env.get('SCANNER_MAX_SLIPPAGE_BPS'), 55),
     maxLiquidityUsageFraction,
     maxResults: Math.max(1, Math.min(50, bodyMaxResults ?? parseNumberEnv(Deno.env.get('SCANNER_MAX_RESULTS'), 25))),
     loanAmountUsd: bodyLoanAmountUsd ?? envLoanAmountUsd,
@@ -686,19 +2066,47 @@ const buildScannerConfig = (body: Record<string, unknown>): ScannerConfig => {
       ...envNativeUsdByNetwork,
       ...bodyNativeUsdByNetwork,
     },
+    enableDexScreenerFallback: bodyEnableDexScreenerFallback
+      ?? parseBooleanEnv(Deno.env.get('SCANNER_ENABLE_DEXSCREENER'), false),
+    enableGeckoFallback: bodyEnableGeckoFallback
+      ?? parseBooleanEnv(Deno.env.get('SCANNER_ENABLE_GECKO'), false),
+    enableCycleShadow: bodyEnableCycleShadow
+      ?? parseBooleanEnv(Deno.env.get('SCANNER_ENABLE_CYCLE_SHADOW'), true),
+    sourcePolicyMode: bodySourcePolicyMode
+      ?? parseSourcePolicyMode(Deno.env.get('SCANNER_SOURCE_POLICY_MODE'))
+      ?? 'neutral',
+    useExternalRawFeed: bodyUseExternalRawFeed
+      ?? parseBooleanEnv(Deno.env.get('SCANNER_USE_EXTERNAL_RAW_FEED'), false),
   };
 };
 
 const fetchSubgraph = async (url: string, query: string) => {
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query }),
-  });
-  if (!res.ok) throw new Error(`Subgraph error ${res.status}`);
-  const json = await res.json();
-  if (json.errors) throw new Error(JSON.stringify(json.errors));
-  return json.data;
+  const timeoutMs = Math.max(
+    2500,
+    parseNumberEnv(Deno.env.get('SCANNER_SUBGRAPH_TIMEOUT_MS'), 12_000),
+  );
+  const controller = new AbortController();
+  const timerId = setTimeout(() => controller.abort('subgraph-timeout'), timeoutMs);
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query }),
+      signal: controller.signal,
+    });
+    if (!res.ok) throw new Error(`Subgraph error ${res.status}`);
+    const json = await res.json();
+    if (json.errors) throw new Error(JSON.stringify(json.errors));
+    return json.data;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error(`Subgraph timeout after ${timeoutMs}ms`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timerId);
+  }
 };
 
 const fetchSubgraphWithFallback = async (primaryUrl: string, fallbackUrl: string, query: string) => {
@@ -765,6 +2173,39 @@ const parseBooleanEnv = (value: string | undefined, fallback = false): boolean =
   return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on';
 };
 
+const parseCsvEnvSet = (value: string | undefined): Set<string> => {
+  const raw = (value || '').trim();
+  if (!raw) return new Set<string>();
+  const values = raw
+    .split(',')
+    .map((entry) => entry.trim().toLowerCase())
+    .filter((entry) => entry.length > 0);
+  return new Set(values);
+};
+
+const DEX_ALIAS_TO_BUCKET: Record<string, 'uniV3' | 'uniV2' | 'sushi' | 'balancer' | 'curve'> = {
+  uniswapv3: 'uniV3',
+  uniswap_v3: 'uniV3',
+  univ3: 'uniV3',
+  uniswapv2: 'uniV2',
+  uniswap_v2: 'uniV2',
+  univ2: 'uniV2',
+  sushiswap: 'sushi',
+  sushi: 'sushi',
+  balancer: 'balancer',
+  curve: 'curve',
+};
+
+const resolveDisabledDexBuckets = (entries: Iterable<string>): Set<'uniV3' | 'uniV2' | 'sushi' | 'balancer' | 'curve'> => {
+  const disabled = new Set<'uniV3' | 'uniV2' | 'sushi' | 'balancer' | 'curve'>();
+  for (const entry of entries) {
+    const normalized = entry.replace(/[^a-z0-9_]/g, '');
+    const bucket = DEX_ALIAS_TO_BUCKET[normalized];
+    if (bucket) disabled.add(bucket);
+  }
+  return disabled;
+};
+
 const evaluateScannerReadinessGates = async () => {
   const hasGraphKey = Boolean(Deno.env.get('THEGRAPH_API_KEY'));
   const graphConnectivity = await Promise.all([
@@ -801,13 +2242,13 @@ const topPairsQuery = (limit = 20) => `
 {
   pools(first: ${limit}, orderBy: volumeUSD, orderDirection: desc) {
     id
-    fee
-    token0 { symbol address }
-    token1 { symbol address }
+    fee: feeTier
+    token0 { symbol address: id }
+    token1 { symbol address: id }
     token0Price
     token1Price
     liquidity
-    reserveUSD
+    reserveUSD: totalValueLockedUSD
   }
 }`;
 
@@ -815,8 +2256,8 @@ const topV2PairsQuery = (limit = 20) => `
 {
   pairs(first: ${limit}, orderBy: volumeUSD, orderDirection: desc) {
     id
-    token0 { symbol address }
-    token1 { symbol address }
+    token0 { symbol address: id }
+    token1 { symbol address: id }
     token0Price
     token1Price
     reserveUSD
@@ -840,6 +2281,184 @@ const topCurvePoolsQuery = (limit = 20) => `
     cumulativeVolumeUSD
   }
 }`;
+
+const PRIORITY_PAIR_SUBGRAPH_LIMIT_PER_PAIR = Math.max(
+  1,
+  Math.round(parseNumberEnv(Deno.env.get('SCANNER_PRIORITY_PAIR_SUBGRAPH_LIMIT'), 8)),
+);
+
+const PRIORITY_PAIR_SUBGRAPH_MIN_LIQUIDITY_USD = Math.max(
+  20_000,
+  parseNumberEnv(Deno.env.get('SCANNER_PRIORITY_PAIR_SUBGRAPH_MIN_LIQUIDITY_USD'), 120_000),
+);
+
+const priorityPairV3Query = (tokenA: string, tokenB: string, limit = PRIORITY_PAIR_SUBGRAPH_LIMIT_PER_PAIR) => `
+{
+  pools(first: ${limit}, orderBy: volumeUSD, orderDirection: desc, where: { token0_in: ["${tokenA}", "${tokenB}"], token1_in: ["${tokenA}", "${tokenB}"] }) {
+    id
+    fee: feeTier
+    token0 { symbol address: id }
+    token1 { symbol address: id }
+    token0Price
+    token1Price
+    liquidity
+    reserveUSD: totalValueLockedUSD
+  }
+}`;
+
+const priorityPairV2Query = (tokenA: string, tokenB: string, limit = PRIORITY_PAIR_SUBGRAPH_LIMIT_PER_PAIR) => `
+{
+  pairs(first: ${limit}, orderBy: volumeUSD, orderDirection: desc, where: { token0_in: ["${tokenA}", "${tokenB}"], token1_in: ["${tokenA}", "${tokenB}"] }) {
+    id
+    token0 { symbol address: id }
+    token1 { symbol address: id }
+    token0Price
+    token1Price
+    reserveUSD
+  }
+}`;
+
+type PriorityPairTarget = {
+  network: NetworkName;
+  baseSymbol: string;
+  quoteSymbol: string;
+  baseAddress: string;
+  quoteAddress: string;
+};
+
+const buildPriorityPairTargets = (networks: string[]): PriorityPairTarget[] => {
+  const selectedNetworks = (networks.length > 0 ? networks : ['ethereum'])
+    .map((n) => toNetworkName(CHAIN_MAP[n] || n));
+  const priorityTermsByNetwork = buildPriorityTermsByNetwork(selectedNetworks);
+  const targets: PriorityPairTarget[] = [];
+  const seen = new Set<string>();
+
+  for (const network of selectedNetworks) {
+    const pairTerms = priorityTermsByNetwork[network] || [];
+    for (const pairTerm of pairTerms) {
+      const [tokenA, tokenB] = normalizeSearchTerm(pairTerm).split(' ');
+      if (!tokenA || !tokenB) continue;
+      const trackable = getTrackableBaseQuote(network, tokenA, tokenB);
+      if (!trackable) continue;
+
+      const baseAddress = lookupTokenAddress(network, trackable.base)?.toLowerCase();
+      const quoteAddress = lookupTokenAddress(network, trackable.quote)?.toLowerCase();
+      if (!baseAddress || !quoteAddress || baseAddress === quoteAddress) continue;
+
+      const key = `${network}:${trackable.base}/${trackable.quote}:${baseAddress}:${quoteAddress}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      targets.push({
+        network,
+        baseSymbol: trackable.base,
+        quoteSymbol: trackable.quote,
+        baseAddress,
+        quoteAddress,
+      });
+    }
+  }
+
+  return targets;
+};
+
+const matchesPriorityTarget = (pool: Pool, target: PriorityPairTarget): boolean => {
+  const token0Address = String(pool.token0?.address || '').toLowerCase();
+  const token1Address = String(pool.token1?.address || '').toLowerCase();
+  if (!token0Address || !token1Address) return false;
+  return (
+    (token0Address === target.baseAddress && token1Address === target.quoteAddress)
+    || (token0Address === target.quoteAddress && token1Address === target.baseAddress)
+  );
+};
+
+const fetchPriorityPairSubgraphPools = async (
+  networks: string[],
+  dynamicPriorityTermsByNetwork?: PriorityTermsByNetwork,
+) => {
+  const targets = buildPriorityPairTargetsWithDynamic(networks, dynamicPriorityTermsByNetwork);
+
+  const uniV3Pools: Pool[] = [];
+  const uniV2Pools: Pool[] = [];
+  const sushiPools: Pool[] = [];
+  const balancerPools: Pool[] = [];
+  const curvePools: Pool[] = [];
+
+  const meta = {
+    targets: targets.length,
+    queries: 0,
+    responsesOk: 0,
+    errors: 0,
+    entriesAccepted: 0,
+  };
+
+  if (targets.length === 0) {
+    return { uniV3Pools, uniV2Pools, sushiPools, balancerPools, curvePools, meta };
+  }
+
+  for (const target of targets) {
+    const queryV3 = priorityPairV3Query(target.baseAddress, target.quoteAddress);
+    const queryV2 = priorityPairV2Query(target.baseAddress, target.quoteAddress);
+
+    const requests = [
+      fetchSubgraphWithFallback(UNI_V3_SUBGRAPH, UNI_V3_SUBGRAPH_PUBLIC, queryV3),
+      fetchSubgraphWithFallback(UNI_V2_SUBGRAPH, UNI_V2_SUBGRAPH_PUBLIC, queryV2),
+      fetchSubgraphWithFallback(SUSHI_SUBGRAPH, SUSHI_SUBGRAPH_PUBLIC, queryV2),
+    ];
+
+    meta.queries += requests.length;
+    const results = await Promise.allSettled(requests);
+
+    const v3 = results[0];
+    if (v3.status === 'fulfilled') {
+      meta.responsesOk += 1;
+      const pools = ((v3.value as { pools?: Record<string, unknown>[] })?.pools || [])
+        .map((pool) => toPoolFromPair(pool, 'Uniswap V3'))
+        .filter((pool) => toNetworkName(pool.network) === target.network)
+        .filter((pool) => matchesPriorityTarget(pool, target))
+        .filter((pool) => parsePoolLiquidity(pool) >= PRIORITY_PAIR_SUBGRAPH_MIN_LIQUIDITY_USD);
+      for (const pool of pools) {
+        upsertFallbackPool(uniV3Pools, pool);
+        meta.entriesAccepted += 1;
+      }
+    } else {
+      meta.errors += 1;
+    }
+
+    const v2 = results[1];
+    if (v2.status === 'fulfilled') {
+      meta.responsesOk += 1;
+      const pools = ((v2.value as { pairs?: Record<string, unknown>[] })?.pairs || [])
+        .map((pair) => toPoolFromPair(pair, 'Uniswap V2'))
+        .filter((pool) => toNetworkName(pool.network) === target.network)
+        .filter((pool) => matchesPriorityTarget(pool, target))
+        .filter((pool) => parsePoolLiquidity(pool) >= PRIORITY_PAIR_SUBGRAPH_MIN_LIQUIDITY_USD);
+      for (const pool of pools) {
+        upsertFallbackPool(uniV2Pools, pool);
+        meta.entriesAccepted += 1;
+      }
+    } else {
+      meta.errors += 1;
+    }
+
+    const sushi = results[2];
+    if (sushi.status === 'fulfilled') {
+      meta.responsesOk += 1;
+      const pools = ((sushi.value as { pairs?: Record<string, unknown>[] })?.pairs || [])
+        .map((pair) => toPoolFromPair(pair, 'SushiSwap'))
+        .filter((pool) => toNetworkName(pool.network) === target.network)
+        .filter((pool) => matchesPriorityTarget(pool, target))
+        .filter((pool) => parsePoolLiquidity(pool) >= PRIORITY_PAIR_SUBGRAPH_MIN_LIQUIDITY_USD);
+      for (const pool of pools) {
+        upsertFallbackPool(sushiPools, pool);
+        meta.entriesAccepted += 1;
+      }
+    } else {
+      meta.errors += 1;
+    }
+  }
+
+  return { uniV3Pools, uniV2Pools, sushiPools, balancerPools, curvePools, meta };
+};
 
 const toPoolFromPair = (pair: Record<string, unknown>, dex: 'Uniswap V3' | 'Uniswap V2' | 'SushiSwap' | 'Balancer' | 'Curve' = 'Uniswap V3'): Pool => {
   const token0 = (pair.token0 as { symbol?: string; address?: string } | undefined) || {};
@@ -928,24 +2547,52 @@ const DEFAULT_GAS_PRICE_GWEI_BY_NETWORK: Record<NetworkName, number> = {
 };
 
 const DEFAULT_NATIVE_TOKEN_USD_BY_NETWORK: Record<NetworkName, number> = {
-  ethereum: 3200,
+  ethereum: 2600,
   polygon: 0.8,
-  arbitrum: 3200,
-  base: 3200,
+  arbitrum: 2600,
+  base: 2600,
   bsc: 600,
+};
+
+const DEFAULT_MIN_NET_EDGE_BPS_BY_NETWORK: Record<NetworkName, number> = {
+  ethereum: 28,
+  polygon: 10,
+  arbitrum: 10,
+  base: 10,
+  bsc: 12,
+};
+
+const DEFAULT_EXECUTION_RISK_BUFFER_USD_BY_NETWORK: Record<NetworkName, number> = {
+  ethereum: 5,
+  polygon: 1.5,
+  arbitrum: 1,
+  base: 1,
+  bsc: 1.5,
 };
 
 const GECKO_NETWORK_TO_APP: Record<string, NetworkName> = {
   eth: 'ethereum',
   ethereum: 'ethereum',
   polygon: 'polygon',
+  matic: 'polygon',
+  maticpos: 'polygon',
   polygon_pos: 'polygon',
+  arbitrumone: 'arbitrum',
+  arb: 'arbitrum',
   arbitrum: 'arbitrum',
   arbitrum_one: 'arbitrum',
   base: 'base',
   base_mainnet: 'base',
   bsc: 'bsc',
   binance_smart_chain: 'bsc',
+};
+
+const APP_NETWORK_TO_GECKO: Record<NetworkName, string> = {
+  ethereum: 'eth',
+  polygon: 'polygon_pos',
+  arbitrum: 'arbitrum',
+  base: 'base',
+  bsc: 'bsc',
 };
 
 import { CORE_BASE_TOKENS, SEARCH_TERMS_BY_NETWORK, NetworkName, isNetworkName } from '../../../shared/networks-tokens.ts';
@@ -992,7 +2639,236 @@ const DEX_ROUTERS: Record<NetworkName, Partial<Record<'Uniswap V3' | 'Uniswap V2
 };
 
 
-const MIN_FALLBACK_LIQUIDITY_USD = 20_000;
+const MIN_FALLBACK_LIQUIDITY_USD = parseNumberEnv(
+  Deno.env.get('SCANNER_MIN_FALLBACK_LIQUIDITY_USD'),
+  20_000,
+);
+
+const PRIORITY_FALLBACK_LIQUIDITY_FRACTION = Math.min(
+  1,
+  Math.max(0.1, parseNumberEnv(Deno.env.get('SCANNER_PRIORITY_FALLBACK_LIQUIDITY_FRACTION'), 0.4)),
+);
+
+const OVERLAP_PRIORITY_PAIR_TERMS_BY_NETWORK: Partial<Record<NetworkName, string[]>> = {
+  ethereum: [
+    'WETH USDC',
+    'WETH USDT',
+    'WETH DAI',
+    'WBTC USDC',
+    'WBTC USDT',
+    'LINK USDC',
+  ],
+};
+
+type PriorityTermsByNetwork = Partial<Record<NetworkName, string[]>>;
+
+const normalizeSearchTerm = (term: string): string => term.trim().replace(/\s+/g, ' ').toUpperCase();
+
+const buildPriorityTermsByNetwork = (
+  selectedNetworks: NetworkName[],
+  dynamicPriorityTermsByNetwork?: PriorityTermsByNetwork,
+): Record<NetworkName, string[]> => {
+  const merged = {} as Record<NetworkName, string[]>;
+
+  for (const network of selectedNetworks) {
+    const staticTerms = OVERLAP_PRIORITY_PAIR_TERMS_BY_NETWORK[network] || [];
+    const dynamicTerms = dynamicPriorityTermsByNetwork?.[network] || [];
+    merged[network] = Array.from(
+      new Set([...staticTerms, ...dynamicTerms].map((term) => normalizeSearchTerm(term)).filter(Boolean)),
+    );
+  }
+
+  return merged;
+};
+
+const buildPrioritizedFallbackTerms = (
+  selectedNetworks: NetworkName[],
+  options?: { maxQueries?: number; priorityTermsByNetwork?: PriorityTermsByNetwork },
+): string[] => {
+  const terms: string[] = [];
+  const seenTerms = new Set<string>();
+  const maxQueries = options?.maxQueries && options.maxQueries > 0
+    ? Math.floor(options.maxQueries)
+    : Number.POSITIVE_INFINITY;
+
+  const pushTerm = (raw: string) => {
+    if (terms.length >= maxQueries) return;
+    const normalized = normalizeSearchTerm(raw);
+    if (!normalized || seenTerms.has(normalized)) return;
+    seenTerms.add(normalized);
+    terms.push(normalized);
+  };
+
+  const priorityTermsByNetwork = buildPriorityTermsByNetwork(selectedNetworks, options?.priorityTermsByNetwork);
+
+  for (const network of selectedNetworks) {
+    const priorityPairs = priorityTermsByNetwork[network] || [];
+    for (const pairTerm of priorityPairs) {
+      const [tokenA, tokenB] = pairTerm.split(' ');
+      if (!tokenA || !tokenB || !isTrackablePair(network, tokenA, tokenB)) continue;
+      pushTerm(pairTerm);
+      pushTerm(`${tokenB} ${tokenA}`);
+    }
+  }
+
+  const byNetwork = selectedNetworks.map((network) => {
+    const networkTerms = SEARCH_TERMS_BY_NETWORK[network] || [];
+    const normalizedTerms = Array.from(new Set(networkTerms.map((term) => normalizeSearchTerm(term))));
+    return {
+      pairTerms: normalizedTerms.filter((term) => term.includes(' ')),
+      singleTokenTerms: normalizedTerms.filter((term) => !term.includes(' ')),
+    };
+  });
+
+  let networkIndex = 0;
+  while (terms.length < maxQueries) {
+    let progressed = false;
+    for (let i = 0; i < byNetwork.length; i += 1) {
+      const bucket = byNetwork[(networkIndex + i) % byNetwork.length];
+      const nextPairTerm = bucket.pairTerms.shift();
+      if (nextPairTerm) {
+        pushTerm(nextPairTerm);
+        progressed = true;
+      }
+      const nextTokenTerm = bucket.singleTokenTerms.shift();
+      if (nextTokenTerm && terms.length < maxQueries) {
+        pushTerm(nextTokenTerm);
+        progressed = true;
+      }
+      if (terms.length >= maxQueries) break;
+    }
+    if (!progressed) break;
+    networkIndex += 1;
+  }
+
+  return terms;
+};
+
+const buildPriorityTermSet = (selectedNetworks: NetworkName[]): Set<string> => {
+  const terms = new Set<string>();
+  const priorityTermsByNetwork = buildPriorityTermsByNetwork(selectedNetworks);
+  for (const network of selectedNetworks) {
+    const pairTerms = priorityTermsByNetwork[network] || [];
+    for (const pairTerm of pairTerms) {
+      const normalized = normalizeSearchTerm(pairTerm);
+      if (!normalized) continue;
+      terms.add(normalized);
+      const [left, right] = normalized.split(' ');
+      if (left && right) terms.add(`${right} ${left}`);
+    }
+  }
+  return terms;
+};
+
+const buildPriorityTermSetFromMap = (
+  selectedNetworks: NetworkName[],
+  dynamicPriorityTermsByNetwork?: PriorityTermsByNetwork,
+): Set<string> => {
+  const terms = new Set<string>();
+  const priorityTermsByNetwork = buildPriorityTermsByNetwork(selectedNetworks, dynamicPriorityTermsByNetwork);
+  for (const network of selectedNetworks) {
+    const pairTerms = priorityTermsByNetwork[network] || [];
+    for (const pairTerm of pairTerms) {
+      const normalized = normalizeSearchTerm(pairTerm);
+      if (!normalized) continue;
+      terms.add(normalized);
+      const [left, right] = normalized.split(' ');
+      if (left && right) terms.add(`${right} ${left}`);
+    }
+  }
+  return terms;
+};
+
+const buildPriorityTokenAddresses = (
+  selectedNetworks: NetworkName[],
+  dynamicPriorityTermsByNetwork?: PriorityTermsByNetwork,
+): string[] => {
+  const addresses = new Set<string>();
+  const priorityTermsByNetwork = buildPriorityTermsByNetwork(selectedNetworks, dynamicPriorityTermsByNetwork);
+  for (const network of selectedNetworks) {
+    const pairTerms = priorityTermsByNetwork[network] || [];
+    for (const pairTerm of pairTerms) {
+      const [tokenA, tokenB] = normalizeSearchTerm(pairTerm).split(' ');
+      if (!tokenA || !tokenB) continue;
+      const trackable = getTrackableBaseQuote(network, tokenA, tokenB);
+      if (!trackable) continue;
+      const baseAddress = lookupTokenAddress(network, trackable.base);
+      const quoteAddress = lookupTokenAddress(network, trackable.quote);
+      if (baseAddress) addresses.add(baseAddress);
+      if (quoteAddress) addresses.add(quoteAddress);
+    }
+  }
+  return Array.from(addresses);
+};
+
+let priorityOverlapPairKeysCache: Set<string> | null = null;
+
+const buildPriorityPairTargetsWithDynamic = (
+  networks: string[],
+  dynamicPriorityTermsByNetwork?: PriorityTermsByNetwork,
+): PriorityPairTarget[] => {
+  const selectedNetworks = (networks.length > 0 ? networks : ['ethereum'])
+    .map((n) => toNetworkName(CHAIN_MAP[n] || n));
+  const priorityTermsByNetwork = buildPriorityTermsByNetwork(selectedNetworks, dynamicPriorityTermsByNetwork);
+  const targets: PriorityPairTarget[] = [];
+  const seen = new Set<string>();
+
+  for (const network of selectedNetworks) {
+    const pairTerms = priorityTermsByNetwork[network] || [];
+    for (const pairTerm of pairTerms) {
+      const [tokenA, tokenB] = normalizeSearchTerm(pairTerm).split(' ');
+      if (!tokenA || !tokenB) continue;
+      const trackable = getTrackableBaseQuote(network, tokenA, tokenB);
+      if (!trackable) continue;
+
+      const baseAddress = lookupTokenAddress(network, trackable.base)?.toLowerCase();
+      const quoteAddress = lookupTokenAddress(network, trackable.quote)?.toLowerCase();
+      if (!baseAddress || !quoteAddress || baseAddress === quoteAddress) continue;
+
+      const key = `${network}:${trackable.base}/${trackable.quote}:${baseAddress}:${quoteAddress}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      targets.push({
+        network,
+        baseSymbol: trackable.base,
+        quoteSymbol: trackable.quote,
+        baseAddress,
+        quoteAddress,
+      });
+    }
+  }
+
+  return targets;
+};
+
+const getPriorityOverlapPairKeys = (dynamicPriorityTermsByNetwork?: PriorityTermsByNetwork): Set<string> => {
+  if (dynamicPriorityTermsByNetwork) {
+    const keys = new Set<string>();
+    const targets = buildPriorityPairTargetsWithDynamic(['ethereum', 'polygon', 'arbitrum', 'base', 'bsc'], dynamicPriorityTermsByNetwork);
+    for (const target of targets) {
+      keys.add(`${target.network}:${target.baseSymbol}/${target.quoteSymbol}`);
+    }
+    return keys;
+  }
+
+  if (priorityOverlapPairKeysCache) return priorityOverlapPairKeysCache;
+
+  const keys = new Set<string>();
+  const networks: NetworkName[] = ['ethereum', 'polygon', 'arbitrum', 'base', 'bsc'];
+  for (const network of networks) {
+    const pairTerms = OVERLAP_PRIORITY_PAIR_TERMS_BY_NETWORK[network] || [];
+    for (const pairTerm of pairTerms) {
+      const [tokenA, tokenB] = normalizeSearchTerm(pairTerm).split(' ');
+      if (!tokenA || !tokenB) continue;
+      const trackable = getTrackableBaseQuote(network, tokenA, tokenB);
+      if (!trackable) continue;
+      keys.add(`${network}:${trackable.base}/${trackable.quote}`);
+    }
+  }
+
+  priorityOverlapPairKeysCache = keys;
+  return keys;
+};
 
 const toNetworkName = (value: string | undefined): NetworkName => {
   const normalized = (value || 'ethereum').toLowerCase();
@@ -1081,10 +2957,203 @@ const calculateAmountBMin = (
   return scaleTo(minTokenAmountUsdScale, USD_SCALE, tokenScale);
 };
 
+// Static token address registry for enriching DexScreener/Gecko pools that lack on-chain addresses.
+// These are canonical checksummed addresses for the most common tokens per network.
+const KNOWN_TOKEN_ADDRESSES: Partial<Record<NetworkName, Record<string, string>>> = {
+  ethereum: {
+    USDC: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+    USDT: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
+    DAI: '0x6B175474E89094C44Da98b954EedeAC495271d0F',
+    WETH: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+    LINK: '0x514910771AF9Ca656af840dff83E8264EcF986CA',
+    UNI: '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984',
+    AAVE: '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9',
+    FRAX: '0x853d955aCEf822Db058eb8505911ED77F175b99e',
+    MKR: '0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2',
+    CRV: '0xD533a949740bb3306d119CC777fa900bA034cd52',
+    WBTC: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
+  },
+  polygon: {
+    USDC: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174',
+    'USDC.e': '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174',
+    USDT: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F',
+    DAI: '0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063',
+    WETH: '0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619',
+    WMATIC: '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270',
+    MATIC: '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270',
+    LINK: '0x53E0bca35eC356BD5ddDFebbD1Fc0fD03FaBad39',
+    AAVE: '0xD6DF932A45C0f255f85145f286eA0b292B21C90B',
+    WBTC: '0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6',
+    CRV: '0x172370d5Cd63279eFa6d502DAB29171933a610AF',
+    QUICK: '0x831753DD7087CaC61aB5644b308642cc1c33Dc13',
+    GHST: '0x385Eeac5cB85A38A9a07A70c73e0a3271CfB54A7',
+    SAND: '0xBbba073C31bF03b8ACf7c28EF0738DeCF3695683',
+  },
+  arbitrum: {
+    USDC: '0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8',
+    'USDC.e': '0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8',
+    'USDC(native)': '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
+    USDT: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9',
+    DAI: '0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1',
+    WETH: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
+    ARB: '0x912CE59144191C1204E64559FE8253a0e49E6548',
+    LINK: '0xf97f4df75117a78c1A5a0DBb814Af92458539FB4',
+    WBTC: '0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f',
+    GMX: '0xfc5A1A6EB076a2C7aD06eD22C90d7E710E35ad0a',
+  },
+  base: {
+    USDC: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+    USDbC: '0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA',
+    USDT: '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2',
+    DAI: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb',
+    WETH: '0x4200000000000000000000000000000000000006',
+    AERO: '0x940181a94A35A4569E4529A3CDfB74e38FD98631',
+    LINK: '0x88Fb150BDc53A65fe94Dea0c9BA0a6dAf8C6e196',
+    WBTC: '0x0555E30da8f98308EeBD78F1251D2Abb99f8F78b',
+  },
+};
+
+// Look up a canonical token address for a given network + symbol (case-insensitive, strips wrapping W).
+const lookupTokenAddress = (network: NetworkName, symbol: string): string | undefined => {
+  const map = KNOWN_TOKEN_ADDRESSES[network];
+  if (!map) return undefined;
+  const upper = symbol.toUpperCase();
+  return map[upper] ?? map[upper.replace(/^W/, '')] ?? undefined;
+};
+
 const SOURCE_RELIABILITY_BPS: Record<'subgraph' | 'dexscreener' | 'gecko', bigint> = {
   subgraph: 10_000n,
   dexscreener: 7_200n,
   gecko: 5_200n,
+};
+
+const clampUnit = (value: number, fallback: number): number => {
+  if (!Number.isFinite(value)) return fallback;
+  if (value < 0) return 0;
+  if (value > 1) return 1;
+  return value;
+};
+
+const toNumberSafe = (value: unknown, fallback = 0): number => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const toObjectSafe = (value: unknown): Record<string, unknown> | null => {
+  if (!value) return null;
+  if (typeof value === 'object' && !Array.isArray(value)) return value as Record<string, unknown>;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return (parsed && typeof parsed === 'object' && !Array.isArray(parsed))
+        ? parsed as Record<string, unknown>
+        : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
+
+const loadSourceReliabilityBps = async (): Promise<{
+  subgraph: bigint;
+  dexscreener: bigint;
+  gecko: bigint;
+  runCount: number;
+}> => {
+  const fallback = {
+    subgraph: SOURCE_RELIABILITY_BPS.subgraph,
+    dexscreener: SOURCE_RELIABILITY_BPS.dexscreener,
+    gecko: SOURCE_RELIABILITY_BPS.gecko,
+    runCount: 0,
+  };
+
+  if (!canAccessSupabaseRest()) return fallback;
+
+  const windowSize = Math.max(5, Math.min(100, Math.round(parseNumberEnv(Deno.env.get('SCANNER_SOURCE_HEALTH_WINDOW_RUNS'), 30))));
+  const decay = clampNumber(parseNumberEnv(Deno.env.get('SCANNER_SOURCE_HEALTH_DECAY'), 0.7), 0.1, 0.95);
+
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/scanner_runs?select=diagnostics&order=started_at.desc&limit=${windowSize}`,
+      {
+        headers: {
+          apikey: SUPABASE_REST_KEY,
+          Authorization: `Bearer ${SUPABASE_REST_KEY}`,
+          Accept: 'application/json',
+        },
+      },
+    );
+    if (!res.ok) return fallback;
+
+    const rows = await res.json() as Array<Record<string, unknown>>;
+    if (!Array.isArray(rows) || rows.length === 0) return fallback;
+
+    let subgraphHealth = Number(SOURCE_RELIABILITY_BPS.subgraph) / 10_000;
+    let dexscreenerHealth = Number(SOURCE_RELIABILITY_BPS.dexscreener) / 10_000;
+    let geckoHealth = Number(SOURCE_RELIABILITY_BPS.gecko) / 10_000;
+
+    const orderedRows = [...rows].reverse();
+    for (const row of orderedRows) {
+      const diagnostics = toObjectSafe(row.diagnostics);
+      if (!diagnostics) continue;
+
+      const subgraphFetchStats = toObjectSafe(diagnostics.subgraphFetchStats);
+      if (subgraphFetchStats) {
+        const sourceKeys = ['uniswapV3', 'uniswapV2', 'sushiswap', 'balancer', 'curve'];
+        let known = 0;
+        let healthy = 0;
+        for (const sourceKey of sourceKeys) {
+          const source = toObjectSafe(subgraphFetchStats[sourceKey]);
+          if (!source) continue;
+          known += 1;
+          if (String(source.status || '').toLowerCase() === 'ok') healthy += 1;
+        }
+        if (known > 0) {
+          const sample = clampUnit(healthy / known, subgraphHealth);
+          subgraphHealth = (decay * subgraphHealth) + ((1 - decay) * sample);
+        }
+      }
+
+      const fallbackFetchStats = toObjectSafe(diagnostics.fallbackFetchStats);
+      if (fallbackFetchStats) {
+        const ds = toObjectSafe(fallbackFetchStats.dexscreener);
+        if (ds) {
+          const queries = Math.max(0, toNumberSafe(ds.queries, 0));
+          const ok = Math.max(0, toNumberSafe(ds.responsesOk, 0));
+          if (queries > 0) {
+            const sample = clampUnit(ok / queries, dexscreenerHealth);
+            dexscreenerHealth = (decay * dexscreenerHealth) + ((1 - decay) * sample);
+          }
+        }
+
+        const gecko = toObjectSafe(fallbackFetchStats.gecko);
+        if (gecko) {
+          const queries = Math.max(0, toNumberSafe(gecko.queries, 0));
+          const ok = Math.max(0, toNumberSafe(gecko.responsesOk, 0));
+          if (queries > 0) {
+            const sample = clampUnit(ok / queries, geckoHealth);
+            geckoHealth = (decay * geckoHealth) + ((1 - decay) * sample);
+          }
+        }
+      }
+    }
+
+    const toBps = (health: number, minBps: number, maxBps: number): bigint => {
+      const unit = clampUnit(health, 0.5);
+      const mapped = Math.round(minBps + ((maxBps - minBps) * unit));
+      return BigInt(mapped);
+    };
+
+    return {
+      subgraph: toBps(subgraphHealth, 7_000, 10_000),
+      dexscreener: toBps(dexscreenerHealth, 4_000, 9_000),
+      gecko: toBps(geckoHealth, 3_500, 8_000),
+      runCount: rows.length,
+    };
+  } catch {
+    return fallback;
+  }
 };
 
 const buildExecutionPayload = (
@@ -1130,9 +3199,11 @@ const buildExecutionPayload = (
   const assetDecimals = getTokenDecimals(assetSymbol);
   const tokenBDecimals = getTokenDecimals(tokenBSymbol);
   
-  const asset = isQuoteToken0 ? buyPool.token0?.address || sellPool.token0?.address : buyPool.token1?.address || sellPool.token1?.address;
-  const tokenB = isQuoteToken0 ? buyPool.token1?.address || sellPool.token1?.address : buyPool.token0?.address || sellPool.token0?.address;
-  
+  const asset = (isQuoteToken0 ? buyPool.token0?.address || sellPool.token0?.address : buyPool.token1?.address || sellPool.token1?.address)
+    || lookupTokenAddress(network, assetSymbol);
+  const tokenB = (isQuoteToken0 ? buyPool.token1?.address || sellPool.token1?.address : buyPool.token0?.address || sellPool.token0?.address)
+    || lookupTokenAddress(network, tokenBSymbol);
+
   if (!asset || !tokenB) {
     return { payload: null, error: 'Missing token addresses from pools' };
   }
@@ -1194,19 +3265,50 @@ const getMinNetProfitUsdForNetwork = (config: ScannerConfig, network: NetworkNam
   return config.minNetProfitUsdByNetwork[network] ?? config.minNetProfitUsd;
 };
 
+const getMinNetEdgeBpsForNetwork = (config: ScannerConfig, network: NetworkName): number => {
+  const configured = config.minNetEdgeBpsByNetwork[network];
+  if (Number.isFinite(configured) && Number(configured) >= 0) {
+    return Number(configured);
+  }
+  return DEFAULT_MIN_NET_EDGE_BPS_BY_NETWORK[network];
+};
+
+const getExecutionRiskBufferUsdForNetwork = (config: ScannerConfig, network: NetworkName): number => {
+  const configured = config.executionRiskBufferUsdByNetwork[network];
+  if (Number.isFinite(configured) && Number(configured) >= 0) {
+    return Number(configured);
+  }
+  return DEFAULT_EXECUTION_RISK_BUFFER_USD_BY_NETWORK[network];
+};
+
 const getRequiredActiveNetProfitUsd = (config: ScannerConfig, network: NetworkName): number => {
   const baseFixed = decimalToFixed(getMinNetProfitUsdForNetwork(config, network), USD_SCALE);
   const networkGasFixed = decimalToFixed(estimateGasUsdForNetwork(network, config), USD_SCALE);
   const baselineGasFixed = decimalToFixed(Math.max(1, config.estimatedGasUsd), USD_SCALE);
-  const multiplierFixed = decimalToFixed(config.adaptiveProfitPressureMultiplier, FP_SCALE);
+  const pressureMultiplierFixed = decimalToFixed(config.adaptiveProfitPressureMultiplier, FP_SCALE);
+  const reliefMultiplierFixed = decimalToFixed(config.adaptiveProfitReliefMultiplier, FP_SCALE);
+  const floorFractionFixed = decimalToFixed(config.adaptiveMinNetFloorFraction, FP_SCALE);
 
   const gasFactorFixed = baselineGasFixed > 0n
     ? mulDiv(networkGasFixed, FP_SCALE, baselineGasFixed)
     : FP_SCALE;
-  const gasExcessFixed = gasFactorFixed > FP_SCALE ? gasFactorFixed - FP_SCALE : 0n;
-  const adjustmentFixed = mulDiv(gasExcessFixed, multiplierFixed, FP_SCALE);
-  const adaptiveThresholdFixed = baseFixed + mulDiv(baseFixed, adjustmentFixed, FP_SCALE);
-  return fixedToNumber(adaptiveThresholdFixed > 0n ? adaptiveThresholdFixed : 0n, USD_SCALE, 6);
+
+  let adaptiveThresholdFixed = baseFixed;
+  if (gasFactorFixed > FP_SCALE) {
+    const gasExcessFixed = gasFactorFixed - FP_SCALE;
+    const adjustmentFixed = mulDiv(gasExcessFixed, pressureMultiplierFixed, FP_SCALE);
+    adaptiveThresholdFixed = baseFixed + mulDiv(baseFixed, adjustmentFixed, FP_SCALE);
+  } else if (gasFactorFixed < FP_SCALE) {
+    const gasReliefFixed = FP_SCALE - gasFactorFixed;
+    const reliefFixed = mulDiv(gasReliefFixed, reliefMultiplierFixed, FP_SCALE);
+    const reliefAmountFixed = mulDiv(baseFixed, reliefFixed, FP_SCALE);
+    const floorFixed = mulDiv(baseFixed, floorFractionFixed, FP_SCALE);
+    const relievedFixed = baseFixed > reliefAmountFixed ? baseFixed - reliefAmountFixed : 0n;
+    adaptiveThresholdFixed = relievedFixed > floorFixed ? relievedFixed : floorFixed;
+  }
+
+  const adaptiveThresholdUsd = fixedToNumber(adaptiveThresholdFixed > 0n ? adaptiveThresholdFixed : 0n, USD_SCALE, 6);
+  return adaptiveThresholdUsd + getExecutionRiskBufferUsdForNetwork(config, network);
 };
 
 const buildMathDiagnostics = ({
@@ -1282,6 +3384,16 @@ const normalizeTokenSymbol = (symbol: string): string => {
   return STABLE_SYMBOL_ALIASES[cleaned] ?? cleaned;
 };
 
+const parseGeckoPoolNameSymbols = (poolName: string): { baseSymbol: string; quoteSymbol: string } | null => {
+  const name = String(poolName || '').trim();
+  if (!name) return null;
+
+  const pairSegment = name.split(/\s+\d/)[0];
+  const parts = pairSegment.split('/').map((part) => normalizeTokenSymbol(part));
+  if (parts.length < 2 || !parts[0] || !parts[1]) return null;
+  return { baseSymbol: parts[0], quoteSymbol: parts[1] };
+};
+
 const isStableQuote = (symbol: string): boolean => STABLE_QUOTES.has(normalizeTokenSymbol(symbol));
 
 const getTrackableBaseQuote = (
@@ -1306,6 +3418,155 @@ const getTrackableBaseQuote = (
 
 const isTrackablePair = (network: NetworkName, tokenA: string, tokenB: string): boolean => {
   return getTrackableBaseQuote(network, tokenA, tokenB) !== null;
+};
+
+const loadDynamicPriorityTermsByNetwork = async (networks: string[]): Promise<{
+  termsByNetwork: PriorityTermsByNetwork;
+  meta: {
+    runs: number;
+    samples: number;
+    pairs: number;
+    penalizedPairs: number;
+  };
+}> => {
+  const termsByNetwork: PriorityTermsByNetwork = {};
+  const selectedNetworks = new Set<NetworkName>(
+    (networks.length > 0 ? networks : ['ethereum'])
+      .map((n) => toNetworkName(CHAIN_MAP[n] || n)),
+  );
+
+  const meta = { runs: 0, samples: 0, pairs: 0, penalizedPairs: 0 };
+  if (!canAccessSupabaseRest()) return { termsByNetwork, meta };
+
+  const windowSize = Math.max(5, Math.min(60, Math.round(parseNumberEnv(Deno.env.get('SCANNER_DYNAMIC_PRIORITY_WINDOW_RUNS'), 20))));
+  const perNetworkLimit = Math.max(2, Math.min(16, Math.round(parseNumberEnv(Deno.env.get('SCANNER_DYNAMIC_PRIORITY_PAIRS_PER_NETWORK'), 8))));
+  const minNetScore = Math.max(0.5, Math.min(6, parseNumberEnv(Deno.env.get('SCANNER_DYNAMIC_PRIORITY_MIN_NET_SCORE'), 1.5)));
+
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/scanner_runs?select=diagnostics&order=started_at.desc&limit=${windowSize}`,
+      {
+        headers: {
+          apikey: SUPABASE_REST_KEY,
+          Authorization: `Bearer ${SUPABASE_REST_KEY}`,
+          Accept: 'application/json',
+        },
+      },
+    );
+    if (!res.ok) return { termsByNetwork, meta };
+
+    const rows = await res.json() as Array<Record<string, unknown>>;
+    if (!Array.isArray(rows) || rows.length === 0) return { termsByNetwork, meta };
+    meta.runs = rows.length;
+
+    const overlapScoresByNetwork = new Map<NetworkName, Map<string, number>>();
+    const penaltyScoresByNetwork = new Map<NetworkName, Map<string, number>>();
+
+    const addScore = (target: Map<NetworkName, Map<string, number>>, network: NetworkName, term: string, score: number) => {
+      if (!selectedNetworks.has(network)) return;
+      if (!target.has(network)) target.set(network, new Map<string, number>());
+      const bucket = target.get(network)!;
+      bucket.set(term, (bucket.get(term) || 0) + score);
+    };
+
+    const toTrackableTerm = (network: NetworkName, tokenPair: string): string | null => {
+      const [, pairRaw] = tokenPair.split(':');
+      if (!pairRaw) return null;
+      const [left, right] = pairRaw.split('/').map((token) => normalizeTokenSymbol(token || ''));
+      if (!left || !right || left === right || !isTrackablePair(network, left, right)) return null;
+      const trackable = getTrackableBaseQuote(network, left, right);
+      if (!trackable) return null;
+      return normalizeSearchTerm(`${trackable.base} ${trackable.quote}`);
+    };
+
+    for (const row of rows) {
+      const diagnostics = toObjectSafe(row.diagnostics);
+      if (!diagnostics) continue;
+      const sameDexDetails = toObjectSafe(diagnostics.sameDexDetails);
+      if (!sameDexDetails) continue;
+      const samples = Array.isArray(sameDexDetails.samples) ? sameDexDetails.samples : [];
+
+      for (const sampleRaw of samples) {
+        const sample = toObjectSafe(sampleRaw);
+        if (!sample) continue;
+        const reason = String(sample.reason || '');
+        if (reason !== 'insufficientQuotes' && reason !== 'insufficientDexOverlap') continue;
+
+        const tokenPair = String(sample.tokenPair || '');
+        const [networkRaw] = tokenPair.split(':');
+        if (!networkRaw) continue;
+        const network = toNetworkName(networkRaw);
+        if (!selectedNetworks.has(network)) continue;
+
+        const term = toTrackableTerm(network, tokenPair);
+        if (!term) continue;
+
+        if (reason === 'insufficientQuotes') {
+          addScore(penaltyScoresByNetwork, network, term, 3);
+          meta.penalizedPairs += 1;
+          continue;
+        }
+
+        // insufficientDexOverlap can still benefit from targeted enrichment in moderation.
+        addScore(overlapScoresByNetwork, network, term, 1.5);
+        meta.samples += 1;
+      }
+
+      const rejectionSamples = Array.isArray(diagnostics.rejectionSamples) ? diagnostics.rejectionSamples : [];
+      for (const sampleRaw of rejectionSamples) {
+        const sample = toObjectSafe(sampleRaw);
+        if (!sample) continue;
+        const reason = String(sample.reason || '');
+        if (reason !== 'slippage' && reason !== 'executionRisk' && reason !== 'badQuotes' && reason !== 'sameDex') continue;
+
+        const tokenPair = String(sample.tokenPair || '');
+        const [networkRaw] = tokenPair.split(':');
+        if (!networkRaw) continue;
+        const network = toNetworkName(networkRaw);
+        if (!selectedNetworks.has(network)) continue;
+
+        const term = toTrackableTerm(network, tokenPair);
+        if (!term) continue;
+
+        const penalty = reason === 'slippage'
+          ? 2.5
+          : reason === 'executionRisk'
+            ? 2
+            : reason === 'sameDex'
+              ? 2.5
+            : 1.25;
+        addScore(penaltyScoresByNetwork, network, term, penalty);
+      }
+    }
+
+    for (const network of selectedNetworks) {
+      const overlap = overlapScoresByNetwork.get(network) || new Map<string, number>();
+      const penalties = penaltyScoresByNetwork.get(network) || new Map<string, number>();
+      const scored = Array.from(overlap.entries())
+        .map(([term, score]) => {
+          const penalty = penalties.get(term) || 0;
+          const netScore = score - penalty;
+          if (penalty > 0) meta.penalizedPairs += 1;
+          return { term, netScore, score, penalty };
+        })
+        .filter((entry) => entry.netScore >= minNetScore)
+        .sort((a, b) => {
+          if (b.netScore !== a.netScore) return b.netScore - a.netScore;
+          if (b.score !== a.score) return b.score - a.score;
+          return a.penalty - b.penalty;
+        })
+        .slice(0, perNetworkLimit)
+        .map((entry) => entry.term);
+      if (scored.length > 0) {
+        termsByNetwork[network] = scored;
+        meta.pairs += scored.length;
+      }
+    }
+  } catch {
+    // Best-effort dynamic adaptation.
+  }
+
+  return { termsByNetwork, meta };
 };
 
 const upsertFallbackPool = (
@@ -1361,6 +3622,10 @@ const routePoolByDex = (
     dex.includes('camelot')
   ) {
     upsertFallbackPool(buckets.uniV2Pools, pool);
+  } else {
+    // Keep unknown DEX sources instead of dropping them entirely.
+    // This improves cross-DEX coverage when providers use uncommon dex names.
+    upsertFallbackPool(buckets.uniV2Pools, pool);
   }
 };
 
@@ -1371,155 +3636,378 @@ const mergeFallbackPools = (
   for (const pool of additions) upsertFallbackPool(target, pool);
 };
 
-const fetchDexScreenerFallback = async (networks: string[]) => {
+const fetchDexScreenerFallback = async (
+  networks: string[],
+  dynamicPriorityTermsByNetwork?: PriorityTermsByNetwork,
+) => {
   const selectedNetworks = (networks.length > 0 ? networks : ['ethereum'])
     .map((n) => toNetworkName(CHAIN_MAP[n] || n));
   const allowedChains = new Set(selectedNetworks);
-  const searchTerms = Array.from(new Set(selectedNetworks.flatMap((network) => SEARCH_TERMS_BY_NETWORK[network])));
+  const dexScreenerMaxQueries = Math.max(1, Math.round(parseNumberEnv(Deno.env.get('SCANNER_DEXSCREENER_MAX_QUERIES'), 60)));
+  const dexScreenerTokenQueries = Math.max(0, Math.round(parseNumberEnv(Deno.env.get('SCANNER_DEXSCREENER_TOKEN_QUERIES'), 12)));
+  const searchTerms = buildPrioritizedFallbackTerms(selectedNetworks, {
+    maxQueries: dexScreenerMaxQueries,
+    priorityTermsByNetwork: dynamicPriorityTermsByNetwork,
+  });
+  const priorityTermSet = buildPriorityTermSetFromMap(selectedNetworks, dynamicPriorityTermsByNetwork);
+  const priorityTokenAddresses = buildPriorityTokenAddresses(selectedNetworks, dynamicPriorityTermsByNetwork)
+    .slice(0, dexScreenerTokenQueries);
 
   const uniV3Pools: Pool[] = [];
   const uniV2Pools: Pool[] = [];
   const sushiPools: Pool[] = [];
   const balancerPools: Pool[] = [];
   const curvePools: Pool[] = [];
+  const meta = {
+    queries: 0,
+    responsesOk: 0,
+    errors: 0,
+    entriesSeen: 0,
+    entriesAccepted: 0,
+  };
 
-  for (const term of searchTerms) {
-    try {
-      const url = `https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(term)}`;
-      const res = await fetch(url, { method: 'GET' });
-      if (!res.ok) continue;
-      const json = await res.json();
-      const pairs: DexScreenerPair[] = Array.isArray(json?.pairs) ? json.pairs : [];
+  const fetchTerm = async (term: string) => {
+    const url = `https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(term)}`;
+    const res = await fetch(url, { method: 'GET' });
+    if (!res.ok) return { ok: false as const, term };
+    const json = await res.json();
+    return { ok: true as const, term, pairs: Array.isArray(json?.pairs) ? (json.pairs as DexScreenerPair[]) : [] };
+  };
 
-      for (const pair of pairs) {
-        const chain = (pair.chainId || '').toLowerCase();
-        const normalizedChain = CHAIN_MAP[chain] ?? chain;
-        if (!isNetworkName(normalizedChain) || !allowedChains.has(normalizedChain)) continue;
+  const fetchByTokenAddress = async (address: string) => {
+    const url = `https://api.dexscreener.com/latest/dex/tokens/${encodeURIComponent(address)}`;
+    const res = await fetch(url, { method: 'GET' });
+    if (!res.ok) return { ok: false as const, address };
+    const json = await res.json();
+    return { ok: true as const, address, pairs: Array.isArray(json?.pairs) ? (json.pairs as DexScreenerPair[]) : [] };
+  };
 
-        const baseSymbol = String(pair.baseToken?.symbol || '');
-        const quoteSymbol = String(pair.quoteToken?.symbol || '');
-        const network = toNetworkName(normalizedChain);
-        const trackablePair = getTrackableBaseQuote(network, baseSymbol, quoteSymbol);
-        if (!trackablePair) continue;
+  const processPairs = (pairs: DexScreenerPair[], liquidityFloorFixed: bigint) => {
+    meta.entriesSeen += pairs.length;
 
-        const { base, quote } = trackablePair;
-        const priceUsdFixed = decimalToFixed(String(pair.priceUsd || '0'), FP_SCALE);
-        if (priceUsdFixed <= 0n) continue;
+    for (const pair of pairs) {
+      const chain = (pair.chainId || '').toLowerCase();
+      const normalizedChain = CHAIN_MAP[chain] ?? chain;
+      if (!isNetworkName(normalizedChain) || !allowedChains.has(normalizedChain)) continue;
 
-        const liquidityUsdFixed = decimalToFixed(String(pair.liquidity?.usd || 0), USD_SCALE);
-        if (liquidityUsdFixed < decimalToFixed(MIN_FALLBACK_LIQUIDITY_USD, USD_SCALE)) continue;
+      const baseSymbol = String(pair.baseToken?.symbol || '');
+      const quoteSymbol = String(pair.quoteToken?.symbol || '');
+      const network = toNetworkName(normalizedChain);
+      const trackablePair = getTrackableBaseQuote(network, baseSymbol, quoteSymbol);
+      if (!trackablePair) continue;
 
-        const dexBase = normalizeTokenSymbol(baseSymbol);
-        const canonicalBase = normalizeTokenSymbol(base);
-        if (dexBase !== canonicalBase) {
-          // DexScreener returned the stable token as base; priceUsd is not a usable exchange rate here.
+      const { base, quote } = trackablePair;
+      let priceUsdFixed = decimalToFixed(String(pair.priceUsd || '0'), FP_SCALE);
+      if (priceUsdFixed <= 0n) continue;
+
+      const liquidityUsdFixed = decimalToFixed(String(pair.liquidity?.usd || 0), USD_SCALE);
+      if (liquidityUsdFixed < liquidityFloorFixed) continue;
+
+      const dexBase = normalizeTokenSymbol(baseSymbol);
+      const dexQuote = normalizeTokenSymbol(quoteSymbol);
+      const canonicalBase = normalizeTokenSymbol(base);
+      const canonicalQuote = normalizeTokenSymbol(quote);
+
+      const baseAddress = extractEvmAddress(pair.baseToken?.address);
+      const quoteAddress = extractEvmAddress(pair.quoteToken?.address);
+
+      let token0Address = baseAddress;
+      let token1Address = quoteAddress;
+      if (dexBase !== canonicalBase) {
+        if (dexBase === canonicalQuote && dexQuote === canonicalBase) {
+          const priceNativeFixed = decimalToFixed(String(pair.priceNative || '0'), FP_SCALE);
+          if (priceNativeFixed <= 0n) continue;
+          priceUsdFixed = mulDiv(priceUsdFixed, FP_SCALE, priceNativeFixed);
+          token0Address = quoteAddress;
+          token1Address = baseAddress;
+        } else {
           continue;
         }
-
-        const token0PriceFixed = priceUsdFixed;
-        const token1PriceFixed = mulDiv(FP_SCALE, FP_SCALE, token0PriceFixed);
-        if (token1PriceFixed <= 0n) continue;
-
-        const pool: Pool = {
-          token0: { symbol: base },
-          token1: { symbol: quote },
-          token0Price: fixedToNumber(token0PriceFixed, FP_SCALE, 12).toString(),
-          token1Price: fixedToNumber(token1PriceFixed, FP_SCALE, 12).toString(),
-          reserveUSD: fixedToNumber(liquidityUsdFixed, USD_SCALE, 6).toString(),
-          network,
-          sourceType: 'dexscreener',
-        };
-
-        routePoolByDex(String(pair.dexId || ''), pool, { uniV3Pools, uniV2Pools, sushiPools, balancerPools, curvePools });
       }
-    } catch {
-      // Best-effort fallback source; ignore transient search errors.
+
+      const token0PriceFixed = priceUsdFixed;
+      const token1PriceFixed = mulDiv(FP_SCALE, FP_SCALE, token0PriceFixed);
+      if (token1PriceFixed <= 0n) continue;
+
+      const pool: Pool = {
+        token0: { symbol: base, address: token0Address },
+        token1: { symbol: quote, address: token1Address },
+        token0Price: fixedToNumber(token0PriceFixed, FP_SCALE, 12).toString(),
+        token1Price: fixedToNumber(token1PriceFixed, FP_SCALE, 12).toString(),
+        reserveUSD: fixedToNumber(liquidityUsdFixed, USD_SCALE, 6).toString(),
+        network,
+        sourceType: 'dexscreener',
+      };
+
+      routePoolByDex(String(pair.dexId || ''), pool, { uniV3Pools, uniV2Pools, sushiPools, balancerPools, curvePools });
+      meta.entriesAccepted += 1;
+    }
+  };
+
+  const searchResults = await Promise.allSettled(searchTerms.map(fetchTerm));
+  meta.queries += searchTerms.length;
+
+  for (const result of searchResults) {
+    if (result.status === 'rejected') {
+      meta.errors += 1;
+      continue;
+    }
+    if (!result.value.ok) {
+      meta.errors += 1;
+      continue;
+    }
+    const normalizedTerm = normalizeSearchTerm(result.value.term);
+    const liquidityFloorUsd = priorityTermSet.has(normalizedTerm)
+      ? MIN_FALLBACK_LIQUIDITY_USD * PRIORITY_FALLBACK_LIQUIDITY_FRACTION
+      : MIN_FALLBACK_LIQUIDITY_USD;
+    const liquidityFloorFixed = decimalToFixed(liquidityFloorUsd, USD_SCALE);
+    meta.responsesOk += 1;
+    processPairs(result.value.pairs, liquidityFloorFixed);
+  }
+
+  if (priorityTokenAddresses.length > 0) {
+    const tokenResults = await Promise.allSettled(priorityTokenAddresses.map(fetchByTokenAddress));
+    meta.queries += priorityTokenAddresses.length;
+    const priorityLiquidityFloorFixed = decimalToFixed(
+      MIN_FALLBACK_LIQUIDITY_USD * PRIORITY_FALLBACK_LIQUIDITY_FRACTION,
+      USD_SCALE,
+    );
+
+    for (const result of tokenResults) {
+      if (result.status === 'rejected') {
+        meta.errors += 1;
+        continue;
+      }
+      if (!result.value.ok) {
+        meta.errors += 1;
+        continue;
+      }
+      meta.responsesOk += 1;
+      processPairs(result.value.pairs, priorityLiquidityFloorFixed);
     }
   }
 
-  return { uniV3Pools, uniV2Pools, sushiPools, balancerPools, curvePools };
+  return { uniV3Pools, uniV2Pools, sushiPools, balancerPools, curvePools, meta };
 };
 
-const fetchGeckoTerminalFallback = async (networks: string[]) => {
+const fetchGeckoTerminalFallback = async (
+  networks: string[],
+  dynamicPriorityTermsByNetwork?: PriorityTermsByNetwork,
+) => {
   const selectedNetworks = (networks.length > 0 ? networks : ['ethereum'])
     .map((n) => toNetworkName(CHAIN_MAP[n] || n));
   const allowedChains = new Set(selectedNetworks);
-  const searchTerms = Array.from(new Set(selectedNetworks.flatMap((network) => SEARCH_TERMS_BY_NETWORK[network])));
+  const geckoMaxQueries = Math.max(1, Math.round(parseNumberEnv(Deno.env.get('SCANNER_GECKO_MAX_QUERIES'), 30)));
+  const geckoTokenQueries = Math.max(0, Math.round(parseNumberEnv(Deno.env.get('SCANNER_GECKO_TOKEN_QUERIES'), 12)));
+  const geckoTerms = buildPrioritizedFallbackTerms(selectedNetworks, {
+    maxQueries: geckoMaxQueries,
+    priorityTermsByNetwork: dynamicPriorityTermsByNetwork,
+  });
+  const priorityTermSet = buildPriorityTermSetFromMap(selectedNetworks, dynamicPriorityTermsByNetwork);
+  const priorityTokenAddresses = buildPriorityTokenAddresses(selectedNetworks, dynamicPriorityTermsByNetwork)
+    .slice(0, geckoTokenQueries);
 
   const uniV3Pools: Pool[] = [];
   const uniV2Pools: Pool[] = [];
   const sushiPools: Pool[] = [];
   const balancerPools: Pool[] = [];
   const curvePools: Pool[] = [];
+  const meta = {
+    queries: 0,
+    responsesOk: 0,
+    errors: 0,
+    entriesSeen: 0,
+    entriesAccepted: 0,
+    rejectionReasons: {
+      invalidNetworkMap: 0,
+      networkNotRequested: 0,
+      nonTrackablePair: 0,
+      priceParseFail: 0,
+      liquidityBelowMin: 0,
+      baseQuoteOrientationMismatch: 0,
+      orientationRecovered: 0,
+      inversePriceFail: 0,
+    },
+  };
 
-  for (const term of searchTerms) {
+  const processEntries = (entries: GeckoSearchPool[], liquidityFloorFixed: bigint) => {
+    meta.entriesSeen += entries.length;
+    for (const entry of entries) {
+      const attrs = entry.attributes || {};
+      const entryIdNetwork = typeof entry.id === 'string' && entry.id.includes('_')
+        ? entry.id.split('_')[0]
+        : '';
+      const baseTokenId = String(entry.relationships?.base_token?.data?.id || '');
+      const baseTokenNetwork = baseTokenId.includes('_') ? baseTokenId.split('_')[0] : '';
+      const quoteTokenId = String(entry.relationships?.quote_token?.data?.id || '');
+      const quoteTokenNetwork = quoteTokenId.includes('_') ? quoteTokenId.split('_')[0] : '';
+
+      const networkRaw = String(
+        attrs.network ||
+        entry.relationships?.network?.data?.id ||
+        entryIdNetwork ||
+        baseTokenNetwork ||
+        quoteTokenNetwork ||
+        '',
+      ).toLowerCase();
+
+      const mappedNetwork = GECKO_NETWORK_TO_APP[networkRaw] || GECKO_NETWORK_TO_APP[networkRaw.replace(/-.*$/, '')];
+      if (!mappedNetwork) {
+        meta.rejectionReasons.invalidNetworkMap += 1;
+        continue;
+      }
+      if (!allowedChains.has(mappedNetwork)) {
+        meta.rejectionReasons.networkNotRequested += 1;
+        continue;
+      }
+
+      const parsedFromName = parseGeckoPoolNameSymbols(String(attrs.name || ''));
+      const baseSymbol = String(attrs.base_token_symbol || parsedFromName?.baseSymbol || '');
+      const quoteSymbol = String(attrs.quote_token_symbol || parsedFromName?.quoteSymbol || '');
+      const trackablePair = getTrackableBaseQuote(mappedNetwork, baseSymbol, quoteSymbol);
+      if (!trackablePair) {
+        meta.rejectionReasons.nonTrackablePair += 1;
+        continue;
+      }
+
+      const { base, quote } = trackablePair;
+      const canonicalBase = normalizeTokenSymbol(base);
+      const canonicalQuote = normalizeTokenSymbol(quote);
+      const geckoBase = normalizeTokenSymbol(baseSymbol);
+      const geckoQuote = normalizeTokenSymbol(quoteSymbol);
+      const geckoBaseAddress = extractEvmAddress(
+        attrs.base_token_address ||
+        attrs.base_token_contract_address ||
+        baseTokenId,
+      );
+      const geckoQuoteAddress = extractEvmAddress(
+        attrs.quote_token_address ||
+        attrs.quote_token_contract_address ||
+        quoteTokenId,
+      );
+      let token0Address = geckoBaseAddress;
+      let token1Address = geckoQuoteAddress;
+
+      let priceUsdFixed = decimalToFixed(String(attrs.base_token_price_usd || attrs.price_in_usd || attrs.price_usd || '0'), FP_SCALE);
+      if (geckoBase !== canonicalBase) {
+        if (geckoBase === canonicalQuote && geckoQuote === canonicalBase) {
+          const recoveredPriceUsdFixed = decimalToFixed(String(attrs.quote_token_price_usd || '0'), FP_SCALE);
+          if (recoveredPriceUsdFixed > 0n) {
+            priceUsdFixed = recoveredPriceUsdFixed;
+            token0Address = geckoQuoteAddress;
+            token1Address = geckoBaseAddress;
+            meta.rejectionReasons.orientationRecovered += 1;
+          } else {
+            meta.rejectionReasons.priceParseFail += 1;
+            continue;
+          }
+        } else {
+          meta.rejectionReasons.baseQuoteOrientationMismatch += 1;
+          continue;
+        }
+      }
+
+      if (priceUsdFixed <= 0n) {
+        meta.rejectionReasons.priceParseFail += 1;
+        continue;
+      }
+
+      const liquidityUsdFixed = decimalToFixed(String(attrs.reserve_in_usd || attrs.liquidity_usd || '0'), USD_SCALE);
+      if (liquidityUsdFixed < liquidityFloorFixed) {
+        meta.rejectionReasons.liquidityBelowMin += 1;
+        continue;
+      }
+
+      const token0PriceFixed = priceUsdFixed;
+      const token1PriceFixed = mulDiv(FP_SCALE, FP_SCALE, token0PriceFixed);
+      if (token1PriceFixed <= 0n) {
+        meta.rejectionReasons.inversePriceFail += 1;
+        continue;
+      }
+
+      const pool: Pool = {
+        token0: { symbol: base, address: token0Address },
+        token1: { symbol: quote, address: token1Address },
+        token0Price: fixedToNumber(token0PriceFixed, FP_SCALE, 12).toString(),
+        token1Price: fixedToNumber(token1PriceFixed, FP_SCALE, 12).toString(),
+        reserveUSD: fixedToNumber(liquidityUsdFixed, USD_SCALE, 6).toString(),
+        network: mappedNetwork,
+        sourceType: 'gecko',
+      };
+
+      const dexId = String(entry.relationships?.dex?.data?.id || '');
+      routePoolByDex(String(attrs.dex_name || attrs.exchange_name || dexId || ''), pool, {
+        uniV3Pools,
+        uniV2Pools,
+        sushiPools,
+        balancerPools,
+        curvePools,
+      });
+      meta.entriesAccepted += 1;
+    }
+  };
+
+  for (const term of geckoTerms) {
     try {
+      meta.queries += 1;
+      const normalizedTerm = normalizeSearchTerm(term);
+      const liquidityFloorUsd = priorityTermSet.has(normalizedTerm)
+        ? MIN_FALLBACK_LIQUIDITY_USD * PRIORITY_FALLBACK_LIQUIDITY_FRACTION
+        : MIN_FALLBACK_LIQUIDITY_USD;
+      const liquidityFloorFixed = decimalToFixed(liquidityFloorUsd, USD_SCALE);
       const url = `https://api.geckoterminal.com/api/v2/search/pools?query=${encodeURIComponent(term)}`;
       const res = await fetch(url, {
         method: 'GET',
         headers: { Accept: 'application/json' },
       });
-      if (!res.ok) continue;
+      if (!res.ok) {
+        meta.errors += 1;
+        continue;
+      }
+      meta.responsesOk += 1;
 
       const json = await res.json();
       const entries: GeckoSearchPool[] = Array.isArray(json?.data) ? json.data : [];
-      for (const entry of entries) {
-        const attrs = entry.attributes || {};
-        const networkRaw = String(
-          attrs.network ||
-          entry.relationships?.network?.data?.id ||
-          '',
-        ).toLowerCase();
-        const mappedNetwork = GECKO_NETWORK_TO_APP[networkRaw];
-        if (!mappedNetwork || !allowedChains.has(mappedNetwork)) continue;
-
-        const baseSymbol = String(attrs.base_token_symbol || '');
-        const quoteSymbol = String(attrs.quote_token_symbol || '');
-        const trackablePair = getTrackableBaseQuote(mappedNetwork, baseSymbol, quoteSymbol);
-        if (!trackablePair) continue;
-
-        const { base, quote } = trackablePair;
-        const priceUsdFixed = decimalToFixed(String(attrs.base_token_price_usd || attrs.price_in_usd || attrs.price_usd || '0'), FP_SCALE);
-        if (priceUsdFixed <= 0n) continue;
-
-        const liquidityUsdFixed = decimalToFixed(String(attrs.reserve_in_usd || attrs.liquidity_usd || '0'), USD_SCALE);
-        if (liquidityUsdFixed < decimalToFixed(MIN_FALLBACK_LIQUIDITY_USD, USD_SCALE)) continue;
-
-        const geckoBase = normalizeTokenSymbol(baseSymbol);
-        const canonicalBase = normalizeTokenSymbol(base);
-        if (geckoBase !== canonicalBase) {
-          // GeckoTerminal returned the stable quote as base; priceUsd is not a usable exchange rate here.
-          continue;
-        }
-
-        const token0PriceFixed = priceUsdFixed;
-        const token1PriceFixed = mulDiv(FP_SCALE, FP_SCALE, token0PriceFixed);
-        if (token1PriceFixed <= 0n) continue;
-
-        const pool: Pool = {
-          token0: { symbol: base },
-          token1: { symbol: quote },
-          token0Price: fixedToNumber(token0PriceFixed, FP_SCALE, 12).toString(),
-          token1Price: fixedToNumber(token1PriceFixed, FP_SCALE, 12).toString(),
-          reserveUSD: fixedToNumber(liquidityUsdFixed, USD_SCALE, 6).toString(),
-          network: mappedNetwork,
-          sourceType: 'gecko',
-        };
-
-        routePoolByDex(String(attrs.dex_name || attrs.exchange_name || ''), pool, {
-          uniV3Pools,
-          uniV2Pools,
-          sushiPools,
-          balancerPools,
-          curvePools,
-        });
-      }
+      processEntries(entries, liquidityFloorFixed);
     } catch {
       // Best-effort fallback source.
+      meta.errors += 1;
     }
   }
 
-  return { uniV3Pools, uniV2Pools, sushiPools, balancerPools, curvePools };
+  if (priorityTokenAddresses.length > 0) {
+    const priorityLiquidityFloorFixed = decimalToFixed(
+      MIN_FALLBACK_LIQUIDITY_USD * PRIORITY_FALLBACK_LIQUIDITY_FRACTION,
+      USD_SCALE,
+    );
+
+    for (const network of selectedNetworks) {
+      const geckoNetwork = APP_NETWORK_TO_GECKO[network];
+      for (const address of priorityTokenAddresses) {
+        try {
+          meta.queries += 1;
+          const normalizedAddress = address.toLowerCase();
+          const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(geckoNetwork)}/tokens/${encodeURIComponent(normalizedAddress)}/pools?page=1`;
+          const res = await fetch(url, {
+            method: 'GET',
+            headers: { Accept: 'application/json' },
+          });
+          if (!res.ok) {
+            meta.errors += 1;
+            continue;
+          }
+          meta.responsesOk += 1;
+          const json = await res.json();
+          const entries: GeckoSearchPool[] = Array.isArray(json?.data) ? json.data : [];
+          processEntries(entries, priorityLiquidityFloorFixed);
+        } catch {
+          meta.errors += 1;
+        }
+      }
+    }
+  }
+
+  return { uniV3Pools, uniV2Pools, sushiPools, balancerPools, curvePools, meta };
 };
 
 const findSpreads = (
@@ -1528,7 +4016,11 @@ const findSpreads = (
   sushiPools: Pool[],
   balancerPools: Pool[],
   curvePools: Pool[],
+  sourceReliabilityBps: Record<'subgraph' | 'dexscreener' | 'gecko', bigint>,
   config: ScannerConfig,
+  routeMemoryByKey: Map<string, RouteMemoryRecord>,
+  executionFeedbackByRoute: Map<string, RouteExecutionFeedbackRecord>,
+  dynamicPriorityTermsByNetwork?: PriorityTermsByNetwork,
 ): { opportunities: Opportunity[]; watchlist: Opportunity[]; diagnostics: ScanDiagnostics } => {
   const normalizeSymbol = (symbol: string): string => normalizeTokenSymbol(symbol);
 
@@ -1553,7 +4045,7 @@ const findSpreads = (
 
     const quoteSources = opportunity.quoteSources || [];
     const sourceQualityBps = quoteSources.length > 0
-      ? quoteSources.reduce((sum, source) => sum + (SOURCE_RELIABILITY_BPS[source] ?? 0n), 0n) / BigInt(quoteSources.length)
+      ? quoteSources.reduce((sum, source) => sum + (sourceReliabilityBps[source] ?? 0n), 0n) / BigInt(quoteSources.length)
       : 10_000n;
 
     const profitComponent = mulDiv(cappedProfitBps, 45n * SCALE, 10_000n);
@@ -1590,25 +4082,60 @@ const findSpreads = (
     return Number(total) / Number(SCALE);
   };
 
+  const canonicalizationStats = {
+    totalPoolsSeen: 0,
+    mapped: 0,
+    droppedMissingSymbols: 0,
+    droppedUntrackablePair: 0,
+    droppedNonPositiveCanonicalPrice: 0,
+    bySource: {
+      subgraph: 0,
+      dexscreener: 0,
+      gecko: 0,
+    },
+  };
+
   const mapPrice = (p: Pool) => {
+    const sourceType = p.sourceType || 'subgraph';
+    canonicalizationStats.totalPoolsSeen += 1;
+    if (sourceType === 'subgraph') canonicalizationStats.bySource.subgraph += 1;
+    if (sourceType === 'dexscreener') canonicalizationStats.bySource.dexscreener += 1;
+    if (sourceType === 'gecko') canonicalizationStats.bySource.gecko += 1;
+
     const network = toNetworkName(p.network);
     const token0 = normalizeSymbol(p.token0.symbol || '');
     const token1 = normalizeSymbol(p.token1.symbol || '');
     if (!token0 || !token1) {
+      canonicalizationStats.droppedMissingSymbols += 1;
       return { key: '', price: 0, pool: p, network };
     }
 
-    // token1Price is used as the base quote, then inverted if pair order is reversed
-    // so every DEX contributes to the same canonical token pair key.
-    const rawPriceFixed = decimalToFixed(p.token1Price || '0', FP_SCALE);
-    if (rawPriceFixed <= 0n) {
+    const trackablePair = getTrackableBaseQuote(network, token0, token1);
+    if (!trackablePair) {
+      canonicalizationStats.droppedUntrackablePair += 1;
       return { key: '', price: 0, pool: p, network };
     }
 
-    const isCanonical = token0 < token1;
-    const key = isCanonical ? `${network}:${token0}/${token1}` : `${network}:${token1}/${token0}`;
-    const canonicalPriceFixed = isCanonical ? rawPriceFixed : mulDiv(FP_SCALE, FP_SCALE, rawPriceFixed);
+    const key = `${network}:${trackablePair.base}/${trackablePair.quote}`;
+
+    const baseMatchesToken0 = normalizeSymbol(p.token0.symbol || '') === normalizeSymbol(trackablePair.base);
+    const quoteMatchesToken1 = normalizeSymbol(p.token1.symbol || '') === normalizeSymbol(trackablePair.quote);
+    const baseMatchesToken1 = normalizeSymbol(p.token1.symbol || '') === normalizeSymbol(trackablePair.base);
+    const quoteMatchesToken0 = normalizeSymbol(p.token0.symbol || '') === normalizeSymbol(trackablePair.quote);
+
+    const canonicalPriceFixed = (baseMatchesToken0 && quoteMatchesToken1)
+      ? decimalToFixed(p.token0Price || '0', FP_SCALE)
+      : (baseMatchesToken1 && quoteMatchesToken0)
+        ? decimalToFixed(p.token1Price || '0', FP_SCALE)
+        : 0n;
+
+    if (canonicalPriceFixed <= 0n) {
+      canonicalizationStats.droppedNonPositiveCanonicalPrice += 1;
+      return { key: '', price: 0, pool: p, network };
+    }
+
     const price = fixedToNumber(canonicalPriceFixed, FP_SCALE, 12);
+    canonicalizationStats.mapped += 1;
     return { key, price, pool: p, network };
   };
 
@@ -1680,8 +4207,432 @@ const findSpreads = (
       dexscreener: 0,
       gecko: 0,
     },
+    canonicalizationStats,
+    sourcePolicy: {
+      mode: config.sourcePolicyMode,
+      useExternalRawFeed: config.useExternalRawFeed,
+      notes: config.useExternalRawFeed
+        ? 'External raw feed mode is enabled by config (diagnostics scaffold only).'
+        : 'External raw feed mode is disabled; current scanner behavior unchanged.',
+    },
+    quoteFilterStats: {
+      dexscreenerOutliersDropped: 0,
+    },
+    badQuoteDetails: {
+      reasons: {
+        invalidPriceSet: 0,
+        nonPositiveOrInvalidCross: 0,
+        unreasonableSpread: 0,
+        unreasonableNearMissRoi: 0,
+      },
+      sourceComposition: {
+        subgraphOnly: 0,
+        fallbackOnly: 0,
+        mixed: 0,
+        subgraphDexscreener: 0,
+        subgraphGecko: 0,
+        dexscreenerOnly: 0,
+        geckoOnly: 0,
+        crossFallback: 0,
+        unknownRoute: 0,
+      },
+      samples: [],
+    },
+    routeAlternativeInsights: {
+      inspectedPairs: 0,
+      samples: [],
+    },
+    policyDryRun: {
+      enabled: true,
+      summary: {
+        preferSubgraph: {
+          differentFromSelected: 0,
+          selectedMixedExtreme: 0,
+          selectedSubgraphAnchored: 0,
+          medianFlipMarginScore: 0,
+          minFlipMarginScore: 0,
+          medianFlipMarginDistinctRouteScore: 0,
+          minFlipMarginDistinctRouteScore: 0,
+          medianFlipThresholdScore: 0,
+          minFlipThresholdScore: 0,
+          topTiePairs: 0,
+        },
+        preferExternalRaw: {
+          differentFromSelected: 0,
+          selectedMixedExtreme: 0,
+          selectedSubgraphAnchored: 0,
+          medianFlipMarginScore: 0,
+          minFlipMarginScore: 0,
+          medianFlipMarginDistinctRouteScore: 0,
+          minFlipMarginDistinctRouteScore: 0,
+          medianFlipThresholdScore: 0,
+          minFlipThresholdScore: 0,
+          topTiePairs: 0,
+        },
+      },
+      calibrationHints: {
+        preferSubgraph: {
+          easiestPairs: [],
+        },
+        preferExternalRaw: {
+          easiestPairs: [],
+        },
+      },
+      samples: [],
+    },
+    sameDexDetails: {
+      reasons: {
+        insufficientQuotes: 0,
+        insufficientValidPrices: 0,
+        insufficientDexOverlap: 0,
+        noCrossDexPositiveSpread: 0,
+        missingBestPairEntries: 0,
+      },
+      sourceComposition: {
+        subgraphOnly: 0,
+        fallbackOnly: 0,
+        mixed: 0,
+      },
+      samples: [],
+    },
     rejectionSamples: [],
+    routeMemory: {
+      loadedRoutes: routeMemoryByKey.size,
+      suppressedByCooldown: 0,
+      penalizedByHistory: 0,
+      maxPenaltyUsd: 0,
+      suppressedSamples: [],
+      penalizedSamples: [],
+    },
+    executionRiskDetails: {
+      reasons: {
+        routeCooldown: 0,
+        noExecutableSize: 0,
+        payloadBuildFailed: 0,
+      },
+      noExecutableByGate: createNoExecutableReasonCounts(),
+      samples: [],
+    },
+    executionFeedback: {
+      loadedRoutes: executionFeedbackByRoute.size,
+      penalizedRoutes: 0,
+      relievedRoutes: 0,
+      maxPenaltyUsd: 0,
+      maxReliefUsd: 0,
+      samples: [],
+    },
   };
+
+  const recordSameDexDetail = (
+    tokenPair: string,
+    quotes: Array<{ dex: Opportunity['buyDex']; price: number; pool: Pool }>,
+    reason: 'insufficientQuotes' | 'insufficientValidPrices' | 'insufficientDexOverlap' | 'noCrossDexPositiveSpread' | 'missingBestPairEntries',
+  ) => {
+    const sourceSet = new Set<'subgraph' | 'dexscreener' | 'gecko'>(
+      quotes.map((q) => q.pool.sourceType || 'subgraph'),
+    );
+
+    if (sourceSet.size === 1 && sourceSet.has('subgraph')) {
+      diagnostics.sameDexDetails!.sourceComposition.subgraphOnly += 1;
+    } else if (sourceSet.size === 1) {
+      diagnostics.sameDexDetails!.sourceComposition.fallbackOnly += 1;
+    } else {
+      diagnostics.sameDexDetails!.sourceComposition.mixed += 1;
+    }
+
+    diagnostics.sameDexDetails!.reasons[reason] += 1;
+    if (diagnostics.sameDexDetails!.samples.length < 15) {
+      diagnostics.sameDexDetails!.samples.push({
+        tokenPair,
+        reason,
+        quoteCount: quotes.length,
+        dexes: Array.from(new Set(quotes.map((q) => q.dex))),
+        sources: Array.from(sourceSet),
+      });
+    }
+  };
+
+  const normalizeSourceType = (value: string | undefined): 'subgraph' | 'dexscreener' | 'gecko' => {
+    if (value === 'dexscreener') return 'dexscreener';
+    if (value === 'gecko') return 'gecko';
+    return 'subgraph';
+  };
+
+  const recordBadQuoteDetail = (
+    tokenPair: string,
+    reason: 'invalidPriceSet' | 'nonPositiveOrInvalidCross' | 'unreasonableSpread' | 'unreasonableNearMissRoi',
+    options?: {
+      buyDex?: Opportunity['buyDex'];
+      sellDex?: Opportunity['sellDex'];
+      spread?: number;
+      buySource?: string;
+      sellSource?: string;
+      quoteSources?: Array<string | undefined>;
+    },
+  ) => {
+    const details = diagnostics.badQuoteDetails;
+    if (!details) return;
+    details.reasons[reason] += 1;
+
+    const buySource = options?.buySource ? normalizeSourceType(options.buySource) : undefined;
+    const sellSource = options?.sellSource ? normalizeSourceType(options.sellSource) : undefined;
+
+    if (buySource && sellSource) {
+      if (buySource === 'subgraph' && sellSource === 'subgraph') {
+        details.sourceComposition.subgraphOnly += 1;
+      } else if (buySource !== 'subgraph' && sellSource !== 'subgraph') {
+        details.sourceComposition.fallbackOnly += 1;
+      } else {
+        details.sourceComposition.mixed += 1;
+      }
+
+      if ((buySource === 'subgraph' && sellSource === 'dexscreener') || (buySource === 'dexscreener' && sellSource === 'subgraph')) {
+        details.sourceComposition.subgraphDexscreener += 1;
+      } else if ((buySource === 'subgraph' && sellSource === 'gecko') || (buySource === 'gecko' && sellSource === 'subgraph')) {
+        details.sourceComposition.subgraphGecko += 1;
+      } else if (buySource === 'dexscreener' && sellSource === 'dexscreener') {
+        details.sourceComposition.dexscreenerOnly += 1;
+      } else if (buySource === 'gecko' && sellSource === 'gecko') {
+        details.sourceComposition.geckoOnly += 1;
+      } else if (buySource !== sellSource && buySource !== 'subgraph' && sellSource !== 'subgraph') {
+        details.sourceComposition.crossFallback += 1;
+      }
+    } else {
+      const quoteSources = (options?.quoteSources || []).map((source) => normalizeSourceType(source));
+      if (quoteSources.length === 0) {
+        details.sourceComposition.unknownRoute += 1;
+      } else {
+        const sourceSet = new Set(quoteSources);
+        if (sourceSet.size === 1 && sourceSet.has('subgraph')) {
+          details.sourceComposition.subgraphOnly += 1;
+        } else if (sourceSet.size === 1) {
+          details.sourceComposition.fallbackOnly += 1;
+        } else {
+          details.sourceComposition.mixed += 1;
+        }
+      }
+    }
+
+    if (details.samples.length < 12) {
+      details.samples.push({
+        tokenPair,
+        reason,
+        buyDex: options?.buyDex,
+        sellDex: options?.sellDex,
+        buySource,
+        sellSource,
+        spread: options?.spread,
+      });
+    }
+  };
+
+  const sourceComboTag = (
+    buySource: 'subgraph' | 'dexscreener' | 'gecko',
+    sellSource: 'subgraph' | 'dexscreener' | 'gecko',
+    spreadBps: number,
+  ): 'selected_mixed_extreme' | 'selected_mixed' | 'selected_subgraph_anchored' | 'selected_other' => {
+    const mixed = buySource !== sellSource;
+    if (mixed && ((buySource === 'subgraph' && sellSource === 'dexscreener') || (buySource === 'dexscreener' && sellSource === 'subgraph')) && spreadBps >= 2_000) {
+      return 'selected_mixed_extreme';
+    }
+    if (mixed) return 'selected_mixed';
+    if (buySource === 'subgraph' || sellSource === 'subgraph') return 'selected_subgraph_anchored';
+    return 'selected_other';
+  };
+
+  const policyAdjustmentForRoute = (
+    mode: SourcePolicyMode,
+    useExternalRawFeed: boolean,
+    buySource: 'subgraph' | 'dexscreener' | 'gecko',
+    sellSource: 'subgraph' | 'dexscreener' | 'gecko',
+  ): bigint => {
+    const hasSubgraph = buySource === 'subgraph' || sellSource === 'subgraph';
+    const fallbackOnly = !hasSubgraph;
+    const mixed = buySource !== sellSource;
+
+    if (mode === 'prefer_subgraph') {
+      if (hasSubgraph && !mixed) return 400_000n;
+      if (hasSubgraph) return 250_000n;
+      return -300_000n;
+    }
+
+    if (mode === 'prefer_external_raw') {
+      if (!useExternalRawFeed) return 0n;
+      if (fallbackOnly && !mixed) return 450_000n;
+      if (fallbackOnly) return 300_000n;
+      if (mixed) return 100_000n;
+      return -250_000n;
+    }
+
+    return 0n;
+  };
+
+  const selectRouteForPolicy = (
+    routeCandidates: Array<{
+      buy: { dex: Opportunity['buyDex']; price: number; pool: Pool };
+      sell: { dex: Opportunity['buyDex']; price: number; pool: Pool };
+      score: bigint;
+      spreadBps: number;
+      minLiquidityUsd: number;
+      buySource: 'subgraph' | 'dexscreener' | 'gecko';
+      sellSource: 'subgraph' | 'dexscreener' | 'gecko';
+    }>,
+    mode: SourcePolicyMode,
+    useExternalRawFeed: boolean,
+  ) => {
+    let best: (typeof routeCandidates)[number] | undefined;
+    let bestAdjusted: bigint | undefined;
+    let secondBestAdjusted: bigint | undefined;
+
+    for (const candidate of routeCandidates) {
+      const adjusted = candidate.score + policyAdjustmentForRoute(
+        mode,
+        useExternalRawFeed,
+        candidate.buySource,
+        candidate.sellSource,
+      );
+      if (!best || bestAdjusted === undefined || adjusted > bestAdjusted) {
+        if (bestAdjusted !== undefined) {
+          secondBestAdjusted = bestAdjusted;
+        }
+        best = candidate;
+        bestAdjusted = adjusted;
+      } else if (secondBestAdjusted === undefined || adjusted > secondBestAdjusted) {
+        secondBestAdjusted = adjusted;
+      }
+    }
+
+    return best
+      ? {
+        candidate: best,
+        adjustedScore: bestAdjusted ?? best.score,
+        marginToNext: bestAdjusted !== undefined && secondBestAdjusted !== undefined
+          ? bestAdjusted - secondBestAdjusted
+          : 0n,
+        topTieCount: bestAdjusted !== undefined
+          ? routeCandidates.reduce((count, candidate) => {
+            const adjusted = candidate.score + policyAdjustmentForRoute(
+              mode,
+              useExternalRawFeed,
+              candidate.buySource,
+              candidate.sellSource,
+            );
+            return adjusted === bestAdjusted ? count + 1 : count;
+          }, 0)
+          : 1,
+        marginToNextDistinctRoute: bestAdjusted !== undefined
+          ? (() => {
+            const bestBuyDex = best.buy.dex;
+            const bestSellDex = best.sell.dex;
+            let bestDistinctAdjusted: bigint | undefined;
+            for (const candidate of routeCandidates) {
+              if (candidate.buy.dex === bestBuyDex && candidate.sell.dex === bestSellDex) continue;
+              const adjusted = candidate.score + policyAdjustmentForRoute(
+                mode,
+                useExternalRawFeed,
+                candidate.buySource,
+                candidate.sellSource,
+              );
+              if (bestDistinctAdjusted === undefined || adjusted > bestDistinctAdjusted) {
+                bestDistinctAdjusted = adjusted;
+              }
+            }
+            if (bestDistinctAdjusted === undefined) return 0n;
+            return bestAdjusted - bestDistinctAdjusted;
+          })()
+          : 0n,
+        distinctChallenger: bestAdjusted !== undefined
+          ? (() => {
+            const bestBuyDex = best.buy.dex;
+            const bestSellDex = best.sell.dex;
+            let bestDistinctCandidate: (typeof routeCandidates)[number] | undefined;
+            let bestDistinctAdjusted: bigint | undefined;
+            for (const candidate of routeCandidates) {
+              if (candidate.buy.dex === bestBuyDex && candidate.sell.dex === bestSellDex) continue;
+              const adjusted = candidate.score + policyAdjustmentForRoute(
+                mode,
+                useExternalRawFeed,
+                candidate.buySource,
+                candidate.sellSource,
+              );
+              if (bestDistinctAdjusted === undefined || adjusted > bestDistinctAdjusted) {
+                bestDistinctAdjusted = adjusted;
+                bestDistinctCandidate = candidate;
+              }
+            }
+            return bestDistinctCandidate;
+          })()
+          : undefined,
+      }
+      : null;
+  };
+
+  const evaluateRouteEarlyGate = (
+    routeCandidate: {
+      buy: { dex: Opportunity['buyDex']; price: number; pool: Pool };
+      sell: { dex: Opportunity['buyDex']; price: number; pool: Pool };
+      spreadBps: number;
+      buySource: 'subgraph' | 'dexscreener' | 'gecko';
+      sellSource: 'subgraph' | 'dexscreener' | 'gecko';
+    },
+  ): {
+    earlyGate: 'pass' | 'badQuotes' | 'spread';
+    spreadPercent: number;
+    decisionTag: 'selected_mixed_extreme' | 'selected_mixed' | 'selected_subgraph_anchored' | 'selected_other';
+  } => {
+    const buyPriceFixed = decimalToFixed(routeCandidate.buy.price, FP_SCALE);
+    const sellPriceFixed = decimalToFixed(routeCandidate.sell.price, FP_SCALE);
+    if (buyPriceFixed <= 0n || sellPriceFixed <= buyPriceFixed) {
+      return {
+        earlyGate: 'badQuotes',
+        spreadPercent: 0,
+        decisionTag: sourceComboTag(routeCandidate.buySource, routeCandidate.sellSource, routeCandidate.spreadBps),
+      };
+    }
+
+    const spreadFractionFixed = mulDiv(sellPriceFixed - buyPriceFixed, FP_SCALE, buyPriceFixed);
+    const maxSpreadFixed = decimalToFixed(MAX_REASONABLE_SPREAD_FRACTION, FP_SCALE);
+    const spreadPercent = fixedToNumber(mulDiv(spreadFractionFixed, 100n * FP_SCALE, FP_SCALE), FP_SCALE, 6);
+    if (spreadFractionFixed <= 0n || spreadFractionFixed > maxSpreadFixed) {
+      return {
+        earlyGate: 'badQuotes',
+        spreadPercent,
+        decisionTag: sourceComboTag(routeCandidate.buySource, routeCandidate.sellSource, routeCandidate.spreadBps),
+      };
+    }
+
+    const fallbackOnlyRoute = routeCandidate.buySource !== 'subgraph' && routeCandidate.sellSource !== 'subgraph';
+    const sameFallbackSourceRoute = fallbackOnlyRoute && routeCandidate.buySource === routeCandidate.sellSource;
+    const sourceAdjustedMinSpreadPercent = config.minSpreadPercent
+      + (fallbackOnlyRoute ? 0.12 : 0)
+      + (sameFallbackSourceRoute ? 0.08 : 0);
+
+    return {
+      earlyGate: spreadPercent < sourceAdjustedMinSpreadPercent ? 'spread' : 'pass',
+      spreadPercent,
+      decisionTag: sourceComboTag(routeCandidate.buySource, routeCandidate.sellSource, routeCandidate.spreadBps),
+    };
+  };
+
+  const policyFlipMargins: {
+    preferSubgraph: bigint[];
+    preferExternalRaw: bigint[];
+    preferSubgraphDistinctRoute: bigint[];
+    preferExternalRawDistinctRoute: bigint[];
+    preferSubgraphFlipThreshold: bigint[];
+    preferExternalRawFlipThreshold: bigint[];
+  } = {
+    preferSubgraph: [],
+    preferExternalRaw: [],
+    preferSubgraphDistinctRoute: [],
+    preferExternalRawDistinctRoute: [],
+    preferSubgraphFlipThreshold: [],
+    preferExternalRawFlipThreshold: [],
+  };
+
+  const flipThresholdFromMargin = (marginToDistinctRoute: bigint): bigint => (
+    marginToDistinctRoute > 0n ? marginToDistinctRoute + 1n : 1n
+  );
 
   for (const key of keys) {
     const quotes: Array<{ dex: Opportunity['buyDex']; price: number; pool: Pool }> = [];
@@ -1704,15 +4655,65 @@ const findSpreads = (
       if (source === 'gecko') diagnostics.quoteSourceCounts.gecko += 1;
     }
     if (quotes.length < 2) {
-      diagnostics.droppedByBadQuotes++;
-      pushRejectionSample(diagnostics, { tokenPair: key, reason: 'badQuotes' });
+      diagnostics.droppedBySameDex++;
+      recordSameDexDetail(key, quotes, 'insufficientQuotes');
+      pushRejectionSample(diagnostics, { tokenPair: key, reason: 'sameDex' });
       continue;
     }
 
     const prices = quotes.map((q) => q.price).filter((p) => p > 0);
     if (prices.length < 2) {
-      diagnostics.droppedByBadQuotes++;
-      pushRejectionSample(diagnostics, { tokenPair: key, reason: 'badQuotes' });
+      diagnostics.droppedBySameDex++;
+      recordSameDexDetail(key, quotes, 'insufficientValidPrices');
+      pushRejectionSample(diagnostics, { tokenPair: key, reason: 'sameDex' });
+      continue;
+    }
+
+    const [networkPart] = key.split(':');
+    const pairNetwork = toNetworkName(networkPart);
+    const isPriorityOverlapPair = getPriorityOverlapPairKeys(dynamicPriorityTermsByNetwork).has(key);
+    const dexCount = new Set(quotes.map((quote) => quote.dex)).size;
+    const sourceSet = new Set(quotes.map((quote) => quote.pool.sourceType || 'subgraph'));
+    const hasSubgraphAnchor = sourceSet.has('subgraph');
+    const fallbackOnlySingleSource = !hasSubgraphAnchor && sourceSet.size === 1;
+    const uniqueQuoteCount = quotes.length;
+    const maxQuoteLiquidityUsd = Math.max(...quotes.map((quote) => parsePoolLiquidity(quote.pool)));
+    const maxObservedPrice = Math.max(...prices);
+    const minObservedPrice = Math.min(...prices);
+    const quoteDispersionBps = minObservedPrice > 0
+      ? ((maxObservedPrice - minObservedPrice) / minObservedPrice) * 10_000
+      : Number.POSITIVE_INFINITY;
+    const minQuotesRequired = isPriorityOverlapPair
+      ? 2
+      : (pairNetwork === 'ethereum' ? 3 : 2);
+    const allowHighQualityAnchorBypass = !isPriorityOverlapPair
+      && pairNetwork === 'ethereum'
+      && uniqueQuoteCount >= 3
+      && maxQuoteLiquidityUsd >= (config.minLiquidityUsd * 1.5)
+      && quoteDispersionBps <= 120;
+    const requireSubgraphAnchor = !isPriorityOverlapPair
+      && pairNetwork === 'ethereum'
+      && uniqueQuoteCount < 4
+      && !allowHighQualityAnchorBypass;
+    const allowPrioritySingleSourceOverlap = isPriorityOverlapPair && dexCount >= 2 && uniqueQuoteCount >= 2;
+    const allowHighQualitySingleSourceOverlap = !isPriorityOverlapPair
+      && pairNetwork === 'ethereum'
+      && fallbackOnlySingleSource
+      && dexCount >= 3
+      && uniqueQuoteCount >= 3
+      && maxQuoteLiquidityUsd >= (config.minLiquidityUsd * 2)
+      && quoteDispersionBps <= 80;
+
+    // Hard overlap-quality gate: avoid weak fallback-only same-source pair snapshots.
+    if (
+      dexCount < 2
+      || (fallbackOnlySingleSource && !allowPrioritySingleSourceOverlap && !allowHighQualitySingleSourceOverlap)
+      || uniqueQuoteCount < minQuotesRequired
+      || (requireSubgraphAnchor && !hasSubgraphAnchor)
+    ) {
+      diagnostics.droppedBySameDex++;
+      recordSameDexDetail(key, quotes, 'insufficientDexOverlap');
+      pushRejectionSample(diagnostics, { tokenPair: key, reason: 'sameDex' });
       continue;
     }
 
@@ -1722,6 +4723,9 @@ const findSpreads = (
     const minPrice = Math.min(...prices);
     if (minPrice <= 0) {
       diagnostics.droppedByBadQuotes++;
+      recordBadQuoteDetail(key, 'invalidPriceSet', {
+        quoteSources: quotes.map((q) => q.pool.sourceType),
+      });
       pushRejectionSample(diagnostics, { tokenPair: key, reason: 'badQuotes' });
       continue;
     }
@@ -1734,6 +4738,24 @@ const findSpreads = (
       sell: { dex: Opportunity['buyDex']; price: number; pool: Pool };
       score: bigint;
     } | null = null;
+    const routeCandidates: Array<{
+      buy: { dex: Opportunity['buyDex']; price: number; pool: Pool };
+      sell: { dex: Opportunity['buyDex']; price: number; pool: Pool };
+      score: bigint;
+      spreadBps: number;
+      minLiquidityUsd: number;
+      buySource: 'subgraph' | 'dexscreener' | 'gecko';
+      sellSource: 'subgraph' | 'dexscreener' | 'gecko';
+    }> = [];
+    const topRouteCandidates: Array<{
+      buy: { dex: Opportunity['buyDex']; price: number; pool: Pool };
+      sell: { dex: Opportunity['buyDex']; price: number; pool: Pool };
+      score: bigint;
+      spreadBps: number;
+      minLiquidityUsd: number;
+      buySource: 'subgraph' | 'dexscreener' | 'gecko';
+      sellSource: 'subgraph' | 'dexscreener' | 'gecko';
+    }> = [];
 
     for (const buy of buys) {
       for (const sell of sells) {
@@ -1747,21 +4769,203 @@ const findSpreads = (
         if (buyPriceFixed <= 0n || sellPriceFixed <= buyPriceFixed) continue;
 
         const spreadBps = mulDiv(sellPriceFixed - buyPriceFixed, 10_000n, buyPriceFixed);
+        const cappedSpreadBpsForScore = spreadBps > 600n ? 600n : spreadBps;
         const liquidityFloorUsdFixed = decimalToFixed(Math.min(buyLiquidity, sellLiquidity), USD_SCALE);
         const liquidityCapUsdFixed = decimalToFixed(2_000_000, USD_SCALE);
         const cappedLiquidityFixed = liquidityFloorUsdFixed > liquidityCapUsdFixed ? liquidityCapUsdFixed : liquidityFloorUsdFixed;
         const liquidityBps = mulDiv(cappedLiquidityFixed, 10_000n, liquidityCapUsdFixed);
 
+        const buySource = buy.pool.sourceType || 'subgraph';
+        const sellSource = sell.pool.sourceType || 'subgraph';
+        const sourceDiversityBonus = buySource === sellSource
+          ? 0n
+          : 900_000n;
+        const subgraphAnchorBonus = (buySource === 'subgraph' || sellSource === 'subgraph')
+          ? 150_000n
+          : 0n;
+        const fallbackOnlyPenalty = (buySource !== 'subgraph' && sellSource !== 'subgraph')
+          ? 600_000n
+          : 0n;
+        const sameFallbackSourcePenalty = (buySource === sellSource && buySource !== 'subgraph')
+          ? 900_000n
+          : 0n;
+
         // Heavily prioritize spread, then use liquidity as deterministic tie-breaker.
-        const score = spreadBps * 100_000n + liquidityBps;
+        const score = cappedSpreadBpsForScore * 100_000n
+          + liquidityBps
+          + sourceDiversityBonus
+          + subgraphAnchorBonus
+          - fallbackOnlyPenalty
+          - sameFallbackSourcePenalty;
         if (!bestPair || score > bestPair.score) {
           bestPair = { buy, sell, score };
         }
+
+        const routeCandidate = {
+          buy,
+          sell,
+          score,
+          spreadBps: Number(spreadBps),
+          minLiquidityUsd: Math.min(buyLiquidity, sellLiquidity),
+          buySource: normalizeSourceType(buySource),
+          sellSource: normalizeSourceType(sellSource),
+        };
+
+        routeCandidates.push(routeCandidate);
+        topRouteCandidates.push(routeCandidate);
+        topRouteCandidates.sort((a, b) => {
+          if (a.score === b.score) return 0;
+          return a.score > b.score ? -1 : 1;
+        });
+        if (topRouteCandidates.length > 2) {
+          topRouteCandidates.length = 2;
+        }
+      }
+    }
+
+    if (topRouteCandidates.length > 0) {
+      diagnostics.routeAlternativeInsights!.inspectedPairs += 1;
+      if (diagnostics.routeAlternativeInsights!.samples.length < 12) {
+        const selected = topRouteCandidates[0];
+        const alternate = topRouteCandidates[1];
+        diagnostics.routeAlternativeInsights!.samples.push({
+          tokenPair: key,
+          selected: {
+            buyDex: selected.buy.dex,
+            sellDex: selected.sell.dex,
+            buySource: selected.buySource,
+            sellSource: selected.sellSource,
+            spreadBps: selected.spreadBps,
+            minLiquidityUsd: selected.minLiquidityUsd,
+            score: Number(selected.score),
+          },
+          alternate: alternate
+            ? {
+              buyDex: alternate.buy.dex,
+              sellDex: alternate.sell.dex,
+              buySource: alternate.buySource,
+              sellSource: alternate.sellSource,
+              spreadBps: alternate.spreadBps,
+              minLiquidityUsd: alternate.minLiquidityUsd,
+              score: Number(alternate.score),
+            }
+            : undefined,
+          decisionTag: sourceComboTag(selected.buySource, selected.sellSource, selected.spreadBps),
+        });
+      }
+
+      const live = topRouteCandidates[0];
+      const preferSubgraph = selectRouteForPolicy(routeCandidates, 'prefer_subgraph', config.useExternalRawFeed);
+      const preferExternalRaw = selectRouteForPolicy(routeCandidates, 'prefer_external_raw', config.useExternalRawFeed);
+
+      if (preferSubgraph) {
+        policyFlipMargins.preferSubgraph.push(preferSubgraph.marginToNext);
+        policyFlipMargins.preferSubgraphDistinctRoute.push(preferSubgraph.marginToNextDistinctRoute);
+        const preferSubgraphFlipThreshold = flipThresholdFromMargin(preferSubgraph.marginToNextDistinctRoute);
+        policyFlipMargins.preferSubgraphFlipThreshold.push(preferSubgraphFlipThreshold);
+        if (preferSubgraph.topTieCount > 1) {
+          diagnostics.policyDryRun!.summary.preferSubgraph.topTiePairs += 1;
+        }
+        if (
+          preferSubgraph.candidate.buy.dex !== live.buy.dex
+          || preferSubgraph.candidate.sell.dex !== live.sell.dex
+        ) {
+          diagnostics.policyDryRun!.summary.preferSubgraph.differentFromSelected += 1;
+        }
+        const tag = sourceComboTag(
+          preferSubgraph.candidate.buySource,
+          preferSubgraph.candidate.sellSource,
+          preferSubgraph.candidate.spreadBps,
+        );
+        if (tag === 'selected_mixed_extreme') diagnostics.policyDryRun!.summary.preferSubgraph.selectedMixedExtreme += 1;
+        if (tag === 'selected_subgraph_anchored') diagnostics.policyDryRun!.summary.preferSubgraph.selectedSubgraphAnchored += 1;
+      }
+
+      if (preferExternalRaw) {
+        policyFlipMargins.preferExternalRaw.push(preferExternalRaw.marginToNext);
+        policyFlipMargins.preferExternalRawDistinctRoute.push(preferExternalRaw.marginToNextDistinctRoute);
+        const preferExternalRawFlipThreshold = flipThresholdFromMargin(preferExternalRaw.marginToNextDistinctRoute);
+        policyFlipMargins.preferExternalRawFlipThreshold.push(preferExternalRawFlipThreshold);
+        if (preferExternalRaw.topTieCount > 1) {
+          diagnostics.policyDryRun!.summary.preferExternalRaw.topTiePairs += 1;
+        }
+        if (
+          preferExternalRaw.candidate.buy.dex !== live.buy.dex
+          || preferExternalRaw.candidate.sell.dex !== live.sell.dex
+        ) {
+          diagnostics.policyDryRun!.summary.preferExternalRaw.differentFromSelected += 1;
+        }
+        const tag = sourceComboTag(
+          preferExternalRaw.candidate.buySource,
+          preferExternalRaw.candidate.sellSource,
+          preferExternalRaw.candidate.spreadBps,
+        );
+        if (tag === 'selected_mixed_extreme') diagnostics.policyDryRun!.summary.preferExternalRaw.selectedMixedExtreme += 1;
+        if (tag === 'selected_subgraph_anchored') diagnostics.policyDryRun!.summary.preferExternalRaw.selectedSubgraphAnchored += 1;
+      }
+
+      if (diagnostics.policyDryRun!.samples.length < 12) {
+        const liveDecisionTag = sourceComboTag(live.buySource, live.sellSource, live.spreadBps);
+        diagnostics.policyDryRun!.samples.push({
+          tokenPair: key,
+          liveDecisionTag,
+          live: {
+            buyDex: live.buy.dex,
+            sellDex: live.sell.dex,
+            buySource: live.buySource,
+            sellSource: live.sellSource,
+            spreadBps: live.spreadBps,
+            score: Number(live.score),
+          },
+          preferSubgraph: preferSubgraph
+            ? {
+              buyDex: preferSubgraph.candidate.buy.dex,
+              sellDex: preferSubgraph.candidate.sell.dex,
+              buySource: preferSubgraph.candidate.buySource,
+              sellSource: preferSubgraph.candidate.sellSource,
+              spreadBps: preferSubgraph.candidate.spreadBps,
+              score: Number(preferSubgraph.adjustedScore),
+              marginToDistinctRouteScore: Number(preferSubgraph.marginToNextDistinctRoute),
+              flipThresholdScore: Number(flipThresholdFromMargin(preferSubgraph.marginToNextDistinctRoute)),
+              challenger: preferSubgraph.distinctChallenger
+                ? {
+                  buyDex: preferSubgraph.distinctChallenger.buy.dex,
+                  sellDex: preferSubgraph.distinctChallenger.sell.dex,
+                  buySource: preferSubgraph.distinctChallenger.buySource,
+                  sellSource: preferSubgraph.distinctChallenger.sellSource,
+                  ...evaluateRouteEarlyGate(preferSubgraph.distinctChallenger),
+                }
+                : undefined,
+            }
+            : undefined,
+          preferExternalRaw: preferExternalRaw
+            ? {
+              buyDex: preferExternalRaw.candidate.buy.dex,
+              sellDex: preferExternalRaw.candidate.sell.dex,
+              buySource: preferExternalRaw.candidate.buySource,
+              sellSource: preferExternalRaw.candidate.sellSource,
+              spreadBps: preferExternalRaw.candidate.spreadBps,
+              score: Number(preferExternalRaw.adjustedScore),
+              marginToDistinctRouteScore: Number(preferExternalRaw.marginToNextDistinctRoute),
+              flipThresholdScore: Number(flipThresholdFromMargin(preferExternalRaw.marginToNextDistinctRoute)),
+              challenger: preferExternalRaw.distinctChallenger
+                ? {
+                  buyDex: preferExternalRaw.distinctChallenger.buy.dex,
+                  sellDex: preferExternalRaw.distinctChallenger.sell.dex,
+                  buySource: preferExternalRaw.distinctChallenger.buySource,
+                  sellSource: preferExternalRaw.distinctChallenger.sellSource,
+                  ...evaluateRouteEarlyGate(preferExternalRaw.distinctChallenger),
+                }
+                : undefined,
+            }
+            : undefined,
+        });
       }
     }
 
     if (!bestPair) {
       diagnostics.droppedBySameDex++;
+      recordSameDexDetail(key, quotes, 'noCrossDexPositiveSpread');
       pushRejectionSample(diagnostics, { tokenPair: key, reason: 'sameDex' });
       continue;
     }
@@ -1771,6 +4975,7 @@ const findSpreads = (
 
     if (!buyEntry || !sellEntry) {
       diagnostics.droppedBySameDex++;
+      recordSameDexDetail(key, quotes, 'missingBestPairEntries');
       pushRejectionSample(diagnostics, { tokenPair: key, reason: 'sameDex' });
       continue;
     }
@@ -1779,6 +4984,13 @@ const findSpreads = (
     const buyPriceFixed = decimalToFixed(buyEntry.price, FP_SCALE);
     if (sellPriceFixed <= buyPriceFixed || buyPriceFixed <= 0n) {
       diagnostics.droppedByBadQuotes++;
+      recordBadQuoteDetail(key, 'nonPositiveOrInvalidCross', {
+        buyDex: buyEntry.dex,
+        sellDex: sellEntry.dex,
+        spread: 0,
+        buySource: buyEntry.pool.sourceType,
+        sellSource: sellEntry.pool.sourceType,
+      });
       pushRejectionSample(diagnostics, { tokenPair: key, reason: 'badQuotes', buyDex: buyEntry.dex, sellDex: sellEntry.dex, spread: 0 });
       continue;
     }
@@ -1787,13 +4999,28 @@ const findSpreads = (
     const maxSpreadFixed = decimalToFixed(MAX_REASONABLE_SPREAD_FRACTION, FP_SCALE);
     if (spreadFractionFixed <= 0n || spreadFractionFixed > maxSpreadFixed) {
       diagnostics.droppedByBadQuotes++;
+      recordBadQuoteDetail(key, 'unreasonableSpread', {
+        buyDex: buyEntry.dex,
+        sellDex: sellEntry.dex,
+        spread: fixedToNumber(mulDiv(spreadFractionFixed, 100n * FP_SCALE, FP_SCALE), FP_SCALE, 6),
+        buySource: buyEntry.pool.sourceType,
+        sellSource: sellEntry.pool.sourceType,
+      });
       pushRejectionSample(diagnostics, { tokenPair: key, reason: 'badQuotes', buyDex: buyEntry.dex, sellDex: sellEntry.dex, spread: fixedToNumber(mulDiv(spreadFractionFixed, 100n * FP_SCALE, FP_SCALE), FP_SCALE, 6) });
       continue;
     }
 
     const spreadBps = mulDiv(spreadFractionFixed, 10_000n, FP_SCALE);
     const spread = Number(spreadBps) / 100;
-    if (spread < config.minSpreadPercent) {
+    const buySource = buyEntry.pool.sourceType || 'subgraph';
+    const sellSource = sellEntry.pool.sourceType || 'subgraph';
+    const fallbackOnlyRoute = buySource !== 'subgraph' && sellSource !== 'subgraph';
+    const sameFallbackSourceRoute = fallbackOnlyRoute && buySource === sellSource;
+    const sourceAdjustedMinSpreadPercent = config.minSpreadPercent
+      + (fallbackOnlyRoute ? 0.12 : 0)
+      + (sameFallbackSourceRoute ? 0.08 : 0);
+
+    if (spread < sourceAdjustedMinSpreadPercent) {
       diagnostics.droppedBySpread++;
       pushRejectionSample(diagnostics, { tokenPair: key, reason: 'spread', buyDex: buyEntry.dex, sellDex: sellEntry.dex, spread });
       continue;
@@ -1803,6 +5030,85 @@ const findSpreads = (
     const sellLiquidityUsd = parsePoolLiquidity(sellEntry.pool);
     const network = toNetworkName(buyEntry.pool.network || sellEntry.pool.network);
     const minNetProfitUsd = getRequiredActiveNetProfitUsd(config, network);
+    const routeMemoryKey = buildRouteMemoryKey(network, key, buyEntry.dex, sellEntry.dex);
+    const routeMemory = routeMemoryByKey.get(routeMemoryKey);
+    const executionFeedback = executionFeedbackByRoute.get(routeMemoryKey);
+
+    if (routeMemory?.cooldownUntil) {
+      const cooldownUntilTs = Date.parse(routeMemory.cooldownUntil);
+      if (Number.isFinite(cooldownUntilTs) && cooldownUntilTs > Date.now()) {
+        diagnostics.routeMemory!.suppressedByCooldown += 1;
+        if (diagnostics.routeMemory!.suppressedSamples.length < 5) {
+          diagnostics.routeMemory!.suppressedSamples.push({
+            routeKey: routeMemoryKey,
+            tokenPair: key,
+            buyDex: buyEntry.dex,
+            sellDex: sellEntry.dex,
+            cooldownUntil: routeMemory.cooldownUntil,
+          });
+        }
+        diagnostics.droppedByExecutionRisk += 1;
+        diagnostics.executionRiskDetails!.reasons.routeCooldown += 1;
+        if (diagnostics.executionRiskDetails!.samples.length < 8) {
+          diagnostics.executionRiskDetails!.samples.push({
+            tokenPair: key,
+            buyDex: buyEntry.dex,
+            sellDex: sellEntry.dex,
+            cause: 'routeCooldown',
+            detail: routeMemory?.cooldownUntil,
+          });
+        }
+        pushRejectionSample(diagnostics, {
+          tokenPair: key,
+          reason: 'executionRisk',
+          buyDex: buyEntry.dex,
+          sellDex: sellEntry.dex,
+        });
+        continue;
+      }
+    }
+
+    const historicalPenaltyUsd = routeMemory && routeMemory.avgRealizedNet < 0
+      ? Math.min(20, Math.abs(routeMemory.avgRealizedNet) * 0.35)
+      : 0;
+    if (historicalPenaltyUsd > 0) {
+      diagnostics.routeMemory!.penalizedByHistory += 1;
+      diagnostics.routeMemory!.maxPenaltyUsd = Math.max(diagnostics.routeMemory!.maxPenaltyUsd, historicalPenaltyUsd);
+      if (diagnostics.routeMemory!.penalizedSamples.length < 5) {
+        diagnostics.routeMemory!.penalizedSamples.push({
+          routeKey: routeMemoryKey,
+          tokenPair: key,
+          buyDex: buyEntry.dex,
+          sellDex: sellEntry.dex,
+          avgRealizedNet: routeMemory?.avgRealizedNet ?? 0,
+          penaltyUsd: historicalPenaltyUsd,
+        });
+      }
+    }
+    const executionPenaltyUsd = executionFeedback ? executionFeedback.penaltyUsd : 0;
+    const executionReliefUsd = executionFeedback ? executionFeedback.reliefUsd : 0;
+
+    if (executionFeedback && executionFeedback.attempts >= 3) {
+      if (executionPenaltyUsd > 0) {
+        diagnostics.executionFeedback!.penalizedRoutes += 1;
+        diagnostics.executionFeedback!.maxPenaltyUsd = Math.max(diagnostics.executionFeedback!.maxPenaltyUsd, executionPenaltyUsd);
+      }
+      if (executionReliefUsd > 0) {
+        diagnostics.executionFeedback!.relievedRoutes += 1;
+        diagnostics.executionFeedback!.maxReliefUsd = Math.max(diagnostics.executionFeedback!.maxReliefUsd, executionReliefUsd);
+      }
+      if (diagnostics.executionFeedback!.samples.length < 8) {
+        diagnostics.executionFeedback!.samples.push({
+          routeKey: routeMemoryKey,
+          successRate: executionFeedback.successRate,
+          attempts: executionFeedback.attempts,
+          penaltyUsd: executionPenaltyUsd,
+          reliefUsd: executionReliefUsd,
+        });
+      }
+    }
+
+    const effectiveMinNetProfitUsd = Math.max(0, minNetProfitUsd + historicalPenaltyUsd + executionPenaltyUsd - executionReliefUsd);
     const liquidityUsd = Math.max(...quotes.map((q) => parsePoolLiquidity(q.pool)));
     if (liquidityUsd < config.minLiquidityUsd) {
       diagnostics.droppedByLiquidity++;
@@ -1818,7 +5124,7 @@ const findSpreads = (
       continue;
     }
 
-    const executionCandidate = evaluateExecutionCandidate(
+    const executionEvaluation = evaluateExecutionCandidate(
       buyEntry.price,
       sellEntry.price,
       buyEntry.pool,
@@ -1828,10 +5134,23 @@ const findSpreads = (
       network,
       config,
     );
+    const executionCandidate = executionEvaluation.candidate;
     if (!executionCandidate) {
       const requestedLoanAmount = Math.min(config.loanAmountUsd, Math.min(buyLiquidityUsd, sellLiquidityUsd) * config.maxLiquidityUsageFraction);
-      const buyImpactBps = estimateSlippageBps(requestedLoanAmount, buyLiquidityUsd);
-      const sellImpactBps = estimateSlippageBps(requestedLoanAmount, sellLiquidityUsd);
+      const minNetEdgeBpsRequired = getMinNetEdgeBpsForNetwork(config, network);
+      const minNetByEdgeRequestedLoan = (requestedLoanAmount * minNetEdgeBpsRequired) / 10_000;
+      const effectiveRequiredNetRequestedLoan = Math.max(effectiveMinNetProfitUsd, minNetByEdgeRequestedLoan);
+      const cpmmNearMiss = simulateVirtualCpmmRoundTrip(
+        buyEntry.price,
+        sellEntry.price,
+        buyLiquidityUsd,
+        sellLiquidityUsd,
+        requestedLoanAmount,
+        dexSwapFeeBps[buyEntry.dex],
+        dexSwapFeeBps[sellEntry.dex],
+      );
+      const buyImpactBps = cpmmNearMiss ? Math.round(cpmmNearMiss.buyImpactBps) : estimateSlippageBps(requestedLoanAmount, buyLiquidityUsd);
+      const sellImpactBps = cpmmNearMiss ? Math.round(cpmmNearMiss.sellImpactBps) : estimateSlippageBps(requestedLoanAmount, sellLiquidityUsd);
       if (buyImpactBps > config.maxSlippageBps || sellImpactBps > config.maxSlippageBps) {
         diagnostics.droppedBySlippage++;
         pushRejectionSample(diagnostics, {
@@ -1848,18 +5167,23 @@ const findSpreads = (
         });
       } else {
         const routePenaltyBps = dexPenaltyBps[buyEntry.dex] + dexPenaltyBps[sellEntry.dex];
-        const quotedBuyPrice = mulDiv(decimalToFixed(buyEntry.price, FP_SCALE), BigInt(10_000 + buyImpactBps), 10_000n);
-        const quotedSellPrice = mulDiv(decimalToFixed(sellEntry.price, FP_SCALE), BigInt(10_000 - sellImpactBps), 10_000n);
         const requestedLoanFixed = decimalToFixed(requestedLoanAmount, USD_SCALE);
         const gasCostFixed = decimalToFixed(estimateGasUsdForNetwork(network, config), USD_SCALE);
 
-        const grossProfitFixed = quotedSellPrice > quotedBuyPrice
-          ? mulDiv(mulDiv(quotedSellPrice - quotedBuyPrice, FP_SCALE, quotedBuyPrice), requestedLoanFixed, FP_SCALE)
+        const grossProfitFixed = cpmmNearMiss
+          ? decimalToFixed(cpmmNearMiss.grossProfitUsd, USD_SCALE)
           : 0n;
         const nearMissNetProfitFixed = grossProfitFixed - mulDiv(requestedLoanFixed, BigInt(routePenaltyBps), 10_000n) - gasCostFixed;
         const maxReasonableProfitFixed = mulDiv(requestedLoanFixed, decimalToFixed(MAX_REASONABLE_ROI_FRACTION, FP_SCALE), FP_SCALE);
         if (grossProfitFixed > maxReasonableProfitFixed || nearMissNetProfitFixed > maxReasonableProfitFixed) {
           diagnostics.droppedByBadQuotes++;
+          recordBadQuoteDetail(key, 'unreasonableNearMissRoi', {
+            buyDex: buyEntry.dex,
+            sellDex: sellEntry.dex,
+            spread,
+            buySource: buyEntry.pool.sourceType,
+            sellSource: sellEntry.pool.sourceType,
+          });
           pushRejectionSample(diagnostics, {
             tokenPair: key,
             reason: 'badQuotes',
@@ -1879,6 +5203,49 @@ const findSpreads = (
 
         if (grossProfit <= gasCost || nearMissNetProfit <= 0) {
           diagnostics.droppedByNetProfit++;
+          diagnostics.watchlistCount++;
+          watchlist.push({
+            tokenPair: key,
+            buyDex: buyEntry.dex,
+            sellDex: sellEntry.dex,
+            network,
+            loanAmount: config.loanAmountUsd,
+            executableLoanAmount: requestedLoanAmount,
+            grossProfit,
+            netProfit: nearMissNetProfit,
+            distanceToExecutableUsd: Math.max(0, effectiveRequiredNetRequestedLoan - nearMissNetProfit),
+            gasCost,
+            confidenceScore: confidenceScoreDeterministic({
+              base: 30,
+              spreadBps,
+              spreadMultiplier: 55,
+              slippageBps: BigInt(buyImpactBps + sellImpactBps + routePenaltyBps),
+              slippageDivisor: 7,
+              minScore: 1,
+              maxScore: 70,
+            }),
+            confidenceTier: 'low',
+            spread: spread.toFixed(4),
+            liquidity: liquidityUsd.toFixed(0),
+            estimatedSlippageBps: buyImpactBps + sellImpactBps + routePenaltyBps,
+            buyImpactBps,
+            sellImpactBps,
+            routePenaltyBps,
+            quoteSources: [
+              buyEntry.pool.sourceType || 'subgraph',
+              sellEntry.pool.sourceType || 'subgraph',
+            ],
+            mathDiagnostics: buildMathDiagnostics({
+              loanAmountUsd: requestedLoanAmount,
+              spreadBps,
+              grossProfitUsd: grossProfit,
+              buyLiquidityUsd,
+              sellLiquidityUsd,
+              gasCostUsd: gasCost,
+              passReason: 'watchlist-non-positive-net',
+            }),
+            status: 'watchlist',
+          });
           pushRejectionSample(diagnostics, {
             tokenPair: key,
             reason: 'netProfit',
@@ -1909,7 +5276,7 @@ const findSpreads = (
           executableLoanAmount: requestedLoanAmount,
           grossProfit,
           netProfit: nearMissNetProfit,
-          distanceToExecutableUsd: Math.max(0, minNetProfitUsd - nearMissNetProfit),
+          distanceToExecutableUsd: Math.max(0, effectiveRequiredNetRequestedLoan - nearMissNetProfit),
           gasCost,
           confidenceScore: confidenceScoreDeterministic({
             base: 42,
@@ -1955,14 +5322,77 @@ const findSpreads = (
         });
       }
       diagnostics.droppedByExecutionRisk++;
+      diagnostics.executionRiskDetails!.reasons.noExecutableSize += 1;
+      if (executionEvaluation.noExecutableReasons) {
+        for (const gate of NO_EXECUTABLE_REASON_KEYS) {
+          diagnostics.executionRiskDetails!.noExecutableByGate![gate] += executionEvaluation.noExecutableReasons[gate] || 0;
+        }
+      }
+      const dominantNoExecutableReason = topNoExecutableReason(executionEvaluation.noExecutableReasons);
+      if (diagnostics.executionRiskDetails!.samples.length < 8) {
+        diagnostics.executionRiskDetails!.samples.push({
+          tokenPair: key,
+          buyDex: buyEntry.dex,
+          sellDex: sellEntry.dex,
+          cause: 'noExecutableSize',
+          detail: dominantNoExecutableReason,
+        });
+      }
       continue;
     }
 
     diagnostics.executionFeasible++;
 
-    if (executionCandidate.netProfit < minNetProfitUsd) {
+    const minNetEdgeBpsRequired = getMinNetEdgeBpsForNetwork(config, network);
+    const minNetByEdgeExecutionLoan = (executionCandidate.executableLoanAmount * minNetEdgeBpsRequired) / 10_000;
+    const effectiveRequiredNetExecutionLoan = Math.max(effectiveMinNetProfitUsd, minNetByEdgeExecutionLoan);
+
+    if (executionCandidate.netProfit < effectiveRequiredNetExecutionLoan) {
       if (executionCandidate.grossProfit <= executionCandidate.gasCost || executionCandidate.netProfit <= 0) {
         diagnostics.droppedByNetProfit++;
+        diagnostics.watchlistCount++;
+        watchlist.push({
+          tokenPair: key,
+          buyDex: buyEntry.dex,
+          sellDex: sellEntry.dex,
+          network,
+          loanAmount: config.loanAmountUsd,
+          executableLoanAmount: executionCandidate.executableLoanAmount,
+          grossProfit: executionCandidate.grossProfit,
+          netProfit: executionCandidate.netProfit,
+          distanceToExecutableUsd: Math.max(0, effectiveRequiredNetExecutionLoan - executionCandidate.netProfit),
+          gasCost: executionCandidate.gasCost,
+          confidenceScore: confidenceScoreDeterministic({
+            base: 34,
+            spreadBps,
+            spreadMultiplier: 60,
+            slippageBps: BigInt(executionCandidate.estimatedSlippageBps),
+            slippageDivisor: 7,
+            minScore: 1,
+            maxScore: 70,
+          }),
+          confidenceTier: 'low',
+          spread: spread.toFixed(4),
+          liquidity: liquidityUsd.toFixed(0),
+          estimatedSlippageBps: executionCandidate.estimatedSlippageBps,
+          buyImpactBps: executionCandidate.buyImpactBps,
+          sellImpactBps: executionCandidate.sellImpactBps,
+          routePenaltyBps: executionCandidate.routePenaltyBps,
+          quoteSources: [
+            buyEntry.pool.sourceType || 'subgraph',
+            sellEntry.pool.sourceType || 'subgraph',
+          ],
+          mathDiagnostics: buildMathDiagnostics({
+            loanAmountUsd: executionCandidate.executableLoanAmount,
+            spreadBps,
+            grossProfitUsd: executionCandidate.grossProfit,
+            buyLiquidityUsd,
+            sellLiquidityUsd,
+            gasCostUsd: executionCandidate.gasCost,
+            passReason: 'watchlist-non-positive-net',
+          }),
+          status: 'watchlist',
+        });
         pushRejectionSample(diagnostics, {
           tokenPair: key,
           reason: 'netProfit',
@@ -1994,7 +5424,7 @@ const findSpreads = (
         executableLoanAmount: executionCandidate.executableLoanAmount,
         grossProfit: executionCandidate.grossProfit,
         netProfit: executionCandidate.netProfit,
-        distanceToExecutableUsd: Math.max(0, minNetProfitUsd - executionCandidate.netProfit),
+        distanceToExecutableUsd: Math.max(0, effectiveRequiredNetExecutionLoan - executionCandidate.netProfit),
         gasCost: estimateGasUsdForNetwork(network, config),
         confidenceScore: confidenceScoreDeterministic({
           base: 48,
@@ -2102,6 +5532,16 @@ const findSpreads = (
       }
 
       diagnostics.droppedByExecutionRisk++;
+      diagnostics.executionRiskDetails!.reasons.payloadBuildFailed += 1;
+      if (diagnostics.executionRiskDetails!.samples.length < 8) {
+        diagnostics.executionRiskDetails!.samples.push({
+          tokenPair: key,
+          buyDex: buyEntry.dex,
+          sellDex: sellEntry.dex,
+          cause: 'payloadBuildFailed',
+          detail: executionPayloadError || undefined,
+        });
+      }
       diagnostics.watchlistCount++;
       pushRejectionSample(diagnostics, {
         tokenPair: key,
@@ -2124,7 +5564,7 @@ const findSpreads = (
         executableLoanAmount: executionCandidate.executableLoanAmount,
         grossProfit: executionCandidate.grossProfit,
         netProfit: executionCandidate.netProfit,
-        distanceToExecutableUsd: Math.max(0, minNetProfitUsd - executionCandidate.netProfit),
+        distanceToExecutableUsd: Math.max(0, effectiveRequiredNetExecutionLoan - executionCandidate.netProfit),
         gasCost: executionCandidate.gasCost,
         confidenceScore: confidenceScoreDeterministic({
           base: 38,
@@ -2190,6 +5630,65 @@ const findSpreads = (
       executionPayload: executionPayload || undefined,
     });
   }
+
+  const computePolicyMarginStats = (margins: bigint[]) => {
+    if (margins.length === 0) return { median: 0, min: 0 };
+    const sorted = [...margins].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+    const mid = Math.floor(sorted.length / 2);
+    const median = sorted.length % 2 === 0
+      ? Number((sorted[mid - 1] + sorted[mid]) / 2n)
+      : Number(sorted[mid]);
+    const min = Number(sorted[0]);
+    return { median, min };
+  };
+
+  {
+    const subgraphStats = computePolicyMarginStats(policyFlipMargins.preferSubgraph);
+    const externalRawStats = computePolicyMarginStats(policyFlipMargins.preferExternalRaw);
+    const subgraphDistinctStats = computePolicyMarginStats(policyFlipMargins.preferSubgraphDistinctRoute);
+    const externalRawDistinctStats = computePolicyMarginStats(policyFlipMargins.preferExternalRawDistinctRoute);
+    const subgraphFlipThresholdStats = computePolicyMarginStats(policyFlipMargins.preferSubgraphFlipThreshold);
+    const externalRawFlipThresholdStats = computePolicyMarginStats(policyFlipMargins.preferExternalRawFlipThreshold);
+    diagnostics.policyDryRun!.summary.preferSubgraph.medianFlipMarginScore = subgraphStats.median;
+    diagnostics.policyDryRun!.summary.preferSubgraph.minFlipMarginScore = subgraphStats.min;
+    diagnostics.policyDryRun!.summary.preferSubgraph.medianFlipMarginDistinctRouteScore = subgraphDistinctStats.median;
+    diagnostics.policyDryRun!.summary.preferSubgraph.minFlipMarginDistinctRouteScore = subgraphDistinctStats.min;
+    diagnostics.policyDryRun!.summary.preferSubgraph.medianFlipThresholdScore = subgraphFlipThresholdStats.median;
+    diagnostics.policyDryRun!.summary.preferSubgraph.minFlipThresholdScore = subgraphFlipThresholdStats.min;
+    diagnostics.policyDryRun!.summary.preferExternalRaw.medianFlipMarginScore = externalRawStats.median;
+    diagnostics.policyDryRun!.summary.preferExternalRaw.minFlipMarginScore = externalRawStats.min;
+    diagnostics.policyDryRun!.summary.preferExternalRaw.medianFlipMarginDistinctRouteScore = externalRawDistinctStats.median;
+    diagnostics.policyDryRun!.summary.preferExternalRaw.minFlipMarginDistinctRouteScore = externalRawDistinctStats.min;
+    diagnostics.policyDryRun!.summary.preferExternalRaw.medianFlipThresholdScore = externalRawFlipThresholdStats.median;
+    diagnostics.policyDryRun!.summary.preferExternalRaw.minFlipThresholdScore = externalRawFlipThresholdStats.min;
+
+    const easiestSubgraphPairs = diagnostics.policyDryRun!.samples
+      .filter((sample) => sample.preferSubgraph)
+      .map((sample) => ({
+        tokenPair: sample.tokenPair,
+        liveDecisionTag: sample.liveDecisionTag,
+        flipThresholdScore: sample.preferSubgraph!.flipThresholdScore,
+        marginToDistinctRouteScore: sample.preferSubgraph!.marginToDistinctRouteScore,
+        challenger: sample.preferSubgraph!.challenger,
+      }))
+      .sort((a, b) => a.flipThresholdScore - b.flipThresholdScore)
+      .slice(0, 6);
+
+    const easiestExternalRawPairs = diagnostics.policyDryRun!.samples
+      .filter((sample) => sample.preferExternalRaw)
+      .map((sample) => ({
+        tokenPair: sample.tokenPair,
+        liveDecisionTag: sample.liveDecisionTag,
+        flipThresholdScore: sample.preferExternalRaw!.flipThresholdScore,
+        marginToDistinctRouteScore: sample.preferExternalRaw!.marginToDistinctRouteScore,
+        challenger: sample.preferExternalRaw!.challenger,
+      }))
+      .sort((a, b) => a.flipThresholdScore - b.flipThresholdScore)
+      .slice(0, 6);
+
+    diagnostics.policyDryRun!.calibrationHints.preferSubgraph.easiestPairs = easiestSubgraphPairs;
+    diagnostics.policyDryRun!.calibrationHints.preferExternalRaw.easiestPairs = easiestExternalRawPairs;
+  }
   return {
     opportunities: opps
       .sort((a, b) => {
@@ -2210,24 +5709,72 @@ const findSpreads = (
 };
 
 const runScan = async (config: ScannerConfig, networks: string[]) => {
-  // Run subgraph fetches and market-data fallbacks in parallel for full coverage.
+  const selectedNetworks = (networks.length > 0 ? networks : ['ethereum'])
+    .map((n) => toNetworkName(CHAIN_MAP[n] || n));
+  const allowedNetworks = new Set<NetworkName>(selectedNetworks);
+
+  // Parse feature toggles for market-data fallback sources.
+  const enableDexScreener = config.enableDexScreenerFallback;
+  const enableGecko = config.enableGeckoFallback;
+
+  const dynamicPriority = await loadDynamicPriorityTermsByNetwork(networks);
+
+  // Empty fallback structure for disabled sources.
+  const emptyFallback = { uniV3Pools: [], uniV2Pools: [], sushiPools: [], balancerPools: [], curvePools: [] };
+
+  // Run subgraph fetches (always) and conditionally enable market-data fallbacks.
   const [
     subgraphResults,
+    prioritySubgraph,
     dexFallback,
     geckoFallback,
+    indexedQuotePools,
+    routeMemoryByKey,
+    sourceReliability,
+    executionFeedbackByRoute,
   ] = await Promise.all([
     Promise.allSettled([
-      fetchSubgraphWithFallback(UNI_V3_SUBGRAPH, UNI_V3_SUBGRAPH_PUBLIC, topPairsQuery(30)),
-      fetchSubgraphWithFallback(UNI_V2_SUBGRAPH, UNI_V2_SUBGRAPH_PUBLIC, topV2PairsQuery(30)),
-      fetchSubgraphWithFallback(SUSHI_SUBGRAPH, SUSHI_SUBGRAPH_PUBLIC, topV2PairsQuery(30)),
-      fetchSubgraphWithFallback(BALANCER_SUBGRAPH, BALANCER_SUBGRAPH_PUBLIC, topBalancerPoolsQuery(30)),
-      fetchSubgraphWithFallback(CURVE_SUBGRAPH, CURVE_SUBGRAPH_PUBLIC, topCurvePoolsQuery(30)),
+      fetchSubgraphWithFallback(UNI_V3_SUBGRAPH, UNI_V3_SUBGRAPH_PUBLIC, topPairsQuery(1000)),
+      fetchSubgraphWithFallback(UNI_V2_SUBGRAPH, UNI_V2_SUBGRAPH_PUBLIC, topV2PairsQuery(1000)),
+      fetchSubgraphWithFallback(SUSHI_SUBGRAPH, SUSHI_SUBGRAPH_PUBLIC, topV2PairsQuery(1000)),
+      fetchSubgraphWithFallback(BALANCER_SUBGRAPH, BALANCER_SUBGRAPH_PUBLIC, topBalancerPoolsQuery(1000)),
+      fetchSubgraphWithFallback(CURVE_SUBGRAPH, CURVE_SUBGRAPH_PUBLIC, topCurvePoolsQuery(1000)),
     ]),
-    fetchDexScreenerFallback(networks),
-    fetchGeckoTerminalFallback(networks),
+    fetchPriorityPairSubgraphPools(networks, dynamicPriority.termsByNetwork),
+    enableDexScreener ? fetchDexScreenerFallback(networks, dynamicPriority.termsByNetwork) : Promise.resolve(emptyFallback),
+    enableGecko ? fetchGeckoTerminalFallback(networks, dynamicPriority.termsByNetwork) : Promise.resolve(emptyFallback),
+    loadIndexedQuotePools(networks),
+    loadRouteMemoryByKey(),
+    loadSourceReliabilityBps(),
+    loadExecutionFeedbackByRoute(),
   ]);
 
   const [uniV3Result, uniV2Result, sushiResult, balancerResult, curveResult] = subgraphResults;
+
+  const autoDisableFailedSubgraphs = parseBooleanEnv(
+    Deno.env.get('SCANNER_AUTO_DISABLE_FAILED_SUBGRAPHS'),
+    true,
+  );
+  const envDisabledDexesRaw = parseCsvEnvSet(Deno.env.get('SCANNER_HARD_DISABLE_DEXES'));
+  const disabledDexBuckets = resolveDisabledDexBuckets(envDisabledDexesRaw);
+
+  if (autoDisableFailedSubgraphs) {
+    if (uniV3Result.status === 'rejected') disabledDexBuckets.add('uniV3');
+    if (uniV2Result.status === 'rejected') disabledDexBuckets.add('uniV2');
+    if (sushiResult.status === 'rejected') disabledDexBuckets.add('sushi');
+    if (balancerResult.status === 'rejected') disabledDexBuckets.add('balancer');
+    if (curveResult.status === 'rejected') disabledDexBuckets.add('curve');
+  }
+
+  const settledError = (result: PromiseSettledResult<unknown>): string | undefined => {
+    if (result.status !== 'rejected') return undefined;
+    if (result.reason instanceof Error) return result.reason.message;
+    try {
+      return JSON.stringify(result.reason);
+    } catch {
+      return String(result.reason);
+    }
+  };
 
   if (uniV3Result.status === 'rejected') {
     console.error('Uniswap V3 subgraph fetch failed:', uniV3Result.reason);
@@ -2261,22 +5808,235 @@ const runScan = async (config: ScannerConfig, networks: string[]) => {
     .map((pool: Record<string, unknown>) => toPoolFromCurve(pool))
     .filter((pool: Pool | null): pool is Pool => pool !== null);
 
-  // Always merge real-time market prices from DexScreener and GeckoTerminal.
-  // These provide multi-network quotes (arbitrum, base, polygon) that subgraphs lack,
-  // and add a second or third DEX price per pair, enabling genuine cross-DEX spread detection.
-  mergeFallbackPools(uniV3Pools, dexFallback.uniV3Pools);
-  mergeFallbackPools(uniV2Pools, dexFallback.uniV2Pools);
-  mergeFallbackPools(sushiPools, dexFallback.sushiPools);
-  mergeFallbackPools(balancerPools, dexFallback.balancerPools);
-  mergeFallbackPools(curvePools, dexFallback.curvePools);
+  const droppedPoolCounts = {
+    uniV3: 0,
+    uniV2: 0,
+    sushi: 0,
+    balancer: 0,
+    curve: 0,
+    total: 0,
+  };
 
-  mergeFallbackPools(uniV3Pools, geckoFallback.uniV3Pools);
-  mergeFallbackPools(uniV2Pools, geckoFallback.uniV2Pools);
-  mergeFallbackPools(sushiPools, geckoFallback.sushiPools);
-  mergeFallbackPools(balancerPools, geckoFallback.balancerPools);
-  mergeFallbackPools(curvePools, geckoFallback.curvePools);
+  const hardenDexPoolSet = (bucket: 'uniV3' | 'uniV2' | 'sushi' | 'balancer' | 'curve', pools: Pool[]): Pool[] => {
+    if (!disabledDexBuckets.has(bucket)) return pools;
+    droppedPoolCounts[bucket] += pools.length;
+    droppedPoolCounts.total += pools.length;
+    return [];
+  };
 
-  return findSpreads(uniV3Pools, uniV2Pools, sushiPools, balancerPools, curvePools, config);
+  let hardenedUniV3Pools = hardenDexPoolSet('uniV3', uniV3Pools);
+  let hardenedUniV2Pools = hardenDexPoolSet('uniV2', uniV2Pools);
+  let hardenedSushiPools = hardenDexPoolSet('sushi', sushiPools);
+  let hardenedBalancerPools = hardenDexPoolSet('balancer', balancerPools);
+  let hardenedCurvePools = hardenDexPoolSet('curve', curvePools);
+
+  // Enrich chronic overlap pairs with targeted subgraph pulls before fallback merging.
+  mergeFallbackPools(hardenedUniV3Pools, hardenDexPoolSet('uniV3', prioritySubgraph.uniV3Pools));
+  mergeFallbackPools(hardenedUniV2Pools, hardenDexPoolSet('uniV2', prioritySubgraph.uniV2Pools));
+  mergeFallbackPools(hardenedSushiPools, hardenDexPoolSet('sushi', prioritySubgraph.sushiPools));
+
+  // Enable index read-through so scanner reads pre-fetched quotes from indexer-refresh-fast.
+  // DexScreener/Gecko data flows: indexer-refresh-fast → quotes_index_latest → scanner (here).
+  // Direct DexScreener/Gecko fallbacks in the scanner are intentionally kept off.
+  const subgraphFailCount = subgraphResults.filter((r) => r.status === 'rejected').length;
+  const subgraphStarved = subgraphFailCount >= 3;
+  const effectiveEnableDexScreener = enableDexScreener || subgraphStarved;
+  const effectiveEnableGecko = enableGecko || subgraphStarved;
+
+  if (effectiveEnableDexScreener) {
+    mergeFallbackPools(hardenedUniV3Pools, dexFallback.uniV3Pools);
+    mergeFallbackPools(hardenedUniV2Pools, dexFallback.uniV2Pools);
+    mergeFallbackPools(hardenedSushiPools, dexFallback.sushiPools);
+    mergeFallbackPools(hardenedBalancerPools, dexFallback.balancerPools);
+    mergeFallbackPools(hardenedCurvePools, dexFallback.curvePools);
+  }
+
+  if (effectiveEnableGecko) {
+    mergeFallbackPools(hardenedUniV3Pools, geckoFallback.uniV3Pools);
+    mergeFallbackPools(hardenedUniV2Pools, geckoFallback.uniV2Pools);
+    mergeFallbackPools(hardenedSushiPools, geckoFallback.sushiPools);
+    mergeFallbackPools(hardenedBalancerPools, geckoFallback.balancerPools);
+    mergeFallbackPools(hardenedCurvePools, geckoFallback.curvePools);
+  }
+
+  if (indexedQuotePools.stats.enabled) {
+    mergeFallbackPools(hardenedUniV3Pools, indexedQuotePools.uniV3Pools);
+    mergeFallbackPools(hardenedUniV2Pools, indexedQuotePools.uniV2Pools);
+    mergeFallbackPools(hardenedSushiPools, indexedQuotePools.sushiPools);
+    mergeFallbackPools(hardenedBalancerPools, indexedQuotePools.balancerPools);
+    mergeFallbackPools(hardenedCurvePools, indexedQuotePools.curvePools);
+  }
+
+  const filterPoolsByRequestedNetworks = (pools: Pool[]): Pool[] => {
+    return pools.filter((pool) => allowedNetworks.has(toNetworkName(pool.network)));
+  };
+
+  const filteredUniV3Pools = filterPoolsByRequestedNetworks(hardenedUniV3Pools);
+  const filteredUniV2Pools = filterPoolsByRequestedNetworks(hardenedUniV2Pools);
+  const filteredSushiPools = filterPoolsByRequestedNetworks(hardenedSushiPools);
+  const filteredBalancerPools = filterPoolsByRequestedNetworks(hardenedBalancerPools);
+  const filteredCurvePools = filterPoolsByRequestedNetworks(hardenedCurvePools);
+
+  const countFallbackPools = (source: { uniV3Pools: Pool[]; uniV2Pools: Pool[]; sushiPools: Pool[]; balancerPools: Pool[]; curvePools: Pool[] }) => {
+    const uniV3 = source.uniV3Pools.length;
+    const uniV2 = source.uniV2Pools.length;
+    const sushi = source.sushiPools.length;
+    const balancer = source.balancerPools.length;
+    const curve = source.curvePools.length;
+    return {
+      uniV3,
+      uniV2,
+      sushi,
+      balancer,
+      curve,
+      total: uniV3 + uniV2 + sushi + balancer + curve,
+    };
+  };
+
+  const scanResult = findSpreads(
+    filteredUniV3Pools,
+    filteredUniV2Pools,
+    filteredSushiPools,
+    filteredBalancerPools,
+    filteredCurvePools,
+    {
+      subgraph: sourceReliability.subgraph,
+      dexscreener: sourceReliability.dexscreener,
+      gecko: sourceReliability.gecko,
+    },
+    config,
+    routeMemoryByKey,
+    executionFeedbackByRoute,
+    dynamicPriority.termsByNetwork,
+  );
+  scanResult.diagnostics.fallbackPoolCounts = {
+    dexscreener: countFallbackPools(dexFallback),
+    gecko: countFallbackPools(geckoFallback),
+  };
+  scanResult.diagnostics.fallbackSourcesEnabled = {
+    dexscreener: effectiveEnableDexScreener,
+    gecko: effectiveEnableGecko,
+  };
+  scanResult.diagnostics.indexCache = {
+    ...indexedQuotePools.stats,
+    missPairs: Math.max(0, scanResult.diagnostics.pairKeys - indexedQuotePools.stats.hitPairs),
+    fallbackFetches: Math.max(
+      indexedQuotePools.stats.fallbackFetches,
+      scanResult.diagnostics.pairKeys - indexedQuotePools.stats.hitPairs,
+    ),
+  };
+  scanResult.diagnostics.sourceHardening = {
+    autoDisableFailedSubgraphs,
+    envDisabledDexes: Array.from(envDisabledDexesRaw),
+    activeDisabledDexes: Array.from(disabledDexBuckets),
+    droppedPoolCounts,
+    sourceReliabilityBps: {
+      subgraph: Number(sourceReliability.subgraph),
+      dexscreener: Number(sourceReliability.dexscreener),
+      gecko: Number(sourceReliability.gecko),
+    },
+    sourceReliabilityWindowRuns: sourceReliability.runCount,
+  };
+  scanResult.diagnostics.subgraphFetchStats = {
+    uniswapV3: {
+      status: uniV3Result.status === 'fulfilled' ? 'ok' : 'failed',
+      entries: Array.isArray((uniV3Data as { pools?: unknown[] })?.pools) ? (uniV3Data as { pools: unknown[] }).pools.length : 0,
+      error: settledError(uniV3Result),
+    },
+    uniswapV2: {
+      status: uniV2Result.status === 'fulfilled' ? 'ok' : 'failed',
+      entries: Array.isArray((uniV2Data as { pairs?: unknown[] })?.pairs) ? (uniV2Data as { pairs: unknown[] }).pairs.length : 0,
+      error: settledError(uniV2Result),
+    },
+    sushiswap: {
+      status: sushiResult.status === 'fulfilled' ? 'ok' : 'failed',
+      entries: Array.isArray((sushiData as { pairs?: unknown[] })?.pairs) ? (sushiData as { pairs: unknown[] }).pairs.length : 0,
+      error: settledError(sushiResult),
+    },
+    balancer: {
+      status: balancerResult.status === 'fulfilled' ? 'ok' : 'failed',
+      entries: Array.isArray((balancerData as { pools?: unknown[] })?.pools) ? (balancerData as { pools: unknown[] }).pools.length : 0,
+      error: settledError(balancerResult),
+    },
+    curve: {
+      status: curveResult.status === 'fulfilled' ? 'ok' : 'failed',
+      entries: Array.isArray((curveData as { pools?: unknown[] })?.pools) ? (curveData as { pools: unknown[] }).pools.length : 0,
+      error: settledError(curveResult),
+    },
+  };
+  scanResult.diagnostics.priorityPairSubgraphStats = {
+    ...prioritySubgraph.meta,
+  };
+  scanResult.diagnostics.dynamicPriorityStats = {
+    ...dynamicPriority.meta,
+  };
+  scanResult.diagnostics.fallbackFetchStats = {
+    dexscreener: dexFallback.meta || {
+      queries: 0,
+      responsesOk: 0,
+      errors: 0,
+      entriesSeen: 0,
+      entriesAccepted: 0,
+    },
+    gecko: geckoFallback.meta || {
+      queries: 0,
+      responsesOk: 0,
+      errors: 0,
+      entriesSeen: 0,
+      entriesAccepted: 0,
+      rejectionReasons: {
+        invalidNetworkMap: 0,
+        networkNotRequested: 0,
+        nonTrackablePair: 0,
+        priceParseFail: 0,
+        liquidityBelowMin: 0,
+        baseQuoteOrientationMismatch: 0,
+        orientationRecovered: 0,
+        inversePriceFail: 0,
+      },
+    },
+  };
+
+  const subgraphEntries =
+    scanResult.diagnostics.subgraphFetchStats.uniswapV3.entries
+    + scanResult.diagnostics.subgraphFetchStats.uniswapV2.entries
+    + scanResult.diagnostics.subgraphFetchStats.sushiswap.entries
+    + scanResult.diagnostics.subgraphFetchStats.balancer.entries
+    + scanResult.diagnostics.subgraphFetchStats.curve.entries;
+  const subgraphSourcesOk = [
+    scanResult.diagnostics.subgraphFetchStats.uniswapV3,
+    scanResult.diagnostics.subgraphFetchStats.uniswapV2,
+    scanResult.diagnostics.subgraphFetchStats.sushiswap,
+    scanResult.diagnostics.subgraphFetchStats.balancer,
+    scanResult.diagnostics.subgraphFetchStats.curve,
+  ].filter((source) => source.status === 'ok').length;
+  const fallbackEntriesAccepted =
+    (scanResult.diagnostics.fallbackFetchStats.dexscreener.entriesAccepted || 0)
+    + (scanResult.diagnostics.fallbackFetchStats.gecko.entriesAccepted || 0);
+  const usablePools =
+    scanResult.diagnostics.poolCounts.uniV3
+    + scanResult.diagnostics.poolCounts.uniV2
+    + scanResult.diagnostics.poolCounts.sushi
+    + scanResult.diagnostics.poolCounts.balancer
+    + scanResult.diagnostics.poolCounts.curve;
+  const dataStarved = scanResult.diagnostics.pairKeys === 0;
+
+  scanResult.diagnostics.ingestionHeartbeat = {
+    status: dataStarved ? 'starved' : 'ok',
+    networksRequested: selectedNetworks.length,
+    pairKeys: scanResult.diagnostics.pairKeys,
+    usablePools,
+    subgraphEntries,
+    fallbackEntriesAccepted,
+    subgraphSourcesOk,
+    starvationReason: dataStarved
+      ? subgraphStarved
+        ? `No canonical pair keys formed. Subgraphs failed (${subgraphFailCount}/5 rejected); fallback sources were auto-enabled.`
+        : 'No canonical pair keys were formed from current market-data snapshot.'
+      : undefined,
+  };
+
+  return scanResult;
 };
 
 Deno.serve(async (req) => {
@@ -2385,6 +6145,7 @@ Deno.serve(async (req) => {
       watchlist_count: trackedWatchlist.length,
       diagnostics: {
         ...diagnostics,
+        ...summarizeRejections(diagnostics),
         networks,
         config,
         scanDurationMs,
@@ -2409,6 +6170,8 @@ Deno.serve(async (req) => {
       opportunity_payload: candidate,
     })));
 
+    const rejectionSummary = summarizeRejections(diagnostics);
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -2419,6 +6182,7 @@ Deno.serve(async (req) => {
         config,
         diagnostics: {
           ...diagnostics,
+          ...rejectionSummary,
           scanDurationMs,
         },
         opportunities: trackedOpportunities,

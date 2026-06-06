@@ -1,42 +1,64 @@
 // Centralized config for networks and tokens used by both backend and frontend
+// WETH/* pairs removed — too competitive, spreads captured in milliseconds by HFT bots.
+// Focus on mid-cap volatile tokens with genuine cross-DEX price discrepancies.
 
 export type NetworkName = 'ethereum' | 'polygon' | 'arbitrum' | 'base' | 'bsc';
 
 export const CORE_BASE_TOKENS: Record<NetworkName, Set<string>> = {
-  ethereum: new Set(['WETH', 'ETH', 'WBTC', 'LINK']),
-  polygon: new Set(['WMATIC', 'MATIC', 'WETH', 'ETH', 'LINK', 'AAVE', 'GHST', 'CRV', 'SAND', 'QUICK']),
-  arbitrum: new Set(['WETH', 'ETH', 'ARB', 'GMX', 'MAGIC', 'LINK', 'RDNT', 'GRAIL', 'DPX']),
-  base: new Set(['WETH', 'ETH', 'LINK', 'AERO', 'DEGEN', 'BRETT', 'TOSHI', 'DACKIE']),
-  bsc: new Set(['WBNB', 'BNB', 'ETH', 'CAKE', 'XVS', 'ALPACA', 'MDX']),
+  ethereum: new Set(['WBTC', 'LINK', 'UNI', 'AAVE', 'CRV', 'SNX', 'LDO', 'MKR', 'COMP', 'RPL']),
+  polygon: new Set(['WMATIC', 'MATIC', 'LINK', 'AAVE', 'GHST', 'CRV', 'SAND', 'QUICK', 'BAL', 'DQUICK']),
+  arbitrum: new Set(['ARB', 'GMX', 'MAGIC', 'LINK', 'RDNT', 'GRAIL', 'DPX', 'PENDLE', 'GNS']),
+  base: new Set(['LINK', 'AERO', 'DEGEN', 'BRETT', 'TOSHI', 'DACKIE', 'BALD']),
+  bsc: new Set(['WBNB', 'BNB', 'CAKE', 'XVS', 'ALPACA', 'MDX', 'BAKE']),
 };
 
 export const SEARCH_TERMS_BY_NETWORK: Record<NetworkName, string[]> = {
   ethereum: [
-    'WETH USDC', 'WETH USDT', 'WETH DAI',
+    // Mid-cap DeFi tokens — real cross-DEX spreads exist here
     'WBTC USDC', 'WBTC USDT',
     'LINK USDC', 'LINK USDT',
+    'UNI USDC', 'AAVE USDC',
+    'CRV USDC', 'SNX USDC',
+    'LDO USDC', 'MKR USDC',
+    'COMP USDC', 'RPL USDC',
     'DAI USDC', 'USDC USDT',
-    'WETH', 'WBTC', 'LINK'
+    'WBTC', 'LINK', 'UNI', 'AAVE', 'CRV',
   ],
   polygon: [
-    'WMATIC USDC', 'WMATIC USDT', 'WETH USDC', 'LINK USDC', 'AAVE USDC', 'GHST USDC', 'DAI USDC', 'USDC USDT',
+    'WMATIC USDC', 'WMATIC USDT',
+    'LINK USDC', 'AAVE USDC',
+    'GHST USDC', 'CRV USDC',
     'SAND USDC', 'QUICK USDC',
-    'WMATIC', 'WETH', 'GHST', 'SAND', 'QUICK'
+    'BAL USDC', 'DQUICK USDC',
+    'DAI USDC', 'USDC USDT',
+    'WMATIC', 'GHST', 'SAND', 'QUICK',
   ],
   arbitrum: [
-    'WETH USDC', 'WETH USDT', 'ARB USDC', 'GMX USDC', 'MAGIC USDC', 'LINK USDC', 'DAI USDC', 'USDC USDT',
-    'GRAIL USDC', 'DPX USDC',
-    'ARB', 'WETH', 'GRAIL', 'DPX'
+    // Native Arbitrum ecosystem tokens — volatile, less contested
+    'ARB USDC', 'GMX USDC',
+    'MAGIC USDC', 'LINK USDC',
+    'RDNT USDC', 'GRAIL USDC',
+    'DPX USDC', 'PENDLE USDC',
+    'GNS USDC',
+    'DAI USDC', 'USDC USDT',
+    'ARB', 'GMX', 'GRAIL', 'DPX', 'MAGIC',
   ],
   base: [
-    'WETH USDC', 'WETH USDT', 'LINK USDC', 'AERO USDC', 'DEGEN USDC', 'USDC USDT',
+    // Base-native tokens — newer ecosystem, wider spreads
+    'LINK USDC', 'AERO USDC',
+    'DEGEN USDC', 'BRETT USDC',
     'TOSHI USDC', 'DACKIE USDC',
-    'WETH', 'AERO', 'TOSHI', 'DACKIE'
+    'BALD USDC',
+    'USDC USDT',
+    'AERO', 'DEGEN', 'BRETT', 'TOSHI',
   ],
   bsc: [
-    'WBNB USDT', 'WBNB USDC', 'ETH USDT', 'CAKE USDT', 'USDC USDT',
+    'WBNB USDT', 'WBNB USDC',
+    'CAKE USDT', 'XVS USDT',
     'ALPACA USDT', 'MDX USDT',
-    'WBNB', 'ALPACA', 'MDX'
+    'BAKE USDT',
+    'USDC USDT',
+    'WBNB', 'CAKE', 'ALPACA',
   ],
 };
 

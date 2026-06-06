@@ -12,13 +12,14 @@ const corsHeaders = {
 };
 
 // Priority pairs seeded into hot_pairs_queue so indexer-refresh-fast always has work.
+// WETH/* pairs removed — HFT bots close those spreads in <10ms. Using mid-cap volatile pairs instead.
 // Mirrors shared/networks-tokens.ts SEARCH_TERMS_BY_NETWORK.
 const PRIORITY_PAIRS_BY_NETWORK: Record<string, string[]> = {
-  ethereum: ['WETH/USDC', 'WETH/USDT', 'WETH/DAI', 'WBTC/USDC', 'WBTC/USDT', 'LINK/USDC', 'DAI/USDC', 'USDC/USDT'],
-  arbitrum: ['WETH/USDC', 'WETH/USDT', 'ARB/USDC', 'GMX/USDC', 'LINK/USDC', 'DAI/USDC', 'USDC/USDT'],
-  base:     ['WETH/USDC', 'WETH/USDT', 'LINK/USDC', 'AERO/USDC', 'USDC/USDT'],
-  polygon:  ['WMATIC/USDC', 'WMATIC/USDT', 'WETH/USDC', 'LINK/USDC', 'AAVE/USDC', 'DAI/USDC', 'USDC/USDT'],
-  bsc:      ['WBNB/USDT', 'WBNB/USDC', 'ETH/USDT', 'CAKE/USDT', 'USDC/USDT'],
+  ethereum: ['WBTC/USDC', 'WBTC/USDT', 'LINK/USDC', 'LINK/USDT', 'UNI/USDC', 'AAVE/USDC', 'CRV/USDC', 'SNX/USDC', 'LDO/USDC', 'MKR/USDC', 'COMP/USDC', 'RPL/USDC', 'DAI/USDC', 'USDC/USDT'],
+  arbitrum: ['ARB/USDC', 'GMX/USDC', 'MAGIC/USDC', 'LINK/USDC', 'RDNT/USDC', 'GRAIL/USDC', 'DPX/USDC', 'PENDLE/USDC', 'GNS/USDC', 'DAI/USDC', 'USDC/USDT'],
+  base:     ['LINK/USDC', 'AERO/USDC', 'DEGEN/USDC', 'BRETT/USDC', 'TOSHI/USDC', 'DACKIE/USDC', 'BALD/USDC', 'USDC/USDT'],
+  polygon:  ['WMATIC/USDC', 'WMATIC/USDT', 'LINK/USDC', 'AAVE/USDC', 'GHST/USDC', 'CRV/USDC', 'SAND/USDC', 'QUICK/USDC', 'BAL/USDC', 'DAI/USDC', 'USDC/USDT'],
+  bsc:      ['WBNB/USDT', 'WBNB/USDC', 'CAKE/USDT', 'XVS/USDT', 'ALPACA/USDT', 'MDX/USDT', 'BAKE/USDT', 'USDC/USDT'],
 };
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
@@ -70,7 +71,7 @@ const seedHotPairsIfEmpty = async (): Promise<{ seeded: number }> => {
 };
 
 // --- Indexer refresh ---------------------------------------------------------
-// Calls indexer-refresh-fast to write fresh DexScreener data into quotes_index_latest.
+// Calls indexer-refresh-fast to write fresh The Graph subgraph data into quotes_index_latest.
 const runIndexerRefresh = async (networks: string[]): Promise<{ success: boolean; pairsScanned?: number; error?: string }> => {
   if (!SUPABASE_URL) return { success: false, error: 'No SUPABASE_URL' };
   const authKey = SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY;

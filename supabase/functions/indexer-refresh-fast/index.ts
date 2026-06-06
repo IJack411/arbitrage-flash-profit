@@ -1,3 +1,6 @@
+// indexer-refresh-fast: fetches pool data from The Graph subgraphs and writes
+// to quotes_index_latest / pools_index_latest for scanner index read-through.
+// DexScreener removed — it aggregates prices and masks cross-DEX spreads.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 declare const Deno: {
@@ -12,7 +15,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-type SourceName = 'subgraph' | 'dexscreener' | 'gecko' | 'rpc';
+type SourceName = 'subgraph' | 'gecko' | 'rpc';
 type RunMode = 'fast' | 'medium' | 'reconcile';
 
 type RefreshRequest = {
@@ -28,35 +31,117 @@ type HotPairRow = {
   priority_score: number;
 };
 
-type DexScreenerPair = {
-  chainId?: string;
-  dexId?: string;
-  pairAddress?: string;
-  priceUsd?: string;
-  liquidity?: { usd?: number };
-  baseToken?: { symbol?: string; address?: string };
-  quoteToken?: { symbol?: string; address?: string };
+// Pool result normalized from any subgraph schema
+type SubgraphPool = {
+  id: string;
+  dex: string;
+  token0Symbol: string;
+  token1Symbol: string;
+  token0Price: number;  // token1 per token0
+  token1Price: number;  // token0 per token1
+  liquidityUsd: number;
+  feeTier?: number;
 };
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const THEGRAPH_API_KEY = (Deno.env.get('THEGRAPH_API_KEY') || '').trim();
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-  global: {
-    headers: {
-      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-    },
-  },
+  global: { headers: { Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } },
 });
 
 const DEFAULT_NETWORKS = ['ethereum', 'arbitrum', 'base', 'polygon'];
 
-const CHAIN_ALIASES: Record<string, string[]> = {
-  ethereum: ['ethereum', 'eth'],
-  arbitrum: ['arbitrum', 'arbitrum-one'],
-  base: ['base'],
-  polygon: ['polygon', 'matic'],
-  bsc: ['bsc', 'bnb'],
+const GRAPH_GATEWAY = 'https://gateway.thegraph.com/api';
+const GRAPH_PUBLIC = 'https://api.thegraph.com/subgraphs/name';
+const LEGACY_HOST = 'api.thegraph.com/subgraphs/name/';
+
+type SubgraphConfig = {
+  dex: string;
+  version: 'v3' | 'v2';
+  gatewayId?: string;        // The Graph decentralized network ID (preferred when THEGRAPH_API_KEY set)
+  publicUrl?: string;        // Legacy hosted fallback
+  envOverrideKey?: string;   // Env var that can override URL entirely
+};
+
+// Subgraph configs. gatewayId matches scanner scan-arbitrage-opportunities/index.ts.
+// For Ethereum mainnet: Uniswap V3/V2 + SushiSwap.
+// For other chains: best available The Graph coverage.
+const SUBGRAPHS_BY_NETWORK: Record<string, SubgraphConfig[]> = {
+  ethereum: [
+    {
+      dex: 'Uniswap V3',
+      version: 'v3',
+      gatewayId: '5zvR82QoaXYFyDEKLZ9t6v9adgnptxYpKpSbxtgVENFV',
+      publicUrl: `${GRAPH_PUBLIC}/uniswap/uniswap-v3`,
+      envOverrideKey: 'THEGRAPH_UNI_V3',
+    },
+    {
+      dex: 'Uniswap V2',
+      version: 'v2',
+      gatewayId: 'EYCKATKGBKLWvSfwvBjzfCBmGwYNdVkduYXVivCsLRFu',
+      publicUrl: `${GRAPH_PUBLIC}/uniswap/uniswap-v2`,
+      envOverrideKey: 'THEGRAPH_UNI_V2',
+    },
+    {
+      dex: 'SushiSwap',
+      version: 'v2',
+      gatewayId: '6NUtT5mGjZ1tSshKLf5Q3uEEJtjBZJo1TpL5MXsUBqrT',
+      publicUrl: `${GRAPH_PUBLIC}/sushiswap/exchange`,
+      envOverrideKey: 'THEGRAPH_SUSHI',
+    },
+  ],
+  arbitrum: [
+    {
+      dex: 'Uniswap V3',
+      version: 'v3',
+      gatewayId: 'FbCGRftH4a3yZugY7TnbYgPJVEv2LvMT6oF1fxPe9aFM',
+      publicUrl: `${GRAPH_PUBLIC}/ianlapham/arbitrum-minimal`,
+    },
+    {
+      dex: 'SushiSwap',
+      version: 'v2',
+      gatewayId: 'H9oPAbXnobBRq1BD1X35yz7frgZZa4cTqe5uiMobJ4kk',
+      publicUrl: `${GRAPH_PUBLIC}/sushiswap/exchange-arbitrum-nova`,
+    },
+  ],
+  base: [
+    {
+      dex: 'Uniswap V3',
+      version: 'v3',
+      gatewayId: '43Hwfi3dJSoGpyas9VwNoDAv55yjgGrPpNSmbQZArzMG',
+      publicUrl: `${GRAPH_PUBLIC}/papavram/base-uniswap-v3`,
+    },
+  ],
+  polygon: [
+    {
+      dex: 'Uniswap V3',
+      version: 'v3',
+      gatewayId: '3hCPRGf4z88VC5rsBKU5AA9FBBq5nF3jbKJG7VZCbhjm',
+      publicUrl: `${GRAPH_PUBLIC}/ianlapham/uniswap-v3-polygon`,
+    },
+    {
+      dex: 'QuickSwap',
+      version: 'v2',
+      publicUrl: `${GRAPH_PUBLIC}/sameepsi/quickswap`,
+    },
+    {
+      dex: 'SushiSwap',
+      version: 'v2',
+      gatewayId: 'Cd2gEDVeqnjBn1hSeqFMitw8Q1iiyV9FYUZkLNRcL87g',
+      publicUrl: `${GRAPH_PUBLIC}/sushiswap/exchange-polygon`,
+    },
+  ],
+};
+
+const resolveEndpoint = (cfg: SubgraphConfig): string => {
+  const override = cfg.envOverrideKey ? (Deno.env.get(cfg.envOverrideKey) || '').trim() : '';
+  const overrideIsLegacy = override.includes(LEGACY_HOST);
+  if (THEGRAPH_API_KEY && cfg.gatewayId && (!override || overrideIsLegacy)) {
+    return `${GRAPH_GATEWAY}/${THEGRAPH_API_KEY}/subgraphs/id/${cfg.gatewayId}`;
+  }
+  return override || cfg.publicUrl || '';
 };
 
 const toNumberSafe = (value: unknown, fallback = 0): number => {
@@ -78,74 +163,173 @@ const parsePair = (tokenPair: string): { tokenA: string; tokenB: string } => {
   return { tokenA: tokenA.trim().toUpperCase(), tokenB: tokenB.trim().toUpperCase() };
 };
 
-const networkMatches = (network: string, chainId: string): boolean => {
-  const aliases = CHAIN_ALIASES[network] || [network];
-  const normalizedChain = String(chainId || '').toLowerCase();
-  return aliases.some((alias) => normalizedChain === alias || normalizedChain.includes(alias));
+// Fetch pools from a Uniswap V3-style subgraph (pools entity, totalValueLockedUSD)
+const fetchV3Pools = async (
+  endpoint: string,
+  dex: string,
+  tokenA: string,
+  tokenB: string,
+): Promise<SubgraphPool[]> => {
+  if (!endpoint) return [];
+  const query = `{
+    ab: pools(
+      where: { token0_: { symbol: "${tokenA}" }, token1_: { symbol: "${tokenB}" } }
+      orderBy: totalValueLockedUSD orderDirection: desc first: 4
+    ) { id feeTier token0Price token1Price totalValueLockedUSD token0 { symbol } token1 { symbol } }
+    ba: pools(
+      where: { token0_: { symbol: "${tokenB}" }, token1_: { symbol: "${tokenA}" } }
+      orderBy: totalValueLockedUSD orderDirection: desc first: 4
+    ) { id feeTier token0Price token1Price totalValueLockedUSD token0 { symbol } token1 { symbol } }
+  }`;
+
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query }),
+  });
+  if (!res.ok) return [];
+  const json = await res.json().catch(() => ({})) as {
+    data?: {
+      ab?: Array<{ id: string; feeTier?: string; token0Price: string; token1Price: string; totalValueLockedUSD: string; token0: { symbol: string }; token1: { symbol: string } }>;
+      ba?: Array<{ id: string; feeTier?: string; token0Price: string; token1Price: string; totalValueLockedUSD: string; token0: { symbol: string }; token1: { symbol: string } }>;
+    };
+  };
+
+  const results: SubgraphPool[] = [];
+  for (const raw of [...(json.data?.ab ?? []), ...(json.data?.ba ?? [])]) {
+    const t0Price = toNumberSafe(raw.token0Price, 0);
+    const t1Price = toNumberSafe(raw.token1Price, 0);
+    const liq = toNumberSafe(raw.totalValueLockedUSD, 0);
+    if (t0Price <= 0 || liq <= 0) continue;
+    results.push({
+      id: raw.id,
+      dex,
+      token0Symbol: raw.token0.symbol.toUpperCase(),
+      token1Symbol: raw.token1.symbol.toUpperCase(),
+      token0Price: t0Price,
+      token1Price: t1Price,
+      liquidityUsd: liq,
+      feeTier: raw.feeTier ? Number(raw.feeTier) : undefined,
+    });
+  }
+  return results;
 };
 
-const normalizeDexName = (dexId: string): string => {
-  const normalized = String(dexId || '').toLowerCase();
-  if (normalized.includes('uniswap-v3') || normalized.includes('uni-v3')) return 'Uniswap V3';
-  if (normalized.includes('uniswap-v2') || normalized.includes('uni-v2')) return 'Uniswap V2';
-  if (normalized.includes('sushi')) return 'SushiSwap';
-  if (normalized.includes('balancer')) return 'Balancer';
-  if (normalized.includes('curve')) return 'Curve';
-  return normalized || 'Unknown';
+// Fetch pools from a Uniswap V2-style subgraph (pairs entity, reserveUSD)
+const fetchV2Pools = async (
+  endpoint: string,
+  dex: string,
+  tokenA: string,
+  tokenB: string,
+): Promise<SubgraphPool[]> => {
+  if (!endpoint) return [];
+  const query = `{
+    ab: pairs(
+      where: { token0_: { symbol: "${tokenA}" }, token1_: { symbol: "${tokenB}" } }
+      orderBy: reserveUSD orderDirection: desc first: 4
+    ) { id token0Price token1Price reserveUSD token0 { symbol } token1 { symbol } }
+    ba: pairs(
+      where: { token0_: { symbol: "${tokenB}" }, token1_: { symbol: "${tokenA}" } }
+      orderBy: reserveUSD orderDirection: desc first: 4
+    ) { id token0Price token1Price reserveUSD token0 { symbol } token1 { symbol } }
+  }`;
+
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query }),
+  });
+  if (!res.ok) return [];
+  const json = await res.json().catch(() => ({})) as {
+    data?: {
+      ab?: Array<{ id: string; token0Price: string; token1Price: string; reserveUSD: string; token0: { symbol: string }; token1: { symbol: string } }>;
+      ba?: Array<{ id: string; token0Price: string; token1Price: string; reserveUSD: string; token0: { symbol: string }; token1: { symbol: string } }>;
+    };
+  };
+
+  const results: SubgraphPool[] = [];
+  for (const raw of [...(json.data?.ab ?? []), ...(json.data?.ba ?? [])]) {
+    const t0Price = toNumberSafe(raw.token0Price, 0);
+    const t1Price = toNumberSafe(raw.token1Price, 0);
+    const liq = toNumberSafe(raw.reserveUSD, 0);
+    if (t0Price <= 0 || liq <= 0) continue;
+    results.push({
+      id: raw.id,
+      dex,
+      token0Symbol: raw.token0.symbol.toUpperCase(),
+      token1Symbol: raw.token1.symbol.toUpperCase(),
+      token0Price: t0Price,
+      token1Price: t1Price,
+      liquidityUsd: liq,
+    });
+  }
+  return results;
 };
 
-const fetchDexScreenerPairs = async (network: string, tokenA: string, tokenB: string): Promise<DexScreenerPair[]> => {
-  const terms = [`${tokenA} ${tokenB}`, `${tokenB} ${tokenA}`];
-  const outputs: DexScreenerPair[] = [];
+// Fetch from all subgraphs for a network, dedup by pool address, take highest-liquidity per DEX
+const fetchSubgraphPools = async (
+  network: string,
+  tokenA: string,
+  tokenB: string,
+): Promise<{ pools: SubgraphPool[]; subgraphsQueried: number; subgraphsFailed: number }> => {
+  const configs = SUBGRAPHS_BY_NETWORK[network] ?? [];
+  const allPools: SubgraphPool[] = [];
+  let queried = 0;
+  let failed = 0;
 
-  for (const term of terms) {
-    const url = `https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(term)}`;
-    const response = await fetch(url);
-    if (!response.ok) continue;
-    const json = await response.json().catch(() => ({}));
-    const pairs = Array.isArray(json?.pairs) ? (json.pairs as DexScreenerPair[]) : [];
-    for (const pair of pairs) {
-      if (!networkMatches(network, String(pair.chainId || ''))) continue;
-      const base = String(pair.baseToken?.symbol || '').toUpperCase();
-      const quote = String(pair.quoteToken?.symbol || '').toUpperCase();
-      if (!((base === tokenA && quote === tokenB) || (base === tokenB && quote === tokenA))) continue;
-      outputs.push(pair);
+  await Promise.all(
+    configs.map(async (cfg) => {
+      const endpoint = resolveEndpoint(cfg);
+      if (!endpoint) return;
+      queried += 1;
+      try {
+        const pools = cfg.version === 'v3'
+          ? await fetchV3Pools(endpoint, cfg.dex, tokenA, tokenB)
+          : await fetchV2Pools(endpoint, cfg.dex, tokenA, tokenB);
+        allPools.push(...pools);
+      } catch {
+        failed += 1;
+      }
+    }),
+  );
+
+  // Dedup: keep highest-liquidity pool per (dex, token-pair-direction)
+  const bestByDex = new Map<string, SubgraphPool>();
+  for (const pool of allPools) {
+    const key = `${pool.dex}`;
+    const existing = bestByDex.get(key);
+    if (!existing || pool.liquidityUsd > existing.liquidityUsd) {
+      bestByDex.set(key, pool);
     }
   }
 
-  const dedup = new Map<string, DexScreenerPair>();
-  for (const pair of outputs) {
-    const key = `${pair.pairAddress || ''}:${pair.dexId || ''}`;
-    if (!dedup.has(key)) dedup.set(key, pair);
-  }
-  return Array.from(dedup.values());
+  return {
+    pools: Array.from(bestByDex.values()),
+    subgraphsQueried: queried,
+    subgraphsFailed: failed,
+  };
 };
 
-const buildPoolRows = (network: string, pairs: DexScreenerPair[], latencyMs: number) => {
+const buildPoolRows = (network: string, pools: SubgraphPool[], latencyMs: number): Array<Record<string, unknown>> => {
   const rows: Array<Record<string, unknown>> = [];
-  for (const pair of pairs) {
-    const base = String(pair.baseToken?.symbol || '').toUpperCase();
-    const quote = String(pair.quoteToken?.symbol || '').toUpperCase();
-    const priceUsd = toNumberSafe(pair.priceUsd, 0);
-    const liquidityUsd = toNumberSafe(pair.liquidity?.usd, 0);
-    if (!base || !quote || priceUsd <= 0 || liquidityUsd <= 0) continue;
-
+  for (const pool of pools) {
+    if (pool.token0Price <= 0 || pool.liquidityUsd <= 0) continue;
     rows.push({
       network,
-      dex: normalizeDexName(String(pair.dexId || '')),
-      pool_address: String(pair.pairAddress || ''),
-      token0_symbol: base,
-      token1_symbol: quote,
-      token0_address: pair.baseToken?.address || null,
-      token1_address: pair.quoteToken?.address || null,
-      fee_tier: null,
-      liquidity_usd: liquidityUsd,
-      token0_price: priceUsd,
-      token1_price: priceUsd > 0 ? 1 / priceUsd : null,
-      source: 'dexscreener' as SourceName,
+      dex: pool.dex,
+      pool_address: pool.id,
+      token0_symbol: pool.token0Symbol,
+      token1_symbol: pool.token1Symbol,
+      token0_address: null,
+      token1_address: null,
+      fee_tier: pool.feeTier ?? null,
+      liquidity_usd: pool.liquidityUsd,
+      token0_price: pool.token0Price,
+      token1_price: pool.token1Price > 0 ? pool.token1Price : (pool.token0Price > 0 ? 1 / pool.token0Price : null),
+      source: 'subgraph' as SourceName,
       indexed_at: nowIso(),
       freshness_ms: latencyMs,
-      metadata: { chainId: pair.chainId || null },
+      metadata: {},
     });
   }
   return rows;
@@ -191,10 +375,9 @@ const buildQuoteRows = (network: string, tokenPair: string, poolRows: Array<Reco
         spread_bps: spreadBps,
         buy_liquidity_usd: buy.liquidity,
         sell_liquidity_usd: sell.liquidity,
-        source: 'dexscreener' as SourceName,
+        source: 'subgraph' as SourceName,
         indexed_at: nowIso(),
         freshness_ms: 0,
-        metadata: {},
       });
     }
   }
@@ -230,7 +413,7 @@ const upsertRows = async (table: string, rows: Array<Record<string, unknown>>, o
 const updateSourceHealth = async (network: string, ok: boolean, latencyMs: number) => {
   const { error } = await supabase.from('source_health_index').upsert([
     {
-      source_name: 'dexscreener',
+      source_name: 'thegraph',
       network,
       success_rate_5m: ok ? 1 : 0,
       p95_latency_ms: Math.round(clamp(latencyMs, 0, 120000)),
@@ -287,23 +470,25 @@ Deno.serve(async (req) => {
       if (!tokenA || !tokenB) continue;
 
       const fetchStart = Date.now();
-      let fetchedPairs: DexScreenerPair[] = [];
+      let subgraphResult: { pools: SubgraphPool[]; subgraphsQueried: number; subgraphsFailed: number } = {
+        pools: [], subgraphsQueried: 0, subgraphsFailed: 0,
+      };
       let ok = false;
       try {
-        fetchedPairs = await fetchDexScreenerPairs(pair.network, tokenA, tokenB);
-        ok = true;
+        subgraphResult = await fetchSubgraphPools(pair.network, tokenA, tokenB);
+        ok = subgraphResult.pools.length > 0;
       } catch {
         ok = false;
       }
       const latencyMs = Date.now() - fetchStart;
 
       await updateSourceHealth(pair.network, ok, latencyMs);
-      if (!ok || fetchedPairs.length === 0) {
+      if (!ok || subgraphResult.pools.length === 0) {
         await touchHotPair(pair.network, pair.token_pair, mode);
         continue;
       }
 
-      const poolRows = buildPoolRows(pair.network, fetchedPairs, latencyMs);
+      const poolRows = buildPoolRows(pair.network, subgraphResult.pools, latencyMs);
       poolsUpserted += await upsertRows('pools_index_latest', poolRows, 'network,dex,pool_address');
 
       const quoteRows = buildQuoteRows(pair.network, pair.token_pair, poolRows);

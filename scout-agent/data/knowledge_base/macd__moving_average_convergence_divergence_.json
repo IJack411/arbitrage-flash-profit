@@ -1,0 +1,35 @@
+{
+  "indicator_or_scanner_name": "MACD (Moving Average Convergence Divergence)",
+  "category": "Trend-Following Momentum",
+  "core_logic_summary": "Shows the relationship between two moving averages of an asset’s price, typically using a signal line for triggers.",
+  "mathematical_foundation": "MACD Line = (12-period EMA - 26-period EMA). Signal Line = 9-period EMA of MACD Line. Histogram = MACD Line - Signal Line.",
+  "inputs_and_parameters": [
+    "Fast EMA (default 12)",
+    "Slow EMA (default 26)",
+    "Signal EMA (default 9)"
+  ],
+  "implementation_details": "Standard implementation uses Exponential Moving Averages (EMA) to give more weight to recent prices.",
+  "strengths": [
+    "Identifies trend changes",
+    "Combines trend and momentum",
+    "Highly customizable"
+  ],
+  "weaknesses": [
+    "Prone to whipsaws in sideways markets",
+    "Lagging in fast-moving markets"
+  ],
+  "ideal_market_conditions": [
+    "Trending markets",
+    "High volatility"
+  ],
+  "related_indicators": [
+    "RSI",
+    "Bollinger Bands",
+    "ADX"
+  ],
+  "source_types": [
+    "documentation",
+    "research"
+  ],
+  "harvested_at": "2026-05-18T09:32:47.961Z"
+}

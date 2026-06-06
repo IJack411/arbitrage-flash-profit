@@ -13,7 +13,7 @@ interface OpportunityCardProps {
 }
 
 
-import { NETWORK_INFO } from '../types/multiWallet';
+import { NETWORK_INFO } from '../agent-helpers/types/multiWallet';
 // If you need NetworkName, CORE_BASE_TOKENS, etc, import from '../shared/networks-tokens'
 
 const networkBadgeClasses: Record<string, string> = {

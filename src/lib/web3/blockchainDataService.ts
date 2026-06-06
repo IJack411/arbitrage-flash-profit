@@ -6,7 +6,7 @@ import {
   BalanceDataPoint,
   TransactionDataPoint,
   GasDataPoint,
-} from '@/types/alertSuggestions';
+} from '@/agent-helpers/types/alertSuggestions';
 
 // Network configurations with chain IDs
 const NETWORK_CONFIGS: Record<string, {

@@ -1,0 +1,49 @@
+{
+  "createdAt": "2026-05-22T04:20:00.110Z",
+  "findingsCount": 5,
+  "delivery": {
+    "ok": false,
+    "sentChunks": 0,
+    "failedChunks": 1,
+    "errors": [
+      "Request failed: request to https://api.telegram.org/bot8378675850:AAHLo-GVl3A49Gce5emORdDbtijWU2WAUm0/sendMessage failed, reason: "
+    ]
+  },
+  "findings": [
+    {
+      "type": "error",
+      "severity": "info",
+      "title": "Could not query recent events",
+      "detail": "Event log query failed — RPC may limit historical lookups.",
+      "action": null
+    },
+    {
+      "type": "gas_opportunity",
+      "severity": "recommendation",
+      "title": "Gas is cheap right now",
+      "detail": "Current gas: 0.18 gwei → ~$0.32 for arb tx. Scanner filters at $18. You're leaving $17.68 on the table per trade.",
+      "action": "Lower SCANNER_ESTIMATED_GAS_USD to 3 during low-gas windows to capture more opportunities."
+    },
+    {
+      "type": "gas_report",
+      "severity": "info",
+      "title": "Gas Snapshot",
+      "detail": "Base: 0.18 gwei | Priority: 0 gwei | ETH: $3000 | Arb tx cost: ~$0.32",
+      "action": null
+    },
+    {
+      "type": "pattern",
+      "severity": "info",
+      "title": "Cheapest gas window",
+      "detail": "UTC 4:00 averages 0.5 gwei (17 samples).",
+      "action": "Trades near UTC 4:00 save the most on gas."
+    },
+    {
+      "type": "config_optimization",
+      "severity": "recommendation",
+      "title": "Scanner gas estimate is off",
+      "detail": "6h rolling avg gas cost: $0.33. Scanner uses: $18. Difference: -98%.",
+      "action": "Set SCANNER_ESTIMATED_GAS_USD=3 for more accurate filtering."
+    }
+  ]
+}

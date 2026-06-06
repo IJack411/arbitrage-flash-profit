@@ -5,7 +5,7 @@ import { ThemeProvider } from './components/theme-provider'
 import { AppProvider } from './contexts/AppContext'
 import { Web3Provider } from './contexts/Web3Context'
 import { AuthProvider } from './contexts/AuthContext'
-import { MultiWalletProvider } from './contexts/MultiWalletContext'
+import { MultiWalletProvider } from './agent-helpers/contexts/MultiWalletContext'
 import App from './App.tsx'
 import './index.css'
 
@@ -46,7 +46,11 @@ const isWalletExtensionError = (input: unknown): boolean => {
     'evmask',
     'inpage.js',
     'contentscript',
-    'content-script'
+    'content-script',
+    'attempting to use a disconnected port object',
+    'react_devtools_backend_compact.js',
+    'backendmanager.js',
+    'proxy.js'
   ];
   
   for (const pattern of patterns) {

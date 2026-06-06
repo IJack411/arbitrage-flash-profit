@@ -107,9 +107,21 @@ const toBooleanSafe = (value: unknown, fallback = false): boolean => {
 
 const toNumberSafe = (value: unknown, fallback = 0): number => {
   const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed < 0) return fallback;
-  return Math.floor(parsed);
+  if (!Number.isFinite(parsed)) return fallback;
+  return parsed;
 };
+
+const readPolicyNumber = (key: string, fallback: number, min?: number, max?: number): number => {
+  const parsed = Number(Deno.env.get(key));
+  let value = Number.isFinite(parsed) ? parsed : fallback;
+  if (typeof min === 'number' && value < min) value = min;
+  if (typeof max === 'number' && value > max) value = max;
+  return value;
+};
+
+const EXEC_POLICY_MIN_NET_PROFIT_USD = readPolicyNumber('EXEC_MIN_NET_PROFIT_USD', 15, 0);
+const EXEC_POLICY_MAX_GAS_TO_NET_RATIO = readPolicyNumber('EXEC_MAX_GAS_TO_NET_RATIO', 0.6, 0.05, 5);
+const EXEC_POLICY_MIN_CONFIDENCE_SCORE = Math.round(readPolicyNumber('EXEC_MIN_CONFIDENCE_SCORE', 35, 0, 100));
 
 const parseExecutionPayload = (opportunity: Record<string, unknown> | undefined) => {
   const rawPayload = opportunity?.executionPayload;
@@ -302,6 +314,110 @@ Deno.serve(async (req) => {
           metadata: { walletAddress: walletAddress || null, action, error: 'Missing or malformed executionPayload' },
         });
         throw new Error('Missing or malformed executionPayload for executeArbitrage');
+      }
+
+      const opportunityNetProfit = Number(opportunity?.netProfit ?? 0);
+      const opportunityGasCost = Number(opportunity?.gasCost ?? 0);
+      const opportunityConfidence = Number(opportunity?.confidenceScore ?? 0);
+      const gasToNetRatio = opportunityNetProfit > 0 ? opportunityGasCost / opportunityNetProfit : Number.POSITIVE_INFINITY;
+
+      if (!Number.isFinite(opportunityNetProfit) || opportunityNetProfit < EXEC_POLICY_MIN_NET_PROFIT_USD) {
+        const failureReason = 'execution_policy_rejected';
+        await persistExecutionAttempt({
+          id: executionAttemptId,
+          candidate_id: resolvedCandidateId,
+          scan_run_id: resolvedScanRunId,
+          submitted_at: new Date(startedAt).toISOString(),
+          target_block: null,
+          bundle_hash: null,
+          included: false,
+          failure_reason: failureReason,
+          realized_net_profit: null,
+          latency_ms: Date.now() - startedAt,
+          metadata: {
+            walletAddress: walletAddress || null,
+            action,
+            policy: {
+              minNetProfitUsd: EXEC_POLICY_MIN_NET_PROFIT_USD,
+              maxGasToNetRatio: EXEC_POLICY_MAX_GAS_TO_NET_RATIO,
+              minConfidenceScore: EXEC_POLICY_MIN_CONFIDENCE_SCORE,
+            },
+            observed: {
+              netProfit: opportunityNetProfit,
+              gasCost: opportunityGasCost,
+              confidenceScore: opportunityConfidence,
+              gasToNetRatio,
+            },
+            rejectCause: 'min_net_profit',
+          },
+        });
+        throw new Error(`Rejected by execution policy: netProfit ${opportunityNetProfit} < min ${EXEC_POLICY_MIN_NET_PROFIT_USD}`);
+      }
+
+      if (!Number.isFinite(opportunityConfidence) || opportunityConfidence < EXEC_POLICY_MIN_CONFIDENCE_SCORE) {
+        const failureReason = 'execution_policy_rejected';
+        await persistExecutionAttempt({
+          id: executionAttemptId,
+          candidate_id: resolvedCandidateId,
+          scan_run_id: resolvedScanRunId,
+          submitted_at: new Date(startedAt).toISOString(),
+          target_block: null,
+          bundle_hash: null,
+          included: false,
+          failure_reason: failureReason,
+          realized_net_profit: null,
+          latency_ms: Date.now() - startedAt,
+          metadata: {
+            walletAddress: walletAddress || null,
+            action,
+            policy: {
+              minNetProfitUsd: EXEC_POLICY_MIN_NET_PROFIT_USD,
+              maxGasToNetRatio: EXEC_POLICY_MAX_GAS_TO_NET_RATIO,
+              minConfidenceScore: EXEC_POLICY_MIN_CONFIDENCE_SCORE,
+            },
+            observed: {
+              netProfit: opportunityNetProfit,
+              gasCost: opportunityGasCost,
+              confidenceScore: opportunityConfidence,
+              gasToNetRatio,
+            },
+            rejectCause: 'min_confidence',
+          },
+        });
+        throw new Error(`Rejected by execution policy: confidence ${opportunityConfidence} < min ${EXEC_POLICY_MIN_CONFIDENCE_SCORE}`);
+      }
+
+      if (!Number.isFinite(gasToNetRatio) || gasToNetRatio > EXEC_POLICY_MAX_GAS_TO_NET_RATIO) {
+        const failureReason = 'execution_policy_rejected';
+        await persistExecutionAttempt({
+          id: executionAttemptId,
+          candidate_id: resolvedCandidateId,
+          scan_run_id: resolvedScanRunId,
+          submitted_at: new Date(startedAt).toISOString(),
+          target_block: null,
+          bundle_hash: null,
+          included: false,
+          failure_reason: failureReason,
+          realized_net_profit: null,
+          latency_ms: Date.now() - startedAt,
+          metadata: {
+            walletAddress: walletAddress || null,
+            action,
+            policy: {
+              minNetProfitUsd: EXEC_POLICY_MIN_NET_PROFIT_USD,
+              maxGasToNetRatio: EXEC_POLICY_MAX_GAS_TO_NET_RATIO,
+              minConfidenceScore: EXEC_POLICY_MIN_CONFIDENCE_SCORE,
+            },
+            observed: {
+              netProfit: opportunityNetProfit,
+              gasCost: opportunityGasCost,
+              confidenceScore: opportunityConfidence,
+              gasToNetRatio,
+            },
+            rejectCause: 'gas_to_net_ratio',
+          },
+        });
+        throw new Error(`Rejected by execution policy: gas/net ${gasToNetRatio.toFixed(3)} > max ${EXEC_POLICY_MAX_GAS_TO_NET_RATIO}`);
       }
 
       const calldata = iface.encodeFunctionData('executeArbitrage', parsedPayload.args);

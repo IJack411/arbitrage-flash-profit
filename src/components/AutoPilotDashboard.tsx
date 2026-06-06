@@ -37,7 +37,7 @@ import {
 } from 'lucide-react';
 import { LiveTradingConfirmationModal } from './LiveTradingConfirmationModal';
 import { EmergencyStopButton } from './EmergencyStopButton';
-import { WalletBalanceMonitor } from './wallet/WalletBalanceMonitor';
+import { WalletBalanceMonitor } from '../agent-helpers/components/wallet/WalletBalanceMonitor';
 
 interface ExecutedTrade {
   tokenPair: string;

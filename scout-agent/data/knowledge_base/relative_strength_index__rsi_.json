@@ -1,0 +1,36 @@
+{
+  "indicator_or_scanner_name": "Relative Strength Index (RSI)",
+  "category": "Momentum Oscillator",
+  "core_logic_summary": "Measures the speed and change of price movements to identify overbought or oversold conditions.",
+  "mathematical_foundation": "RSI = 100 - [100 / (1 + RS)], where RS = Average Gain / Average Loss over N periods (typically 14).",
+  "inputs_and_parameters": [
+    "Lookback Period (N, default 14)",
+    "Overbought Threshold (default 70)",
+    "Oversold Threshold (default 30)"
+  ],
+  "implementation_details": "Uses smoothed moving average (SMMA) or Wilder's smoothing for the average gain and loss calculations.",
+  "strengths": [
+    "Clear overbought/oversold levels",
+    "Divergence detection",
+    "Trend strength validation"
+  ],
+  "weaknesses": [
+    "Lagging indicator",
+    "Can stay overbought/oversold for long periods in strong trends",
+    "False signals in choppy markets"
+  ],
+  "ideal_market_conditions": [
+    "Ranging markets",
+    "Late-stage trends for reversal detection"
+  ],
+  "related_indicators": [
+    "Stochastic Oscillator",
+    "MACD",
+    "CCI"
+  ],
+  "source_types": [
+    "documentation",
+    "articles"
+  ],
+  "harvested_at": "2026-05-18T09:32:47.955Z"
+}

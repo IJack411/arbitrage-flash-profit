@@ -5,6 +5,7 @@
 
 import { ethers } from 'ethers';
 import { readFileSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -16,33 +17,72 @@ import { sendFindings } from './reporters/telegram.mjs';
 import { runSystemSimulation, proactiveTroubleshoot, optimizeCodebase, runMaintenanceChecks } from './analyzers/systemHelpers.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const OUTBOX_DIR = join(__dirname, 'data', 'outbox');
 
 // ---------- Load Config ----------
 
 function loadEnv() {
-  try {
-    const envPath = join(__dirname, '.env');
-    const lines = readFileSync(envPath, 'utf-8').split('\n');
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith('#')) continue;
-      const eqIdx = trimmed.indexOf('=');
-      if (eqIdx < 0) continue;
-      const key = trimmed.slice(0, eqIdx).trim();
-      const val = trimmed.slice(eqIdx + 1).trim();
-      if (!process.env[key]) process.env[key] = val;
+  const envFiles = [
+    join(__dirname, '.env'),
+    join(__dirname, '..', '.env'),
+  ];
+
+  for (const envPath of envFiles) {
+    try {
+      const lines = readFileSync(envPath, 'utf-8').split('\n');
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const eqIdx = trimmed.indexOf('=');
+        if (eqIdx < 0) continue;
+        const key = trimmed.slice(0, eqIdx).trim();
+        const val = trimmed.slice(eqIdx + 1).trim();
+        if (!process.env[key]) process.env[key] = val;
+      }
+    } catch {
+      // File is optional.
     }
-  } catch { /* .env is optional if env vars are set externally */ }
+  }
+
+  // Root env frequently stores VITE_ALCHEMY_API_KEY; normalize for scout fallback use.
+  if (!process.env.ALCHEMY_API_KEY && process.env.VITE_ALCHEMY_API_KEY) {
+    process.env.ALCHEMY_API_KEY = process.env.VITE_ALCHEMY_API_KEY;
+  }
 }
 
 loadEnv();
 
 const RPC_URL = process.env.ETHEREUM_RPC_URL || 'https://eth.drpc.org';
+const ALCHEMY_API_KEY = process.env.ALCHEMY_API_KEY || '';
+const RPC_FALLBACKS = [
+  RPC_URL,
+  ALCHEMY_API_KEY ? `https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}` : '',
+  process.env.ETHEREUM_RPC_FALLBACK_1 || 'https://ethereum-rpc.publicnode.com',
+  process.env.ETHEREUM_RPC_FALLBACK_2 || 'https://cloudflare-eth.com',
+].filter(Boolean);
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 const CONTRACT_ADDRESS = process.env.ARBITRAGE_CONTRACT;
 const INTERVAL_MIN = parseInt(process.env.SCAN_INTERVAL_MINUTES || '15', 10);
 const RUN_ONCE = process.argv.includes('--once');
+
+function persistOutbox(findings, delivery) {
+  if (!existsSync(OUTBOX_DIR)) {
+    mkdirSync(OUTBOX_DIR, { recursive: true });
+  }
+
+  const ts = new Date().toISOString().replace(/[:.]/g, '-');
+  const outPath = join(OUTBOX_DIR, `report-${ts}.json`);
+  const payload = {
+    createdAt: new Date().toISOString(),
+    findingsCount: findings.length,
+    delivery,
+    findings,
+  };
+
+  writeFileSync(outPath, JSON.stringify(payload, null, 2));
+  return outPath;
+}
 
 if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
   console.error('Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID');
@@ -73,7 +113,7 @@ async function runCycle() {
   const maintenanceResult = await runMaintenanceChecks();
   if (maintenanceResult.status !== 'ok') console.warn('Maintenance warning:', maintenanceResult.message);
 
-  const provider = new ethers.JsonRpcProvider(RPC_URL);
+  const provider = await createProvider();
   const allFindings = [];
 
   // 1. Contract analysis
@@ -155,16 +195,48 @@ async function runCycle() {
 
   if (actionable.length > 0) {
     console.log(`  Found ${actionable.length} actionable + ${infos.length} info findings. Sending to Telegram...`);
-    await sendFindings(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, allFindings);
+    const delivery = await sendFindings(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, allFindings);
+    if (!delivery.ok) {
+      const outPath = persistOutbox(allFindings, delivery);
+      console.warn(`  Telegram delivery failed (${delivery.failedChunks} chunk(s)). Saved report locally: ${outPath}`);
+    } else {
+      console.log(`  Telegram delivery ok (${delivery.sentChunks} chunk(s)).`);
+    }
   } else if (sendInfoOnly && infos.length > 0) {
     console.log(`  Status report cycle. Sending ${infos.length} info findings...`);
-    await sendFindings(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, infos);
+    const delivery = await sendFindings(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, infos);
+    if (!delivery.ok) {
+      const outPath = persistOutbox(infos, delivery);
+      console.warn(`  Telegram status delivery failed (${delivery.failedChunks} chunk(s)). Saved report locally: ${outPath}`);
+    } else {
+      console.log(`  Telegram status delivery ok (${delivery.sentChunks} chunk(s)).`);
+    }
   } else {
     console.log(`  ${infos.length} info findings, no actionable items. Skipping Telegram.`);
   }
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
   console.log(`  Cycle complete in ${elapsed}s. Total findings: ${allFindings.length}`);
+}
+
+async function createProvider() {
+  let lastError = null;
+
+  for (const rpc of RPC_FALLBACKS) {
+    try {
+      const provider = new ethers.JsonRpcProvider(rpc);
+      await provider.getBlockNumber();
+      if (rpc !== RPC_URL) {
+        console.warn(`Using fallback RPC endpoint: ${rpc}`);
+      }
+      return provider;
+    } catch (error) {
+      lastError = error;
+      console.warn(`RPC endpoint failed: ${rpc} (${error.message})`);
+    }
+  }
+
+  throw new Error(`All RPC endpoints failed${lastError ? `: ${lastError.message}` : ''}`);
 }
 
 // ---------- Entry Point ----------
@@ -179,8 +251,12 @@ async function main() {
   console.log(`  Mode:     ${RUN_ONCE ? 'single run' : 'continuous'}`);
   console.log('═══════════════════════════════════════════\n');
 
-  // Initial run
-  await runCycle();
+  // Initial run (non-fatal; keep process alive for next scheduled cycle)
+  try {
+    await runCycle();
+  } catch (err) {
+    console.error(`Initial cycle failed: ${err.message}`);
+  }
 
   if (RUN_ONCE) {
     console.log('\n--once flag set, exiting.');

@@ -3,7 +3,7 @@
 export type NetworkName = 'ethereum' | 'polygon' | 'arbitrum' | 'base' | 'bsc';
 
 export const CORE_BASE_TOKENS: Record<NetworkName, Set<string>> = {
-  ethereum: new Set(['WETH', 'ETH', 'LINK', 'UNI', 'AAVE', 'LDO', 'CRV', 'FRAX', 'MKR', 'ENS', 'SNX', 'COMP']),
+  ethereum: new Set(['WETH', 'ETH', 'WBTC', 'LINK']),
   polygon: new Set(['WMATIC', 'MATIC', 'WETH', 'ETH', 'LINK', 'AAVE', 'GHST', 'CRV', 'SAND', 'QUICK']),
   arbitrum: new Set(['WETH', 'ETH', 'ARB', 'GMX', 'MAGIC', 'LINK', 'RDNT', 'GRAIL', 'DPX']),
   base: new Set(['WETH', 'ETH', 'LINK', 'AERO', 'DEGEN', 'BRETT', 'TOSHI', 'DACKIE']),
@@ -12,9 +12,11 @@ export const CORE_BASE_TOKENS: Record<NetworkName, Set<string>> = {
 
 export const SEARCH_TERMS_BY_NETWORK: Record<NetworkName, string[]> = {
   ethereum: [
-    'WETH USDC', 'WETH USDT', 'LINK USDC', 'UNI USDC', 'AAVE USDC', 'LDO USDC', 'CRV USDC', 'DAI USDC', 'USDC USDT',
-    'MKR USDC', 'ENS USDC', 'SNX USDC', 'COMP USDC',
-    'WETH', 'LINK', 'MKR', 'ENS', 'SNX', 'COMP'
+    'WETH USDC', 'WETH USDT', 'WETH DAI',
+    'WBTC USDC', 'WBTC USDT',
+    'LINK USDC', 'LINK USDT',
+    'DAI USDC', 'USDC USDT',
+    'WETH', 'WBTC', 'LINK'
   ],
   polygon: [
     'WMATIC USDC', 'WMATIC USDT', 'WETH USDC', 'LINK USDC', 'AAVE USDC', 'GHST USDC', 'DAI USDC', 'USDC USDT',

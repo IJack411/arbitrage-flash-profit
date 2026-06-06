@@ -38,7 +38,7 @@ const createSafeFetch = () => {
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
 
       const response = await fetch(url, {
         ...options,
@@ -47,11 +47,24 @@ const createSafeFetch = () => {
 
       clearTimeout(timeoutId);
       return response;
-    } catch {
-      return new Response(JSON.stringify({ data: null, error: null }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Network request failed';
+      const isTimeout = error instanceof Error && error.name === 'AbortError';
+
+      return new Response(
+        JSON.stringify({
+          data: null,
+          error: {
+            message: isTimeout ? 'Request timed out while contacting Supabase' : message,
+          },
+        }),
+        {
+          status: isTimeout ? 504 : 503,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      );
     }
   };
 };

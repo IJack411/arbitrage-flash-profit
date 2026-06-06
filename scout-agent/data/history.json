@@ -2337,6 +2337,1133 @@
       "spreads": [],
       "hour": 12,
       "dayOfWeek": 3
+    },
+    {
+      "ts": 1779279734060,
+      "found": 0,
+      "spreads": [],
+      "hour": 12,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779279918961,
+      "found": 0,
+      "spreads": [],
+      "hour": 12,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779279977318,
+      "found": 0,
+      "spreads": [],
+      "hour": 12,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779280039094,
+      "found": 0,
+      "spreads": [],
+      "hour": 12,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779280138161,
+      "found": 0,
+      "spreads": [],
+      "hour": 12,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779280193861,
+      "found": 0,
+      "spreads": [],
+      "hour": 12,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779281099156,
+      "found": 0,
+      "spreads": [],
+      "hour": 12,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779282002919,
+      "found": 0,
+      "spreads": [],
+      "hour": 13,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779282899389,
+      "found": 0,
+      "spreads": [],
+      "hour": 13,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779283805298,
+      "found": 0,
+      "spreads": [],
+      "hour": 13,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779284702878,
+      "found": 0,
+      "spreads": [],
+      "hour": 13,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779285601568,
+      "found": 0,
+      "spreads": [],
+      "hour": 14,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779286499250,
+      "found": 0,
+      "spreads": [],
+      "hour": 14,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779287411360,
+      "found": 0,
+      "spreads": [],
+      "hour": 14,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779288298822,
+      "found": 0,
+      "spreads": [],
+      "hour": 14,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779289206268,
+      "found": 0,
+      "spreads": [],
+      "hour": 15,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779290102743,
+      "found": 0,
+      "spreads": [],
+      "hour": 15,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779291006096,
+      "found": 0,
+      "spreads": [],
+      "hour": 15,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779291897769,
+      "found": 0,
+      "spreads": [],
+      "hour": 15,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779292806279,
+      "found": 0,
+      "spreads": [],
+      "hour": 16,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779293700196,
+      "found": 0,
+      "spreads": [],
+      "hour": 16,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779294605844,
+      "found": 0,
+      "spreads": [],
+      "hour": 16,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779295499248,
+      "found": 0,
+      "spreads": [],
+      "hour": 16,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779296405710,
+      "found": 0,
+      "spreads": [],
+      "hour": 17,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779297298793,
+      "found": 0,
+      "spreads": [],
+      "hour": 17,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779298206190,
+      "found": 0,
+      "spreads": [],
+      "hour": 17,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779299106734,
+      "found": 0,
+      "spreads": [],
+      "hour": 17,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779300006559,
+      "found": 0,
+      "spreads": [],
+      "hour": 18,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779300899814,
+      "found": 0,
+      "spreads": [],
+      "hour": 18,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779303325464,
+      "found": 0,
+      "spreads": [],
+      "hour": 18,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779304226897,
+      "found": 0,
+      "spreads": [],
+      "hour": 19,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779305108222,
+      "found": 0,
+      "spreads": [],
+      "hour": 19,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779306008739,
+      "found": 0,
+      "spreads": [],
+      "hour": 19,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779306905753,
+      "found": 0,
+      "spreads": [],
+      "hour": 19,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779307806842,
+      "found": 0,
+      "spreads": [],
+      "hour": 20,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779308704012,
+      "found": 0,
+      "spreads": [],
+      "hour": 20,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779309601189,
+      "found": 0,
+      "spreads": [],
+      "hour": 20,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779310506982,
+      "found": 0,
+      "spreads": [],
+      "hour": 20,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779311401654,
+      "found": 0,
+      "spreads": [],
+      "hour": 21,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779312304870,
+      "found": 0,
+      "spreads": [],
+      "hour": 21,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779313204151,
+      "found": 0,
+      "spreads": [],
+      "hour": 21,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779314105637,
+      "found": 0,
+      "spreads": [],
+      "hour": 21,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779315001997,
+      "found": 0,
+      "spreads": [],
+      "hour": 22,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779315906739,
+      "found": 0,
+      "spreads": [],
+      "hour": 22,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779316802235,
+      "found": 0,
+      "spreads": [],
+      "hour": 22,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779317706638,
+      "found": 0,
+      "spreads": [],
+      "hour": 22,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779318603458,
+      "found": 0,
+      "spreads": [],
+      "hour": 23,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779319507055,
+      "found": 0,
+      "spreads": [],
+      "hour": 23,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779320403182,
+      "found": 0,
+      "spreads": [],
+      "hour": 23,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779321308047,
+      "found": 0,
+      "spreads": [],
+      "hour": 23,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779322210521,
+      "found": 0,
+      "spreads": [],
+      "hour": 0,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779323113845,
+      "found": 0,
+      "spreads": [],
+      "hour": 0,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779324003852,
+      "found": 0,
+      "spreads": [],
+      "hour": 0,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779324908739,
+      "found": 0,
+      "spreads": [],
+      "hour": 0,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779325801313,
+      "found": 0,
+      "spreads": [],
+      "hour": 1,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779326709986,
+      "found": 0,
+      "spreads": [],
+      "hour": 1,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779327603053,
+      "found": 0,
+      "spreads": [],
+      "hour": 1,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779328506667,
+      "found": 0,
+      "spreads": [],
+      "hour": 1,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779329406413,
+      "found": 0,
+      "spreads": [],
+      "hour": 2,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779330309365,
+      "found": 0,
+      "spreads": [],
+      "hour": 2,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779331215865,
+      "found": 0,
+      "spreads": [],
+      "hour": 2,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779332108746,
+      "found": 0,
+      "spreads": [],
+      "hour": 2,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779333005933,
+      "found": 0,
+      "spreads": [],
+      "hour": 3,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779333913390,
+      "found": 0,
+      "spreads": [],
+      "hour": 3,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779334803594,
+      "found": 0,
+      "spreads": [],
+      "hour": 3,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779335706976,
+      "found": 0,
+      "spreads": [],
+      "hour": 3,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779336602968,
+      "found": 0,
+      "spreads": [],
+      "hour": 4,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779337509658,
+      "found": 0,
+      "spreads": [],
+      "hour": 4,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779338402819,
+      "found": 0,
+      "spreads": [],
+      "hour": 4,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779339309392,
+      "found": 0,
+      "spreads": [],
+      "hour": 4,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779340206141,
+      "found": 0,
+      "spreads": [],
+      "hour": 5,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779341107247,
+      "found": 0,
+      "spreads": [],
+      "hour": 5,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779342001274,
+      "found": 0,
+      "spreads": [],
+      "hour": 5,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779342907873,
+      "found": 0,
+      "spreads": [],
+      "hour": 5,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779343803473,
+      "found": 0,
+      "spreads": [],
+      "hour": 6,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779344708697,
+      "found": 0,
+      "spreads": [],
+      "hour": 6,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779345606122,
+      "found": 0,
+      "spreads": [],
+      "hour": 6,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779346516599,
+      "found": 0,
+      "spreads": [],
+      "hour": 6,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779347406038,
+      "found": 0,
+      "spreads": [],
+      "hour": 7,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779348308887,
+      "found": 0,
+      "spreads": [],
+      "hour": 7,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779349206241,
+      "found": 0,
+      "spreads": [],
+      "hour": 7,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779350108320,
+      "found": 0,
+      "spreads": [],
+      "hour": 7,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779351006358,
+      "found": 0,
+      "spreads": [],
+      "hour": 8,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779351903756,
+      "found": 0,
+      "spreads": [],
+      "hour": 8,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779352809895,
+      "found": 0,
+      "spreads": [],
+      "hour": 8,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779353704036,
+      "found": 0,
+      "spreads": [],
+      "hour": 8,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779354607813,
+      "found": 0,
+      "spreads": [],
+      "hour": 9,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779355505637,
+      "found": 0,
+      "spreads": [],
+      "hour": 9,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779356407460,
+      "found": 0,
+      "spreads": [],
+      "hour": 9,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779357304380,
+      "found": 0,
+      "spreads": [],
+      "hour": 9,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779358208053,
+      "found": 0,
+      "spreads": [],
+      "hour": 10,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779359114692,
+      "found": 0,
+      "spreads": [],
+      "hour": 10,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779360010357,
+      "found": 0,
+      "spreads": [],
+      "hour": 10,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779360906442,
+      "found": 0,
+      "spreads": [],
+      "hour": 10,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779361809341,
+      "found": 0,
+      "spreads": [],
+      "hour": 11,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779362712534,
+      "found": 0,
+      "spreads": [],
+      "hour": 11,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779363608955,
+      "found": 0,
+      "spreads": [],
+      "hour": 11,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779364510529,
+      "found": 0,
+      "spreads": [],
+      "hour": 11,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779365413261,
+      "found": 0,
+      "spreads": [],
+      "hour": 12,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779366304935,
+      "found": 0,
+      "spreads": [],
+      "hour": 12,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779367211904,
+      "found": 0,
+      "spreads": [],
+      "hour": 12,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779368108525,
+      "found": 0,
+      "spreads": [],
+      "hour": 12,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779369012986,
+      "found": 0,
+      "spreads": [],
+      "hour": 13,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779369905293,
+      "found": 0,
+      "spreads": [],
+      "hour": 13,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779370813845,
+      "found": 0,
+      "spreads": [],
+      "hour": 13,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779371741588,
+      "found": 0,
+      "spreads": [],
+      "hour": 13,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779372618810,
+      "found": 0,
+      "spreads": [],
+      "hour": 14,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779373519522,
+      "found": 0,
+      "spreads": [],
+      "hour": 14,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779374409189,
+      "found": 0,
+      "spreads": [],
+      "hour": 14,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779375306426,
+      "found": 0,
+      "spreads": [],
+      "hour": 14,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779376214180,
+      "found": 0,
+      "spreads": [],
+      "hour": 15,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779377108327,
+      "found": 0,
+      "spreads": [],
+      "hour": 15,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779378010286,
+      "found": 0,
+      "spreads": [],
+      "hour": 15,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779378905640,
+      "found": 0,
+      "spreads": [],
+      "hour": 15,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779379811190,
+      "found": 0,
+      "spreads": [],
+      "hour": 16,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779380706713,
+      "found": 0,
+      "spreads": [],
+      "hour": 16,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779381616863,
+      "found": 0,
+      "spreads": [],
+      "hour": 16,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779382517830,
+      "found": 0,
+      "spreads": [],
+      "hour": 16,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779383415796,
+      "found": 0,
+      "spreads": [],
+      "hour": 17,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779384317012,
+      "found": 0,
+      "spreads": [],
+      "hour": 17,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779387022254,
+      "found": 0,
+      "spreads": [],
+      "hour": 18,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779387917511,
+      "found": 0,
+      "spreads": [],
+      "hour": 18,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779388817718,
+      "found": 0,
+      "spreads": [],
+      "hour": 18,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779391209686,
+      "found": 0,
+      "spreads": [],
+      "hour": 19,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779392105344,
+      "found": 0,
+      "spreads": [],
+      "hour": 19,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779393000357,
+      "found": 0,
+      "spreads": [],
+      "hour": 19,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779393903350,
+      "found": 0,
+      "spreads": [],
+      "hour": 20,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779394805817,
+      "found": 0,
+      "spreads": [],
+      "hour": 20,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779395700834,
+      "found": 0,
+      "spreads": [],
+      "hour": 20,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779396610603,
+      "found": 0,
+      "spreads": [],
+      "hour": 20,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779397490513,
+      "found": 0,
+      "spreads": [],
+      "hour": 21,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779398396846,
+      "found": 0,
+      "spreads": [],
+      "hour": 21,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779399290018,
+      "found": 0,
+      "spreads": [],
+      "hour": 21,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779400204838,
+      "found": 0,
+      "spreads": [],
+      "hour": 21,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779401092733,
+      "found": 0,
+      "spreads": [],
+      "hour": 22,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779401999747,
+      "found": 0,
+      "spreads": [],
+      "hour": 22,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779402893376,
+      "found": 0,
+      "spreads": [],
+      "hour": 22,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779403801155,
+      "found": 0,
+      "spreads": [],
+      "hour": 22,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779404696590,
+      "found": 0,
+      "spreads": [],
+      "hour": 23,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779405595841,
+      "found": 0,
+      "spreads": [],
+      "hour": 23,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779406493078,
+      "found": 0,
+      "spreads": [],
+      "hour": 23,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779407395924,
+      "found": 0,
+      "spreads": [],
+      "hour": 23,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779408293621,
+      "found": 0,
+      "spreads": [],
+      "hour": 0,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779409191243,
+      "found": 0,
+      "spreads": [],
+      "hour": 0,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779410094935,
+      "found": 0,
+      "spreads": [],
+      "hour": 0,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779410996462,
+      "found": 0,
+      "spreads": [],
+      "hour": 0,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779411898757,
+      "found": 0,
+      "spreads": [],
+      "hour": 1,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779412803084,
+      "found": 0,
+      "spreads": [],
+      "hour": 1,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779413702577,
+      "found": 0,
+      "spreads": [],
+      "hour": 1,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779414604465,
+      "found": 0,
+      "spreads": [],
+      "hour": 1,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779415500279,
+      "found": 0,
+      "spreads": [],
+      "hour": 2,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779416402326,
+      "found": 0,
+      "spreads": [],
+      "hour": 2,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779417304621,
+      "found": 0,
+      "spreads": [],
+      "hour": 2,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779418201107,
+      "found": 0,
+      "spreads": [],
+      "hour": 2,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779419100882,
+      "found": 0,
+      "spreads": [],
+      "hour": 3,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779420001071,
+      "found": 0,
+      "spreads": [],
+      "hour": 3,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779420900187,
+      "found": 0,
+      "spreads": [],
+      "hour": 3,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779421809099,
+      "found": 0,
+      "spreads": [],
+      "hour": 3,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779422697135,
+      "found": 0,
+      "spreads": [],
+      "hour": 4,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779423599667,
+      "found": 0,
+      "spreads": [],
+      "hour": 4,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1780026234761,
+      "found": 0,
+      "spreads": [],
+      "hour": 3,
+      "dayOfWeek": 5
     }
   ],
   "gasSnapshots": [
@@ -4443,6 +5570,1294 @@
       "ethPriceUsd": 2331,
       "hour": 11,
       "dayOfWeek": 3
+    },
+    {
+      "ts": 1779279732210,
+      "baseFeeGwei": 0.51,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 12,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779279918230,
+      "baseFeeGwei": 0.6,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2126,
+      "hour": 12,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779279975632,
+      "baseFeeGwei": 0.61,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 12,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779280038376,
+      "baseFeeGwei": 0.62,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2127,
+      "hour": 12,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779280137579,
+      "baseFeeGwei": 0.54,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2129,
+      "hour": 12,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779280192269,
+      "baseFeeGwei": 0.5,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 12,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779281098535,
+      "baseFeeGwei": 0.52,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2130,
+      "hour": 12,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779282001151,
+      "baseFeeGwei": 0.49,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 13,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779282898765,
+      "baseFeeGwei": 0.65,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2130,
+      "hour": 13,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779283803492,
+      "baseFeeGwei": 0.64,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 13,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779284702108,
+      "baseFeeGwei": 0.71,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2118,
+      "hour": 13,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779285600760,
+      "baseFeeGwei": 0.55,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2118,
+      "hour": 14,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779286498381,
+      "baseFeeGwei": 1.14,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2115,
+      "hour": 14,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779287409395,
+      "baseFeeGwei": 1.21,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 14,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779288298158,
+      "baseFeeGwei": 0.65,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2130,
+      "hour": 14,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779289204453,
+      "baseFeeGwei": 0.54,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 15,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779290102153,
+      "baseFeeGwei": 0.79,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2128,
+      "hour": 15,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779291004336,
+      "baseFeeGwei": 0.81,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 15,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779291897175,
+      "baseFeeGwei": 0.52,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2133,
+      "hour": 15,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779292804412,
+      "baseFeeGwei": 0.57,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 16,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779293699541,
+      "baseFeeGwei": 0.45,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2137,
+      "hour": 16,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779294604967,
+      "baseFeeGwei": 0.79,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2127,
+      "hour": 16,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779295498489,
+      "baseFeeGwei": 1.05,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2131,
+      "hour": 16,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779296403513,
+      "baseFeeGwei": 0.75,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2132,
+      "hour": 17,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779297298213,
+      "baseFeeGwei": 0.5,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2133,
+      "hour": 17,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779298204447,
+      "baseFeeGwei": 0.68,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 17,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779299105565,
+      "baseFeeGwei": 0.32,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2142,
+      "hour": 17,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779300004783,
+      "baseFeeGwei": 0.26,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 18,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779300899222,
+      "baseFeeGwei": 0.22,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2136,
+      "hour": 18,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779303319679,
+      "baseFeeGwei": 0.2,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2130,
+      "hour": 18,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779304225155,
+      "baseFeeGwei": 0.25,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 19,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779305105246,
+      "baseFeeGwei": 0.21,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 19,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779306006930,
+      "baseFeeGwei": 0.22,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 19,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779306904652,
+      "baseFeeGwei": 0.2,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2138,
+      "hour": 19,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779307802689,
+      "baseFeeGwei": 0.2,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 20,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779308703457,
+      "baseFeeGwei": 0.24,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2131,
+      "hour": 20,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779309600460,
+      "baseFeeGwei": 0.21,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2132,
+      "hour": 20,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779310506374,
+      "baseFeeGwei": 0.23,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2134,
+      "hour": 20,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779311400677,
+      "baseFeeGwei": 0.26,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2135,
+      "hour": 21,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779312304339,
+      "baseFeeGwei": 0.21,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2133,
+      "hour": 21,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779313202834,
+      "baseFeeGwei": 0.19,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2131,
+      "hour": 21,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779314105085,
+      "baseFeeGwei": 0.23,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2131,
+      "hour": 21,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779315001278,
+      "baseFeeGwei": 0.28,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2124,
+      "hour": 22,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779315906012,
+      "baseFeeGwei": 0.31,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2119,
+      "hour": 22,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779316800972,
+      "baseFeeGwei": 0.19,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2123,
+      "hour": 22,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779317706098,
+      "baseFeeGwei": 0.23,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2125,
+      "hour": 22,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779318602864,
+      "baseFeeGwei": 0.23,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2124,
+      "hour": 23,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779319506494,
+      "baseFeeGwei": 0.2,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2122,
+      "hour": 23,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779320402556,
+      "baseFeeGwei": 0.23,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2125,
+      "hour": 23,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779321307224,
+      "baseFeeGwei": 0.24,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2127,
+      "hour": 23,
+      "dayOfWeek": 3
+    },
+    {
+      "ts": 1779322204133,
+      "baseFeeGwei": 0.18,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2128,
+      "hour": 0,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779323112115,
+      "baseFeeGwei": 0.18,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 0,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779324001291,
+      "baseFeeGwei": 0.16,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2134,
+      "hour": 0,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779324907030,
+      "baseFeeGwei": 0.18,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 0,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779325800777,
+      "baseFeeGwei": 0.18,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2143,
+      "hour": 1,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779326706525,
+      "baseFeeGwei": 0.18,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 1,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779327602522,
+      "baseFeeGwei": 0.17,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2139,
+      "hour": 1,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779328504130,
+      "baseFeeGwei": 0.18,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 1,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779329405815,
+      "baseFeeGwei": 0.15,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2139,
+      "hour": 2,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779330307574,
+      "baseFeeGwei": 0.19,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 2,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779331215108,
+      "baseFeeGwei": 0.21,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2143,
+      "hour": 2,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779332107043,
+      "baseFeeGwei": 0.29,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 2,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779333004719,
+      "baseFeeGwei": 0.22,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2140,
+      "hour": 3,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779333911657,
+      "baseFeeGwei": 0.46,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 3,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779334803005,
+      "baseFeeGwei": 0.21,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2143,
+      "hour": 3,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779335705269,
+      "baseFeeGwei": 0.22,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 3,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779336602465,
+      "baseFeeGwei": 0.26,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2145,
+      "hour": 4,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779337507442,
+      "baseFeeGwei": 0.19,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 4,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779338402354,
+      "baseFeeGwei": 0.22,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2142,
+      "hour": 4,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779339307683,
+      "baseFeeGwei": 0.19,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 4,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779340204626,
+      "baseFeeGwei": 1.19,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2145,
+      "hour": 5,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779341105558,
+      "baseFeeGwei": 0.2,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 5,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779342000731,
+      "baseFeeGwei": 0.18,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2139,
+      "hour": 5,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779342905302,
+      "baseFeeGwei": 0.19,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 5,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779343802961,
+      "baseFeeGwei": 0.32,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2134,
+      "hour": 6,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779344706825,
+      "baseFeeGwei": 0.22,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 6,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779345605482,
+      "baseFeeGwei": 0.22,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2132,
+      "hour": 6,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779346514110,
+      "baseFeeGwei": 0.23,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 6,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779347405517,
+      "baseFeeGwei": 0.21,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2128,
+      "hour": 7,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779348307393,
+      "baseFeeGwei": 0.19,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 7,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779349205681,
+      "baseFeeGwei": 0.22,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2128,
+      "hour": 7,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779350107080,
+      "baseFeeGwei": 0.22,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2132,
+      "hour": 7,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779351005800,
+      "baseFeeGwei": 0.25,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2138,
+      "hour": 8,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779351903261,
+      "baseFeeGwei": 0.17,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2139,
+      "hour": 8,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779352806235,
+      "baseFeeGwei": 0.23,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2135,
+      "hour": 8,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779353703564,
+      "baseFeeGwei": 0.21,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2134,
+      "hour": 8,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779354607361,
+      "baseFeeGwei": 0.2,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2137,
+      "hour": 9,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779355505165,
+      "baseFeeGwei": 0.2,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2137,
+      "hour": 9,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779356406959,
+      "baseFeeGwei": 0.29,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2130,
+      "hour": 9,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779357303846,
+      "baseFeeGwei": 0.26,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2128,
+      "hour": 9,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779358207544,
+      "baseFeeGwei": 0.2,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2125,
+      "hour": 10,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779359112101,
+      "baseFeeGwei": 0.2,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2126,
+      "hour": 10,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779360009436,
+      "baseFeeGwei": 0.45,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2116,
+      "hour": 10,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779360905872,
+      "baseFeeGwei": 0.21,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2112,
+      "hour": 10,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779361808770,
+      "baseFeeGwei": 0.2,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2113,
+      "hour": 11,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779362711975,
+      "baseFeeGwei": 0.18,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2115,
+      "hour": 11,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779363608478,
+      "baseFeeGwei": 0.22,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2114,
+      "hour": 11,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779364508236,
+      "baseFeeGwei": 0.2,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2115,
+      "hour": 11,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779365411539,
+      "baseFeeGwei": 0.19,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 12,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779366304365,
+      "baseFeeGwei": 0.21,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2112,
+      "hour": 12,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779367211197,
+      "baseFeeGwei": 0.24,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2117,
+      "hour": 12,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779368107016,
+      "baseFeeGwei": 0.2,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2116,
+      "hour": 12,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779369012337,
+      "baseFeeGwei": 0.27,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2117,
+      "hour": 13,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779369904715,
+      "baseFeeGwei": 0.21,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2116,
+      "hour": 13,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779370813190,
+      "baseFeeGwei": 0.32,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2110,
+      "hour": 13,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779371729165,
+      "baseFeeGwei": 0.26,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 13,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779372616029,
+      "baseFeeGwei": 0.26,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2118,
+      "hour": 14,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779373517790,
+      "baseFeeGwei": 0.27,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 14,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779374407044,
+      "baseFeeGwei": 0.22,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2122,
+      "hour": 14,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779375305809,
+      "baseFeeGwei": 0.22,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2116,
+      "hour": 14,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779376212247,
+      "baseFeeGwei": 0.61,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 15,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779377107732,
+      "baseFeeGwei": 0.77,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2132,
+      "hour": 15,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779378008281,
+      "baseFeeGwei": 0.51,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 15,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779378905037,
+      "baseFeeGwei": 0.26,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2131,
+      "hour": 15,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779379809462,
+      "baseFeeGwei": 0.8,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 16,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779380706185,
+      "baseFeeGwei": 0.54,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2128,
+      "hour": 16,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779381615808,
+      "baseFeeGwei": 0.28,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 16,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779382515897,
+      "baseFeeGwei": 0.27,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 16,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779383414081,
+      "baseFeeGwei": 0.27,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 17,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779384315056,
+      "baseFeeGwei": 0.83,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 17,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779387020110,
+      "baseFeeGwei": 1.23,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 18,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779387914934,
+      "baseFeeGwei": 0.35,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 18,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779388816059,
+      "baseFeeGwei": 0.24,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 18,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779391203258,
+      "baseFeeGwei": 0.2,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2132,
+      "hour": 19,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779392103666,
+      "baseFeeGwei": 0.2,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 19,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779392998680,
+      "baseFeeGwei": 0.21,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 19,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779393901629,
+      "baseFeeGwei": 0.24,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 20,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779394804170,
+      "baseFeeGwei": 0.21,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 20,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779395699160,
+      "baseFeeGwei": 0.23,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 20,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779396608909,
+      "baseFeeGwei": 0.26,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 20,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779397489780,
+      "baseFeeGwei": 0.2,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2137,
+      "hour": 21,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779398394619,
+      "baseFeeGwei": 0.24,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2136,
+      "hour": 21,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779399289321,
+      "baseFeeGwei": 0.2,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2136,
+      "hour": 21,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779400199664,
+      "baseFeeGwei": 0.26,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 21,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779401092280,
+      "baseFeeGwei": 0.27,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2133,
+      "hour": 22,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779401997967,
+      "baseFeeGwei": 0.21,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 22,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779402892825,
+      "baseFeeGwei": 0.26,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2133,
+      "hour": 22,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779403799918,
+      "baseFeeGwei": 0.25,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2131,
+      "hour": 22,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779404695947,
+      "baseFeeGwei": 0.21,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2130,
+      "hour": 23,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779405594013,
+      "baseFeeGwei": 0.18,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 23,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779406492524,
+      "baseFeeGwei": 0.22,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2132,
+      "hour": 23,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779407393770,
+      "baseFeeGwei": 0.21,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 23,
+      "dayOfWeek": 4
+    },
+    {
+      "ts": 1779408293106,
+      "baseFeeGwei": 0.19,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2131,
+      "hour": 0,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779409190535,
+      "baseFeeGwei": 0.21,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2130,
+      "hour": 0,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779410094395,
+      "baseFeeGwei": 0.2,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2132,
+      "hour": 0,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779410994751,
+      "baseFeeGwei": 0.18,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 0,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779411896424,
+      "baseFeeGwei": 0.2,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2126,
+      "hour": 1,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779412801218,
+      "baseFeeGwei": 0.25,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 1,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779413699809,
+      "baseFeeGwei": 0.19,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2127,
+      "hour": 1,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779414602561,
+      "baseFeeGwei": 0.21,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 1,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779415498088,
+      "baseFeeGwei": 0.22,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2135,
+      "hour": 2,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779416400654,
+      "baseFeeGwei": 0.23,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 2,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779417302718,
+      "baseFeeGwei": 0.2,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 2,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779418198921,
+      "baseFeeGwei": 0.21,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2135,
+      "hour": 2,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779419098478,
+      "baseFeeGwei": 0.26,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 3,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779419999472,
+      "baseFeeGwei": 0.22,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2134,
+      "hour": 3,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779420898528,
+      "baseFeeGwei": 0.19,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 3,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779421807399,
+      "baseFeeGwei": 0.24,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 3,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779422696500,
+      "baseFeeGwei": 0.23,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2137,
+      "hour": 4,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1779423597788,
+      "baseFeeGwei": 0.18,
+      "priorityGwei": 0,
+      "ethPriceUsd": 3000,
+      "hour": 4,
+      "dayOfWeek": 5
+    },
+    {
+      "ts": 1780026234104,
+      "baseFeeGwei": 0.34,
+      "priorityGwei": 0,
+      "ethPriceUsd": 2001,
+      "hour": 3,
+      "dayOfWeek": 5
     }
   ],
   "recommendations": []

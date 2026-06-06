@@ -217,6 +217,35 @@ Micro-live gate (before scaling):
 - [ ] Alert routing configured by severity (info/warn/critical)
 - [ ] Monitoring dashboard checked for latency, failure rate, and PnL visibility
 
+### 7) Automated Rollout Healthcheck (Host Scheduler)
+
+- [ ] `npm run scanner:indexer:healthcheck` passes manually
+- [ ] Install Windows scheduled task: `npm run ops:healthcheck:schedule:install`
+- [ ] Verify task status: `npm run ops:healthcheck:schedule:status`
+- [ ] Confirm log updates in `logs/scheduler/indexer-healthcheck.log`
+
+Optional management commands:
+- Dry run task creation: `npm run ops:healthcheck:schedule:dry-run`
+- Remove scheduled task: `npm run ops:healthcheck:schedule:remove`
+
+### 8) Automated Full Readiness Check (Host Scheduler)
+
+- [ ] `npm run scanner:readiness:healthcheck` passes manually
+- [ ] Install readiness scheduler: `npm run ops:readiness:schedule:install`
+- [ ] Verify readiness task status: `npm run ops:readiness:schedule:status`
+- [ ] Confirm log updates in `logs/scheduler/scanner-readiness-healthcheck.log`
+
+Optional management commands:
+- Dry run task creation: `npm run ops:readiness:schedule:dry-run`
+- Remove scheduled task: `npm run ops:readiness:schedule:remove`
+
+Unified operator summary:
+- `npm run ops:schedule:summary`
+
+Automation gate commands:
+- Human-readable strict gate (non-zero exit on unhealthy): `npm run ops:schedule:gate`
+- Machine-readable strict gate with JSON payload: `npm run ops:schedule:gate:json`
+
 ---
 
 ## 72-Hour Staged Rollout Checklist
@@ -312,6 +341,33 @@ No-Go:
 - [ ] Any incident trigger hit
 - [ ] Failure rate spikes
 - [ ] Live execution quality degrades (latency/slippage)
+
+---
+
+## Opportunity Precheck Controls
+
+Use PRECHECK for early warning when runs are close to trigger thresholds, without changing strict ALERT requirements.
+
+Scout-side thresholds:
+- `ALERT_PRECHECK_TOP_WATCH_NET_MIN` (default `-5`)
+- `ALERT_PRECHECK_TOP_DISTANCE_MAX` (default `20`)
+- `ALERT_PRECHECK_BAD_QUOTES_MAX` (default `1`)
+- Optional strict precheck exit: set `ALERT_STRICT_EXIT=true` and `ALERT_PRECHECK_STRICT_EXIT=true` (exit code `14`)
+
+Watch-loop controls:
+- `OPPORTUNITY_WATCH_NOTIFY_ON_PRECHECK` (default `true`)
+- `OPPORTUNITY_WATCH_STOP_ON_PRECHECK` (default `false`)
+- `OPPORTUNITY_WATCH_STRICT_PRECHECK_EXIT` (default `false`, exit code `14` if precheck seen)
+- `OPPORTUNITY_WATCH_PRECHECK_STREAK_MIN` (default `2`, escalates message label to `PRECHECK_STREAK_ALERT`)
+- `OPPORTUNITY_WATCH_PRECHECK_NOTIFY_COOLDOWN_MS` (default `600000`, precheck notification cooldown)
+- `OPPORTUNITY_WATCH_ALERT_LATCH_FILE` (default `benchmark-results/high-quality-alert-latest.json`, overwritten on each strict ALERT)
+- `OPPORTUNITY_WATCH_ALERT_HISTORY_FILE` (default `benchmark-results/high-quality-alert-history.jsonl`, append-only strict ALERT history)
+
+Scheduler runner defaults (`scripts/run-opportunity-watch.ps1`):
+- PRECHECK notifications enabled by default
+- STOP_ON_PRECHECK disabled by default
+- STRICT_PRECHECK_EXIT disabled by default
+- `ALERT_PRECHECK_TOP_DISTANCE_MAX` overridden to `22` for scheduler runs (strict ALERT threshold remains unchanged)
 
 ---
 

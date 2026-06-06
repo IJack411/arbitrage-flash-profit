@@ -30,7 +30,7 @@ import { MasterFlashLoanSlider } from './MasterFlashLoanSlider';
 import { PriceAlertDashboard } from './priceAlerts/PriceAlertDashboard';
 import { AuthModal } from './auth/AuthModal';
 import { UserProfileModal } from './auth/UserProfileModal';
-import { MultiWalletManager } from './wallet/MultiWalletManager';
+import { MultiWalletManager } from '../agent-helpers/components/wallet/MultiWalletManager';
 import { AdminDashboard } from './admin/AdminDashboard';
 import { ConnectionDiagnostics } from './ConnectionDiagnostics';
 import { PreLaunchTestSuite } from './PreLaunchTestSuite';

@@ -8,7 +8,7 @@ import { FlashbotsService } from '../lib/web3/flashbotsService';
 import { IndexerService } from '../lib/web3/indexerService';
 import { useToast } from '@/hooks/use-toast';
 import { ToastAction } from '@/components/ui/toast';
-import { WalletErrorDetails, WalletErrorInfo, createWalletErrorInfo } from '@/components/wallet/WalletErrorDetails';
+import { WalletErrorDetails, WalletErrorInfo, createWalletErrorInfo } from '@/agent-helpers/components/wallet/WalletErrorDetails';
 
 // Helper to check if an error is from wallet extension conflicts
 const isExtensionConflictError = (error: unknown): boolean => {

@@ -40,4 +40,5 @@ This repository contains a DeFi Arbitrage Governance Platform, integrating a Rea
 
 - **Arbitrage Scout**: Use for researching DeFi patterns, gas optimization, and competitor strategy analysis.
 - **Serena**: Background agent for continuous system maintenance, simulations, and proactive troubleshooting.
+- **ScannerHarvester-X**: Specialized intelligence agent to extract, aggregate, and structure deep technical knowledge about market scanners, indicators, and signal engines. Results are stored in `scout-agent/data/knowledge_base/`.
 - **Safety**: Always run simulations before modifying core contract logic and verify UI changes with Playwright.

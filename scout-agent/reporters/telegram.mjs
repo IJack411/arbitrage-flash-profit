@@ -9,7 +9,9 @@ const SEVERITY_ICONS = {
 };
 
 export async function sendFindings(botToken, chatId, findings) {
-  if (!findings.length) return;
+  if (!findings.length) {
+    return { ok: true, sentChunks: 0, failedChunks: 0, errors: [] };
+  }
 
   // Group by severity
   const recs = findings.filter(f => f.severity === 'recommendation');
@@ -50,9 +52,26 @@ export async function sendFindings(botToken, chatId, findings) {
 
   // Telegram has a 4096 char limit — split if needed
   const chunks = splitMessage(message, 4000);
+  let sentChunks = 0;
+  let failedChunks = 0;
+  const errors = [];
+
   for (const chunk of chunks) {
-    await sendTelegramMessage(botToken, chatId, chunk);
+    const result = await sendTelegramMessage(botToken, chatId, chunk);
+    if (result.ok) {
+      sentChunks++;
+    } else {
+      failedChunks++;
+      if (result.error) errors.push(result.error);
+    }
   }
+
+  return {
+    ok: failedChunks === 0,
+    sentChunks,
+    failedChunks,
+    errors,
+  };
 }
 
 async function sendTelegramMessage(botToken, chatId, text) {
@@ -70,11 +89,18 @@ async function sendTelegramMessage(botToken, chatId, text) {
     const data = await res.json();
     if (!data.ok) {
       console.error('Telegram send failed:', data.description);
+      return {
+        ok: false,
+        error: `Telegram API: ${data.description || 'unknown error'}`,
+      };
     }
-    return data.ok;
+    return { ok: true };
   } catch (err) {
     console.error('Telegram error:', err.message);
-    return false;
+    return {
+      ok: false,
+      error: `Request failed: ${err.message}`,
+    };
   }
 }
 

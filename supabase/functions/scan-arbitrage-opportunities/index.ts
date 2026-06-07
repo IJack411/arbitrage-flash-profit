@@ -53,7 +53,7 @@ const SUSHI_SUBGRAPH = buildGraphEndpoint('THEGRAPH_SUSHI', SUSHI_SUBGRAPH_PUBLI
   gatewayIdEnvKey: 'THEGRAPH_SUSHI_ID',
 });
 const UNI_V2_SUBGRAPH = buildGraphEndpoint('THEGRAPH_UNI_V2', UNI_V2_SUBGRAPH_PUBLIC, {
-  defaultGatewayId: 'EYCKATKGBKLWvSfwvBjzfCBmGwYNdVkduYXVivCsLRFu',
+  defaultGatewayId: 'A3Np3RQbaBA6oKJgiwDJeo5T3zrYfGHPWFYayMwtNDum',
   gatewayIdEnvKey: 'THEGRAPH_UNI_V2_ID',
 });
 const BALANCER_SUBGRAPH = buildGraphEndpoint('THEGRAPH_BALANCER', BALANCER_SUBGRAPH_PUBLIC, {
@@ -61,6 +61,21 @@ const BALANCER_SUBGRAPH = buildGraphEndpoint('THEGRAPH_BALANCER', BALANCER_SUBGR
 });
 const CURVE_SUBGRAPH = buildGraphEndpoint('THEGRAPH_CURVE', CURVE_SUBGRAPH_PUBLIC, {
   gatewayIdEnvKey: 'THEGRAPH_CURVE_ID',
+});
+
+// Arbitrum-specific subgraphs — separate deployments required for cross-chain DEX diversity.
+// IDs verified against gateway.thegraph.com with real Arbitrum token data (ARB, WETH, WBTC, USDC).
+// UNI_V3_ARB: 3V7ZY6muhxaQL5qvntX1CFXJ32W7BxXZTGTwmpH5J4t3 (sourced from DeFiLlama, confirmed ARB+WETH pools present)
+// SUSHI_ARB:  8yBXBTMfdhsoE5QCf7KnoPmQb7QAWtRzESfYjiCjGEM9 (SushiSwap V2 Arbitrum One, confirmed WETH+MAGIC+USDC pools present)
+const UNI_V3_ARB_SUBGRAPH_PUBLIC = 'https://api.thegraph.com/subgraphs/name/ianlapham/uniswap-arbitrum-one';
+const SUSHI_ARB_SUBGRAPH_PUBLIC = 'https://api.thegraph.com/subgraphs/name/sushiswap/exchange-arbitrum';
+const UNI_V3_ARB_SUBGRAPH = buildGraphEndpoint('THEGRAPH_UNI_V3_ARB', UNI_V3_ARB_SUBGRAPH_PUBLIC, {
+  defaultGatewayId: '3V7ZY6muhxaQL5qvntX1CFXJ32W7BxXZTGTwmpH5J4t3',
+  gatewayIdEnvKey: 'THEGRAPH_UNI_V3_ARB_ID',
+});
+const SUSHI_ARB_SUBGRAPH = buildGraphEndpoint('THEGRAPH_SUSHI_ARB', SUSHI_ARB_SUBGRAPH_PUBLIC, {
+  defaultGatewayId: '8yBXBTMfdhsoE5QCf7KnoPmQb7QAWtRzESfYjiCjGEM9',
+  gatewayIdEnvKey: 'THEGRAPH_SUSHI_ARB_ID',
 });
 
 type NetworkName = 'ethereum' | 'polygon' | 'arbitrum' | 'base' | 'bsc';
@@ -761,6 +776,15 @@ const isDexName = (value: unknown): value is Opportunity['buyDex'] => {
     || value === 'SushiSwap'
     || value === 'Balancer'
     || value === 'Curve';
+};
+
+// Normalize fee-tier-labeled V3 dex names (e.g. "Uniswap V3 (500)") back to the canonical
+// "Uniswap V3" used in Opportunity, DEX_ROUTERS, dexSwapFeeBps, etc.
+const canonicalizeDex = (dex: string): Opportunity['buyDex'] => {
+  if (dex.startsWith('Uniswap V3')) return 'Uniswap V3';
+  if (isDexName(dex)) return dex;
+  console.warn(`[canonicalizeDex] Unknown DEX name: "${dex}" — defaulting to Uniswap V3. Check subgraph data.`);
+  return 'Uniswap V3';
 };
 
 const loadExecutionFeedbackByRoute = async (): Promise<Map<string, RouteExecutionFeedbackRecord>> => {
@@ -1918,7 +1942,7 @@ const buildCycleShadowWatchlist = (
 };
 
 const buildScannerConfig = (body: Record<string, unknown>): ScannerConfig => {
-  const envLoanAmountUsd = parseNumberEnv(Deno.env.get('SCANNER_LOAN_AMOUNT_USD'), 6_000);
+  const envLoanAmountUsd = parseNumberEnv(Deno.env.get('SCANNER_LOAN_AMOUNT_USD'), 50_000);
   const bodyLoanAmountUsd = parseNumberInput(body.loanAmountUsd);
   const bodyMinSpreadPercent = parseNumberInput(body.minSpreadPercent);
   const bodyMinLiquidityUsd = parseNumberInput(body.minLiquidityUsd);
@@ -2240,7 +2264,7 @@ const evaluateScannerReadinessGates = async () => {
 
 const topPairsQuery = (limit = 20) => `
 {
-  pools(first: ${limit}, orderBy: volumeUSD, orderDirection: desc) {
+  pools(first: ${limit}, orderBy: volumeUSD, orderDirection: desc, where: { totalValueLockedUSD_gt: "100000", totalValueLockedUSD_lt: "10000000000" }) {
     id
     fee: feeTier
     token0 { symbol address: id }
@@ -2254,7 +2278,7 @@ const topPairsQuery = (limit = 20) => `
 
 const topV2PairsQuery = (limit = 20) => `
 {
-  pairs(first: ${limit}, orderBy: volumeUSD, orderDirection: desc) {
+  pairs(first: ${limit}, orderBy: reserveUSD, orderDirection: desc, where: { reserveUSD_gt: "10000", reserveUSD_lt: "10000000000" }) {
     id
     token0 { symbol address: id }
     token1 { symbol address: id }
@@ -2288,13 +2312,13 @@ const PRIORITY_PAIR_SUBGRAPH_LIMIT_PER_PAIR = Math.max(
 );
 
 const PRIORITY_PAIR_SUBGRAPH_MIN_LIQUIDITY_USD = Math.max(
-  20_000,
-  parseNumberEnv(Deno.env.get('SCANNER_PRIORITY_PAIR_SUBGRAPH_MIN_LIQUIDITY_USD'), 120_000),
+  500,
+  parseNumberEnv(Deno.env.get('SCANNER_PRIORITY_PAIR_SUBGRAPH_MIN_LIQUIDITY_USD'), 10_000),
 );
 
 const priorityPairV3Query = (tokenA: string, tokenB: string, limit = PRIORITY_PAIR_SUBGRAPH_LIMIT_PER_PAIR) => `
 {
-  pools(first: ${limit}, orderBy: volumeUSD, orderDirection: desc, where: { token0_in: ["${tokenA}", "${tokenB}"], token1_in: ["${tokenA}", "${tokenB}"] }) {
+  pools(first: ${limit}, orderBy: totalValueLockedUSD, orderDirection: desc, where: { token0_in: ["${tokenA}", "${tokenB}"], token1_in: ["${tokenA}", "${tokenB}"], totalValueLockedUSD_gt: "10000" }) {
     id
     fee: feeTier
     token0 { symbol address: id }
@@ -2308,7 +2332,7 @@ const priorityPairV3Query = (tokenA: string, tokenB: string, limit = PRIORITY_PA
 
 const priorityPairV2Query = (tokenA: string, tokenB: string, limit = PRIORITY_PAIR_SUBGRAPH_LIMIT_PER_PAIR) => `
 {
-  pairs(first: ${limit}, orderBy: volumeUSD, orderDirection: desc, where: { token0_in: ["${tokenA}", "${tokenB}"], token1_in: ["${tokenA}", "${tokenB}"] }) {
+  pairs(first: ${limit}, orderBy: reserveUSD, orderDirection: desc, where: { token0_in: ["${tokenA}", "${tokenB}"], token1_in: ["${tokenA}", "${tokenB}"], reserveUSD_gt: "5000", reserveUSD_lt: "10000000000" }) {
     id
     token0 { symbol address: id }
     token1 { symbol address: id }
@@ -2399,10 +2423,19 @@ const fetchPriorityPairSubgraphPools = async (
     const queryV3 = priorityPairV3Query(target.baseAddress, target.quoteAddress);
     const queryV2 = priorityPairV2Query(target.baseAddress, target.quoteAddress);
 
+    // Route to correct chain-specific subgraphs based on target network.
+    const isArbitrum = target.network === 'arbitrum';
+    const v3SubgraphPrimary = isArbitrum ? UNI_V3_ARB_SUBGRAPH : UNI_V3_SUBGRAPH;
+    const v3SubgraphFallback = isArbitrum ? UNI_V3_ARB_SUBGRAPH_PUBLIC : UNI_V3_SUBGRAPH_PUBLIC;
+    const sushiSubgraphPrimary = isArbitrum ? SUSHI_ARB_SUBGRAPH : SUSHI_SUBGRAPH;
+    const sushiSubgraphFallback = isArbitrum ? SUSHI_ARB_SUBGRAPH_PUBLIC : SUSHI_SUBGRAPH_PUBLIC;
+
     const requests = [
-      fetchSubgraphWithFallback(UNI_V3_SUBGRAPH, UNI_V3_SUBGRAPH_PUBLIC, queryV3),
-      fetchSubgraphWithFallback(UNI_V2_SUBGRAPH, UNI_V2_SUBGRAPH_PUBLIC, queryV2),
-      fetchSubgraphWithFallback(SUSHI_SUBGRAPH, SUSHI_SUBGRAPH_PUBLIC, queryV2),
+      fetchSubgraphWithFallback(v3SubgraphPrimary, v3SubgraphFallback, queryV3),
+      isArbitrum
+        ? Promise.resolve({ pairs: [] })
+        : fetchSubgraphWithFallback(UNI_V2_SUBGRAPH, UNI_V2_SUBGRAPH_PUBLIC, queryV2),
+      fetchSubgraphWithFallback(sushiSubgraphPrimary, sushiSubgraphFallback, queryV2),
     ];
 
     meta.queries += requests.length;
@@ -2412,8 +2445,7 @@ const fetchPriorityPairSubgraphPools = async (
     if (v3.status === 'fulfilled') {
       meta.responsesOk += 1;
       const pools = ((v3.value as { pools?: Record<string, unknown>[] })?.pools || [])
-        .map((pool) => toPoolFromPair(pool, 'Uniswap V3'))
-        .filter((pool) => toNetworkName(pool.network) === target.network)
+        .map((pool) => ({ ...toPoolFromPair(pool, 'Uniswap V3'), network: target.network }))
         .filter((pool) => matchesPriorityTarget(pool, target))
         .filter((pool) => parsePoolLiquidity(pool) >= PRIORITY_PAIR_SUBGRAPH_MIN_LIQUIDITY_USD);
       for (const pool of pools) {
@@ -2428,8 +2460,7 @@ const fetchPriorityPairSubgraphPools = async (
     if (v2.status === 'fulfilled') {
       meta.responsesOk += 1;
       const pools = ((v2.value as { pairs?: Record<string, unknown>[] })?.pairs || [])
-        .map((pair) => toPoolFromPair(pair, 'Uniswap V2'))
-        .filter((pool) => toNetworkName(pool.network) === target.network)
+        .map((pair) => ({ ...toPoolFromPair(pair, 'Uniswap V2'), network: target.network }))
         .filter((pool) => matchesPriorityTarget(pool, target))
         .filter((pool) => parsePoolLiquidity(pool) >= PRIORITY_PAIR_SUBGRAPH_MIN_LIQUIDITY_USD);
       for (const pool of pools) {
@@ -2444,8 +2475,7 @@ const fetchPriorityPairSubgraphPools = async (
     if (sushi.status === 'fulfilled') {
       meta.responsesOk += 1;
       const pools = ((sushi.value as { pairs?: Record<string, unknown>[] })?.pairs || [])
-        .map((pair) => toPoolFromPair(pair, 'SushiSwap'))
-        .filter((pool) => toNetworkName(pool.network) === target.network)
+        .map((pair) => ({ ...toPoolFromPair(pair, 'SushiSwap'), network: target.network }))
         .filter((pool) => matchesPriorityTarget(pool, target))
         .filter((pool) => parsePoolLiquidity(pool) >= PRIORITY_PAIR_SUBGRAPH_MIN_LIQUIDITY_USD);
       for (const pool of pools) {
@@ -2471,7 +2501,7 @@ const toPoolFromPair = (pair: Record<string, unknown>, dex: 'Uniswap V3' | 'Unis
     reserveUSD: String(pair.reserveUSD || '0'),
     network: 'ethereum',
     poolAddress: String(pair.id || ''),
-    feeTier: typeof pair.fee === 'number' ? pair.fee : undefined,
+    feeTier: pair.fee != null ? Number(pair.fee) : undefined,
     dex,
     sourceType: 'subgraph',
   };
@@ -2533,8 +2563,8 @@ const CHAIN_MAP: Record<string, NetworkName> = {
 const NETWORK_GAS_MULTIPLIER: Record<NetworkName, number> = {
   ethereum: 1,
   polygon: 0.18,
-  arbitrum: 0.35,
-  base: 0.22,
+  arbitrum: 0.012,  // $26×0.012 ≈ $0.31 — matches Arbitrum reality (was 0.35 = $6.30 overestimate)
+  base: 0.015,      // $26×0.015 ≈ $0.39 — matches Base reality (was 0.22 = $3.96 overestimate)
   bsc: 0.22,
 };
 
@@ -2651,6 +2681,9 @@ const PRIORITY_FALLBACK_LIQUIDITY_FRACTION = Math.min(
 
 const OVERLAP_PRIORITY_PAIR_TERMS_BY_NETWORK: Partial<Record<NetworkName, string[]>> = {
   ethereum: [
+    // WETH pairs: exist on V2 + V3 + SushiSwap for real cross-DEX arbitrage
+    'LINK WETH', 'WBTC WETH', 'AAVE WETH', 'UNI WETH', 'COMP WETH',
+    // Stablecoin pairs
     'WBTC USDC',
     'WBTC USDT',
     'LINK USDC',
@@ -2663,6 +2696,9 @@ const OVERLAP_PRIORITY_PAIR_TERMS_BY_NETWORK: Partial<Record<NetworkName, string
     'MKR USDC',
   ],
   arbitrum: [
+    // WETH pairs: exist on V3 + SushiSwap for cross-DEX arb (gas ~$0.31/tx)
+    'MAGIC WETH', 'ARB WETH', 'GMX WETH',
+    // Stablecoin pairs
     'ARB USDC',
     'GMX USDC',
     'MAGIC USDC',
@@ -2687,7 +2723,8 @@ const OVERLAP_PRIORITY_PAIR_TERMS_BY_NETWORK: Partial<Record<NetworkName, string
 
 type PriorityTermsByNetwork = Partial<Record<NetworkName, string[]>>;
 
-const normalizeSearchTerm = (term: string): string => term.trim().replace(/\s+/g, ' ').toUpperCase();
+const normalizeSearchTerm = (term: string): string =>
+  term.trim().replace(/[/\-_]/g, ' ').replace(/\s+/g, ' ').toUpperCase();
 
 const buildPriorityTermsByNetwork = (
   selectedNetworks: NetworkName[],
@@ -2927,7 +2964,8 @@ const estimateGasUsdForNetwork = (network: NetworkName, config: ScannerConfig): 
   }
 
   // Fallback path for compatibility when dynamic gas inputs are unavailable.
-  return Math.max(1, config.estimatedGasUsd * NETWORK_GAS_MULTIPLIER[network]);
+  // Note: no floor for low-gas networks (e.g. Arbitrum ~$0.31) to avoid false rejections.
+  return config.estimatedGasUsd * NETWORK_GAS_MULTIPLIER[network];
 };
 
 /**
@@ -3015,9 +3053,9 @@ const KNOWN_TOKEN_ADDRESSES: Partial<Record<NetworkName, Record<string, string>>
     SAND: '0xBbba073C31bF03b8ACf7c28EF0738DeCF3695683',
   },
   arbitrum: {
-    USDC: '0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8',
+    USDC: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
     'USDC.e': '0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8',
-    'USDC(native)': '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
+    'USDC(bridged)': '0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8',
     USDT: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9',
     DAI: '0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1',
     WETH: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
@@ -3025,6 +3063,8 @@ const KNOWN_TOKEN_ADDRESSES: Partial<Record<NetworkName, Record<string, string>>
     LINK: '0xf97f4df75117a78c1A5a0DBb814Af92458539FB4',
     WBTC: '0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f',
     GMX: '0xfc5A1A6EB076a2C7aD06eD22C90d7E710E35ad0a',
+    MAGIC: '0x539bdE0d7Dbd336b79148AA742883198BBF60342',
+    PENDLE: '0x0c880f6761F1af8d9Aa9C466984b80DAb9a8c9e8',
   },
   base: {
     USDC: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
@@ -3195,12 +3235,13 @@ const buildExecutionPayload = (
   estimatedSlippageBps: number,
   confidenceScore: number,
   buyPrice: number,
+  quoteUsdPrice = 1, // 1 for stables (USDC/USDT); wethUsdPrice for WETH pairs
 ): {
   payload: Record<string, unknown> | null;
   error?: string;
 } => {
   // Extract token addresses from pool objects
-  // tokenPair format: "ethereum:TOKEN0/TOKEN1" where TOKEN1 is typically the quote (USDC/USDT)
+  // tokenPair format: "ethereum:TOKEN0/TOKEN1" where TOKEN1 is typically the quote (USDC/USDT/WETH)
   const parts = tokenPair.split('/');
   if (parts.length !== 2) {
     return { payload: null, error: 'Invalid tokenPair format' };
@@ -3212,28 +3253,37 @@ const buildExecutionPayload = (
   // Determine which token is the quote (asset to borrow) and which is the base (tokenB to arbitrage)
   const isQuoteToken0 = isStableQuote(token0Symbol);
   const isQuoteToken1 = isStableQuote(token1Symbol);
-  
-  if (!isQuoteToken0 && !isQuoteToken1) {
-    return { payload: null, error: 'No stable quote token found in pair' };
+  const isWethToken0 = WETH_QUOTE_SYMBOLS.has(normalizeTokenSymbol(token0Symbol));
+  const isWethToken1 = WETH_QUOTE_SYMBOLS.has(normalizeTokenSymbol(token1Symbol));
+
+  // Accept stable quotes (USDC/USDT/DAI) or WETH as the borrowable asset.
+  if (!isQuoteToken0 && !isQuoteToken1 && !isWethToken0 && !isWethToken1) {
+    return { payload: null, error: 'No stable or WETH quote token found in pair' };
   }
-  
+
+  // Prefer stable over WETH as quote; if neither stable, use WETH side.
+  const useToken0AsQuote = isQuoteToken0 || (!isQuoteToken1 && isWethToken0);
+
   // Asset to borrow is the quote; tokenB to arbitrage is the base
-  const assetSymbol = isQuoteToken0 ? token0Symbol : token1Symbol;
-  const tokenBSymbol = isQuoteToken0 ? token1Symbol : token0Symbol;
-  
+  const assetSymbol = useToken0AsQuote ? token0Symbol : token1Symbol;
+  const tokenBSymbol = useToken0AsQuote ? token1Symbol : token0Symbol;
+
   const assetDecimals = getTokenDecimals(assetSymbol);
   const tokenBDecimals = getTokenDecimals(tokenBSymbol);
-  
-  const asset = (isQuoteToken0 ? buyPool.token0?.address || sellPool.token0?.address : buyPool.token1?.address || sellPool.token1?.address)
+
+  const asset = (useToken0AsQuote ? buyPool.token0?.address || sellPool.token0?.address : buyPool.token1?.address || sellPool.token1?.address)
     || lookupTokenAddress(network, assetSymbol);
-  const tokenB = (isQuoteToken0 ? buyPool.token1?.address || sellPool.token1?.address : buyPool.token0?.address || sellPool.token0?.address)
+  const tokenB = (useToken0AsQuote ? buyPool.token1?.address || sellPool.token1?.address : buyPool.token0?.address || sellPool.token0?.address)
     || lookupTokenAddress(network, tokenBSymbol);
 
   if (!asset || !tokenB) {
     return { payload: null, error: 'Missing token addresses from pools' };
   }
 
-  const assetAmount = formatTokenUnits(executableLoanAmount, assetDecimals);
+  // For WETH pairs, executableLoanAmount is USD-denominated; convert to token units using quoteUsdPrice.
+  // For stable pairs quoteUsdPrice=1 so no change.
+  const safeQuoteUsdPrice = quoteUsdPrice > 0 ? quoteUsdPrice : 1;
+  const assetAmount = formatTokenUnits(executableLoanAmount / safeQuoteUsdPrice, assetDecimals);
   const amountBMin = calculateAmountBMin(executableLoanAmount, buyPrice, estimatedSlippageBps, tokenBDecimals);
   if (assetAmount <= 0n || amountBMin <= 0n) {
     return { payload: null, error: 'Invalid amount conversion for execution payload' };
@@ -3397,6 +3447,10 @@ const buildMathDiagnostics = ({
 };
 
 const STABLE_QUOTES = new Set(['USDC', 'USDT', 'DAI']);
+// WETH is treated as a secondary quote currency: TOKEN/WETH pairs (LINK/WETH, WBTC/WETH, etc.)
+// are valid cross-DEX arb targets since they exist on V2 + V3 + SushiSwap simultaneously.
+// Prices stored as WETH/TOKEN are later multiplied by WETH/USD price for USD-denominated CPMM math.
+const WETH_QUOTE_SYMBOLS = new Set(['WETH', 'ETH']);
 const STABLE_SYMBOL_ALIASES: Record<string, string> = {
   USDBC: 'USDC',
   USDCE: 'USDC',
@@ -3432,6 +3486,17 @@ const getTrackableBaseQuote = (
 
   const leftStable = STABLE_QUOTES.has(left);
   const rightStable = STABLE_QUOTES.has(right);
+  const leftWeth = WETH_QUOTE_SYMBOLS.has(left);
+  const rightWeth = WETH_QUOTE_SYMBOLS.has(right);
+
+  // TOKEN/WETH pairs: one side is WETH, the other is a known base token (not stable, not WETH again).
+  // Price returned is raw "WETH per TOKEN"; multiplied by WETH/USD later for USD-denominated math.
+  if ((leftWeth || rightWeth) && !(leftWeth && rightWeth) && !leftStable && !rightStable) {
+    const base = leftWeth ? right : left;
+    if (!CORE_BASE_TOKENS[network].has(base)) return null;
+    return { base, quote: 'WETH' };
+  }
+
   if (leftStable === rightStable) return null;
 
   const base = leftStable ? right : left;
@@ -3602,7 +3667,8 @@ const upsertFallbackPool = (
   const existingIndex = target.findIndex((pool) =>
     pool.network === candidate.network &&
     pool.token0.symbol === candidate.token0.symbol &&
-    pool.token1.symbol === candidate.token1.symbol,
+    pool.token1.symbol === candidate.token1.symbol &&
+    (pool.feeTier ?? 0) === (candidate.feeTier ?? 0),
   );
 
   if (existingIndex === -1) {
@@ -4148,10 +4214,14 @@ const findSpreads = (
     const baseMatchesToken1 = normalizeSymbol(p.token1.symbol || '') === normalizeSymbol(trackablePair.base);
     const quoteMatchesToken0 = normalizeSymbol(p.token0.symbol || '') === normalizeSymbol(trackablePair.quote);
 
+    // Canonical price = "quote per base" (e.g., USD per MKR, WETH per LINK) so the CPMM
+    // formula (buyBaseReserve = buyQuoteReserveUsd / price) produces correct token reserve sizes.
+    // token0Price = token0 per token1 = "base per quote" → we need the inverse (token1Price).
+    // token1Price = token1 per token0 = "quote per base" → correct for (base=token0, quote=token1).
     const canonicalPriceFixed = (baseMatchesToken0 && quoteMatchesToken1)
-      ? decimalToFixed(p.token0Price || '0', FP_SCALE)
+      ? decimalToFixed(p.token1Price || '0', FP_SCALE)  // quote per base: token1/token0
       : (baseMatchesToken1 && quoteMatchesToken0)
-        ? decimalToFixed(p.token1Price || '0', FP_SCALE)
+        ? decimalToFixed(p.token0Price || '0', FP_SCALE) // quote per base: token0/token1
         : 0n;
 
     if (canonicalPriceFixed <= 0n) {
@@ -4172,7 +4242,10 @@ const findSpreads = (
 
   for (const p of uniV3Pools || []) {
     const { key, price, pool } = mapPrice(p);
-    if (key && price > 0) uniV3Map.set(key, { price, pool });
+    if (!key || price <= 0) continue;
+    // Encode fee tier in map key so multiple fee tiers for the same pair coexist.
+    const v3Key = pool.feeTier ? `${key}@${pool.feeTier}` : key;
+    uniV3Map.set(v3Key, { price, pool });
   }
 
   for (const p of uniV2Pools || []) {
@@ -4195,10 +4268,40 @@ const findSpreads = (
     if (key && price > 0) curveMap.set(key, { price, pool });
   }
 
+  // Normalize TOKEN/WETH prices from "WETH per TOKEN" to "USD per TOKEN" so the CPMM
+  // simulation (which uses USD loan amounts and USD liquidity) computes correct slippage/profit.
+  // Step 1: derive WETH/USD price from existing WETH/USDC (or WETH/USDT) V3/V2/Sushi entries.
+  const wethUsdPriceArr: number[] = [];
+  for (const map of [uniV3Map, uniV2Map, sushiMap]) {
+    for (const [k, entry] of map) {
+      const baseKey = k.includes('@') ? k.split('@')[0] : k;
+      if (baseKey.endsWith(':WETH/USDC') || baseKey.endsWith(':WETH/USDT') || baseKey.endsWith(':WETH/DAI')) {
+        if (entry.price > 100 && entry.price < 100_000) wethUsdPriceArr.push(entry.price);
+      }
+    }
+  }
+  const wethUsdPrice = (() => {
+    if (wethUsdPriceArr.length === 0) return 2000; // fallback if WETH/stable not yet indexed
+    const s = [...wethUsdPriceArr].sort((a, b) => a - b);
+    const mid = Math.floor(s.length / 2);
+    return s.length % 2 !== 0 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+  })();
+  // Step 2: convert all TOKEN/WETH prices from "WETH per TOKEN" (quote per base) to "USD per TOKEN"
+  // by multiplying by wethUsdPrice so the CPMM (USD loan amounts + USD liquidity) is correct.
+  for (const map of [uniV3Map, uniV2Map, sushiMap, balancerMap, curveMap]) {
+    for (const [k, entry] of map) {
+      const baseKey = k.includes('@') ? k.split('@')[0] : k;
+      if (baseKey.endsWith('/WETH')) {
+        map.set(k, { ...entry, price: entry.price * wethUsdPrice });
+      }
+    }
+  }
+
   const opps: Opportunity[] = [];
   const watchlist: Opportunity[] = [];
   const keys = new Set<string>([
-    ...uniV3Map.keys(),
+    // Strip "@feeTier" suffix so each pair appears once even with multiple fee tiers.
+    ...[...uniV3Map.keys()].map((k) => k.includes('@') ? k.split('@')[0] : k),
     ...uniV2Map.keys(),
     ...sushiMap.keys(),
     ...balancerMap.keys(),
@@ -4660,18 +4763,55 @@ const findSpreads = (
   );
 
   for (const key of keys) {
-    const quotes: Array<{ dex: Opportunity['buyDex']; price: number; pool: Pool }> = [];
-    const v3 = uniV3Map.get(key);
+    const quotes: Array<{ dex: string; price: number; pool: Pool }> = [];
+    // Collect all V3 fee-tier entries for this pair (key "pairKey@feeTier" or "pairKey").
+    const v3EntriesRaw = [...uniV3Map.entries()]
+      .filter(([k]) => k === key || k.startsWith(`${key}@`))
+      .map(([k, v]) => {
+        const feeTier = k.includes('@') ? parseInt(k.split('@')[1] ?? '0', 10) : v.pool.feeTier;
+        const effectiveDex = feeTier ? `Uniswap V3 (${feeTier})` : 'Uniswap V3';
+        return { effectiveDex, price: v.price, pool: v.pool };
+      });
+
+    // Outlier rejection: drop V3 entries whose price deviates >1000x from the median.
+    // Prevents scam/fake tokens (same symbol, different address) from creating fake spreads.
+    const v3Entries = (() => {
+      if (v3EntriesRaw.length < 2) return v3EntriesRaw;
+      const sorted = [...v3EntriesRaw].sort((a, b) => a.price - b.price);
+      const mid = Math.floor(sorted.length / 2);
+      const median = sorted.length % 2 !== 0
+        ? sorted[mid].price
+        : (sorted[mid - 1].price + sorted[mid].price) / 2;
+      return v3EntriesRaw.filter((e) => {
+        const ratio = e.price > median ? e.price / median : median / e.price;
+        return ratio <= 1000;
+      });
+    })();
+    for (const v3e of v3Entries) quotes.push({ dex: v3e.effectiveDex, price: v3e.price, pool: v3e.pool });
     const v2 = uniV2Map.get(key);
     const sushi = sushiMap.get(key);
     const balancer = balancerMap.get(key);
     const curve = curveMap.get(key);
 
-    if (v3) quotes.push({ dex: 'Uniswap V3', price: v3.price, pool: v3.pool });
     if (v2) quotes.push({ dex: 'Uniswap V2', price: v2.price, pool: v2.pool });
     if (sushi) quotes.push({ dex: 'SushiSwap', price: sushi.price, pool: sushi.pool });
     if (balancer) quotes.push({ dex: 'Balancer', price: balancer.price, pool: balancer.pool });
     if (curve) quotes.push({ dex: 'Curve', price: curve.price, pool: curve.pool });
+
+    // Cross-DEX outlier rejection: if any quote's price is >1000x from median of all quotes,
+    // it's a scam token or inverted price; drop the outlier quote(s).
+    if (quotes.length >= 2) {
+      const allPrices = quotes.map((q) => q.price).filter((p) => p > 0).sort((a, b) => a - b);
+      const mid = Math.floor(allPrices.length / 2);
+      const crossMedian = allPrices.length % 2 !== 0
+        ? allPrices[mid]
+        : (allPrices[mid - 1] + allPrices[mid]) / 2;
+      quotes.splice(0, quotes.length, ...quotes.filter((q) => {
+        if (q.price <= 0) return false;
+        const ratio = q.price > crossMedian ? q.price / crossMedian : crossMedian / q.price;
+        return ratio <= 1000;
+      }));
+    }
 
     for (const quote of quotes) {
       const source = quote.pool.sourceType || 'subgraph';
@@ -4697,7 +4837,7 @@ const findSpreads = (
     const [networkPart] = key.split(':');
     const pairNetwork = toNetworkName(networkPart);
     const isPriorityOverlapPair = getPriorityOverlapPairKeys(dynamicPriorityTermsByNetwork).has(key);
-    const dexCount = new Set(quotes.map((quote) => quote.dex)).size;
+    const dexCount = new Set(quotes.map((quote) => canonicalizeDex(quote.dex))).size;
     const sourceSet = new Set(quotes.map((quote) => quote.pool.sourceType || 'subgraph'));
     const hasSubgraphAnchor = sourceSet.has('subgraph');
     const fallbackOnlySingleSource = !hasSubgraphAnchor && sourceSet.size === 1;
@@ -4823,12 +4963,12 @@ const findSpreads = (
           - fallbackOnlyPenalty
           - sameFallbackSourcePenalty;
         if (!bestPair || score > bestPair.score) {
-          bestPair = { buy, sell, score };
+          bestPair = { buy: { ...buy, dex: canonicalizeDex(buy.dex) }, sell: { ...sell, dex: canonicalizeDex(sell.dex) }, score };
         }
 
         const routeCandidate = {
-          buy,
-          sell,
+          buy: { ...buy, dex: canonicalizeDex(buy.dex) },
+          sell: { ...sell, dex: canonicalizeDex(sell.dex) },
           score,
           spreadBps: Number(spreadBps),
           minLiquidityUsd: Math.min(buyLiquidity, sellLiquidity),
@@ -5536,6 +5676,8 @@ const findSpreads = (
       executionCandidate.estimatedSlippageBps,
       confidenceScore,
       buyEntry.price,
+      // For TOKEN/WETH pairs the loan is WETH; pass wethUsdPrice so the amount is correctly scaled.
+      key.endsWith('/WETH') ? wethUsdPrice : 1,
     );
 
     if (!executionPayload) {
@@ -5750,6 +5892,7 @@ const runScan = async (config: ScannerConfig, networks: string[]) => {
   // Run subgraph fetches (always) and conditionally enable market-data fallbacks.
   const [
     subgraphResults,
+    arbSubgraphResults,
     prioritySubgraph,
     dexFallback,
     geckoFallback,
@@ -5765,6 +5908,13 @@ const runScan = async (config: ScannerConfig, networks: string[]) => {
       fetchSubgraphWithFallback(BALANCER_SUBGRAPH, BALANCER_SUBGRAPH_PUBLIC, topBalancerPoolsQuery(1000)),
       fetchSubgraphWithFallback(CURVE_SUBGRAPH, CURVE_SUBGRAPH_PUBLIC, topCurvePoolsQuery(1000)),
     ]),
+    // Arbitrum-specific subgraphs: fetched only when Arbitrum is in the requested networks.
+    networks.includes('arbitrum')
+      ? Promise.allSettled([
+          fetchSubgraphWithFallback(UNI_V3_ARB_SUBGRAPH, UNI_V3_ARB_SUBGRAPH_PUBLIC, topPairsQuery(500)),
+          fetchSubgraphWithFallback(SUSHI_ARB_SUBGRAPH, SUSHI_ARB_SUBGRAPH_PUBLIC, topV2PairsQuery(500)),
+        ])
+      : Promise.resolve([] as PromiseSettledResult<unknown>[]),
     fetchPriorityPairSubgraphPools(networks, dynamicPriority.termsByNetwork),
     enableDexScreener ? fetchDexScreenerFallback(networks, dynamicPriority.termsByNetwork) : Promise.resolve(emptyFallback),
     enableGecko ? fetchGeckoTerminalFallback(networks, dynamicPriority.termsByNetwork) : Promise.resolve(emptyFallback),
@@ -5832,6 +5982,25 @@ const runScan = async (config: ScannerConfig, networks: string[]) => {
   const curvePools: Pool[] = (curveData?.pools || [])
     .map((pool: Record<string, unknown>) => toPoolFromCurve(pool))
     .filter((pool: Pool | null): pool is Pool => pool !== null);
+
+  // Process Arbitrum-specific subgraph results and tag pools with network='arbitrum'.
+  const arbResults = (arbSubgraphResults as PromiseSettledResult<unknown>[]) || [];
+  const uniV3ArbResult = arbResults[0];
+  const sushiArbResult = arbResults[1];
+  if (uniV3ArbResult?.status === 'fulfilled') {
+    const arbData = uniV3ArbResult.value as { pools?: Record<string, unknown>[] };
+    const arbPools: Pool[] = (arbData?.pools || []).map((pool) => ({ ...toPoolFromPair(pool, 'Uniswap V3'), network: 'arbitrum' as const }));
+    for (const pool of arbPools) upsertFallbackPool(uniV3Pools, pool);
+  } else if (uniV3ArbResult?.status === 'rejected') {
+    console.error('Uniswap V3 Arbitrum subgraph fetch failed:', (uniV3ArbResult as PromiseRejectedResult).reason);
+  }
+  if (sushiArbResult?.status === 'fulfilled') {
+    const arbData = sushiArbResult.value as { pairs?: Record<string, unknown>[] };
+    const arbPools: Pool[] = (arbData?.pairs || []).map((pair) => ({ ...toPoolFromPair(pair, 'SushiSwap'), network: 'arbitrum' as const }));
+    for (const pool of arbPools) upsertFallbackPool(sushiPools, pool);
+  } else if (sushiArbResult?.status === 'rejected') {
+    console.error('SushiSwap Arbitrum subgraph fetch failed:', (sushiArbResult as PromiseRejectedResult).reason);
+  }
 
   const droppedPoolCounts = {
     uniV3: 0,

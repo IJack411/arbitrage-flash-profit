@@ -80,7 +80,7 @@ const SUBGRAPHS_BY_NETWORK: Record<string, SubgraphConfig[]> = {
     {
       dex: 'Uniswap V2',
       version: 'v2',
-      gatewayId: 'EYCKATKGBKLWvSfwvBjzfCBmGwYNdVkduYXVivCsLRFu',
+      gatewayId: 'A3Np3RQbaBA6oKJgiwDJeo5T3zrYfGHPWFYayMwtNDum',
       publicUrl: `${GRAPH_PUBLIC}/uniswap/uniswap-v2`,
       envOverrideKey: 'THEGRAPH_UNI_V2',
     },
@@ -96,14 +96,14 @@ const SUBGRAPHS_BY_NETWORK: Record<string, SubgraphConfig[]> = {
     {
       dex: 'Uniswap V3',
       version: 'v3',
-      gatewayId: 'FbCGRftH4a3yZugY7TnbYgPJVEv2LvMT6oF1fxPe9aFM',
-      publicUrl: `${GRAPH_PUBLIC}/ianlapham/arbitrum-minimal`,
+      gatewayId: '3V7ZY6muhxaQL5qvntX1CFXJ32W7BxXZTGTwmpH5J4t3',
+      publicUrl: `${GRAPH_PUBLIC}/ianlapham/uniswap-arbitrum-one`,
     },
     {
       dex: 'SushiSwap',
       version: 'v2',
-      gatewayId: 'H9oPAbXnobBRq1BD1X35yz7frgZZa4cTqe5uiMobJ4kk',
-      publicUrl: `${GRAPH_PUBLIC}/sushiswap/exchange-arbitrum-nova`,
+      gatewayId: '8yBXBTMfdhsoE5QCf7KnoPmQb7QAWtRzESfYjiCjGEM9',
+      publicUrl: `${GRAPH_PUBLIC}/sushiswap/exchange-arbitrum`,
     },
   ],
   base: [
@@ -228,11 +228,11 @@ const fetchV2Pools = async (
   if (!endpoint) return [];
   const query = `{
     ab: pairs(
-      where: { token0_: { symbol: "${tokenA}" }, token1_: { symbol: "${tokenB}" } }
+      where: { token0_: { symbol: "${tokenA}" }, token1_: { symbol: "${tokenB}" }, reserveUSD_gt: "5000", reserveUSD_lt: "10000000000" }
       orderBy: reserveUSD orderDirection: desc first: 4
     ) { id token0Price token1Price reserveUSD token0 { symbol } token1 { symbol } }
     ba: pairs(
-      where: { token0_: { symbol: "${tokenB}" }, token1_: { symbol: "${tokenA}" } }
+      where: { token0_: { symbol: "${tokenB}" }, token1_: { symbol: "${tokenA}" }, reserveUSD_gt: "5000", reserveUSD_lt: "10000000000" }
       orderBy: reserveUSD orderDirection: desc first: 4
     ) { id token0Price token1Price reserveUSD token0 { symbol } token1 { symbol } }
   }`;
@@ -468,36 +468,53 @@ Deno.serve(async (req) => {
     let poolsUpserted = 0;
     let quotesUpserted = 0;
 
-    for (const pair of hotPairs) {
-      const { tokenA, tokenB } = parsePair(pair.token_pair);
-      if (!tokenA || !tokenB) continue;
+    // Process all pairs in parallel (max 20 concurrent) to avoid edge function timeout.
+    const CONCURRENCY = 20;
+    const chunks: typeof hotPairs[] = [];
+    for (let i = 0; i < hotPairs.length; i += CONCURRENCY) {
+      chunks.push(hotPairs.slice(i, i + CONCURRENCY));
+    }
 
-      const fetchStart = Date.now();
-      let subgraphResult: { pools: SubgraphPool[]; subgraphsQueried: number; subgraphsFailed: number } = {
-        pools: [], subgraphsQueried: 0, subgraphsFailed: 0,
-      };
-      let ok = false;
-      try {
-        subgraphResult = await fetchSubgraphPools(pair.network, tokenA, tokenB);
-        ok = subgraphResult.pools.length > 0;
-      } catch {
-        ok = false;
-      }
-      const latencyMs = Date.now() - fetchStart;
+    for (const chunk of chunks) {
+      const results = await Promise.allSettled(chunk.map(async (pair) => {
+        const { tokenA, tokenB } = parsePair(pair.token_pair);
+        if (!tokenA || !tokenB) return { pools: 0, quotes: 0 };
 
-      await updateSourceHealth(pair.network, ok, latencyMs);
-      if (!ok || subgraphResult.pools.length === 0) {
+        const fetchStart = Date.now();
+        let subgraphResult: { pools: SubgraphPool[]; subgraphsQueried: number; subgraphsFailed: number } = {
+          pools: [], subgraphsQueried: 0, subgraphsFailed: 0,
+        };
+        let ok = false;
+        try {
+          subgraphResult = await fetchSubgraphPools(pair.network, tokenA, tokenB);
+          ok = subgraphResult.pools.length > 0;
+        } catch {
+          ok = false;
+        }
+        const latencyMs = Date.now() - fetchStart;
+
+        await updateSourceHealth(pair.network, ok, latencyMs);
+        if (!ok || subgraphResult.pools.length === 0) {
+          await touchHotPair(pair.network, pair.token_pair, mode);
+          return { pools: 0, quotes: 0 };
+        }
+
+        const poolRows = buildPoolRows(pair.network, subgraphResult.pools, latencyMs);
+        const p = await upsertRows('pools_index_latest', poolRows, 'network,dex,pool_address');
+
+        const quoteRows = buildQuoteRows(pair.network, pair.token_pair, poolRows);
+        const q = await upsertRows('quotes_index_latest', quoteRows, 'network,token_pair,buy_dex,sell_dex');
+
         await touchHotPair(pair.network, pair.token_pair, mode);
-        continue;
+        return { pools: p, quotes: q };
+      }));
+
+      for (const r of results) {
+        if (r.status === 'fulfilled') {
+          poolsUpserted += r.value.pools;
+          quotesUpserted += r.value.quotes;
+        }
       }
-
-      const poolRows = buildPoolRows(pair.network, subgraphResult.pools, latencyMs);
-      poolsUpserted += await upsertRows('pools_index_latest', poolRows, 'network,dex,pool_address');
-
-      const quoteRows = buildQuoteRows(pair.network, pair.token_pair, poolRows);
-      quotesUpserted += await upsertRows('quotes_index_latest', quoteRows, 'network,token_pair,buy_dex,sell_dex');
-
-      await touchHotPair(pair.network, pair.token_pair, mode);
     }
 
     return new Response(

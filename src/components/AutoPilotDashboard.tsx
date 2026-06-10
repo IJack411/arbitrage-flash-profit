@@ -60,11 +60,10 @@ interface SafetyConfig {
   circuitBreakerLossThreshold: number;
   circuitBreakerConsecutiveLosses: number;
   flashbotsEnabled: boolean;
-  executionMode: 'simulation' | 'live';
+  executionMode: 'live';
   // New safety fields
   walletBalanceCheckEnabled: boolean;
   minWalletBalanceEth: number;
-  autoFallbackToSimulation: boolean;
   fallbackBalanceThresholdEth: number;
   txConfirmationMonitoring: boolean;
   txConfirmationTimeoutSeconds: number;
@@ -138,11 +137,10 @@ export const AutoPilotDashboard: React.FC = () => {
     circuitBreakerLossThreshold: 200,
     circuitBreakerConsecutiveLosses: 3,
     flashbotsEnabled: true,
-    executionMode: 'simulation',
+    executionMode: 'live',
     // New safety fields
     walletBalanceCheckEnabled: true,
     minWalletBalanceEth: 0.1,
-    autoFallbackToSimulation: true,
     fallbackBalanceThresholdEth: 0.05,
     txConfirmationMonitoring: true,
     txConfirmationTimeoutSeconds: 120,
@@ -191,11 +189,10 @@ export const AutoPilotDashboard: React.FC = () => {
           circuitBreakerLossThreshold: parseFloat(data.circuit_breaker_loss_threshold) || 200,
           circuitBreakerConsecutiveLosses: data.circuit_breaker_consecutive_losses || 3,
           flashbotsEnabled: data.flashbots_enabled ?? true,
-          executionMode: data.execution_mode || 'simulation',
+          executionMode: 'live',
           // New safety fields
           walletBalanceCheckEnabled: data.wallet_balance_check_enabled ?? true,
           minWalletBalanceEth: parseFloat(data.min_wallet_balance_eth) || 0.1,
-          autoFallbackToSimulation: data.auto_fallback_to_simulation ?? true,
           fallbackBalanceThresholdEth: parseFloat(data.fallback_balance_threshold_eth) || 0.05,
           txConfirmationMonitoring: data.tx_confirmation_monitoring ?? true,
           txConfirmationTimeoutSeconds: data.tx_confirmation_timeout_seconds || 120,
@@ -263,7 +260,6 @@ export const AutoPilotDashboard: React.FC = () => {
 
     setSafetyConfig(prev => ({
       ...prev,
-      executionMode: 'simulation',
       emergencyStopActive: true,
       emergencyStopTriggeredAt: new Date().toISOString(),
     }));
@@ -274,15 +270,6 @@ export const AutoPilotDashboard: React.FC = () => {
   }, [isAutoPilotOn, scanInterval, loadSafetyConfig, loadCircuitBreakerState]);
 
 
-
-  // Handle live trading mode switch with confirmation
-  const handleExecutionModeChange = (mode: 'simulation' | 'live') => {
-    if (mode === 'live' && !safetyConfig.liveTradingAcknowledged) {
-      setShowLiveTradingModal(true);
-    } else {
-      setSafetyConfig(prev => ({ ...prev, executionMode: mode }));
-    }
-  };
 
   // Handle live trading confirmation
   const handleLiveTradingConfirm = async () => {
@@ -340,11 +327,10 @@ export const AutoPilotDashboard: React.FC = () => {
           circuit_breaker_loss_threshold: safetyConfig.circuitBreakerLossThreshold,
           circuit_breaker_consecutive_losses: safetyConfig.circuitBreakerConsecutiveLosses,
           flashbots_enabled: safetyConfig.flashbotsEnabled,
-          execution_mode: safetyConfig.executionMode,
+          execution_mode: 'live',
           // New safety fields
           wallet_balance_check_enabled: safetyConfig.walletBalanceCheckEnabled,
           min_wallet_balance_eth: safetyConfig.minWalletBalanceEth,
-          auto_fallback_to_simulation: safetyConfig.autoFallbackToSimulation,
           fallback_balance_threshold_eth: safetyConfig.fallbackBalanceThresholdEth,
           tx_confirmation_monitoring: safetyConfig.txConfirmationMonitoring,
           tx_confirmation_timeout_seconds: safetyConfig.txConfirmationTimeoutSeconds,
@@ -515,15 +501,12 @@ export const AutoPilotDashboard: React.FC = () => {
         return;
       }
 
-      const executionMode = safetyConfig.executionMode === 'live' ? 'live' : 'demo';
-      const scanNetworks = executionMode === 'live'
-        ? selectedNetworks.filter(supportsLiveExecution)
-        : selectedNetworks;
+      const scanNetworks = selectedNetworks.filter(supportsLiveExecution);
 
       if (scanNetworks.length === 0) {
         toast({
           title: 'No Live-Compatible Networks Selected',
-          description: 'The current live executor is wired for Ethereum mainnet only. Keep Base and Arbitrum in demo mode.',
+          description: 'The current live executor is wired for Ethereum mainnet only.',
           variant: 'destructive',
         });
         return;
@@ -539,7 +522,7 @@ export const AutoPilotDashboard: React.FC = () => {
           minSpreadPercent: 0.01,
           maxSlippageBps: Math.max(1, Math.round(safetyConfig.maxSlippagePercent * 100)),
           maxLiquidityUsagePercent: 35,
-          estimatedGasUsd: executionMode === 'live' ? 6 : 3,
+          estimatedGasUsd: 6,
           maxResults: 10,
         },
       });
@@ -599,12 +582,10 @@ export const AutoPilotDashboard: React.FC = () => {
         const blockedTrades: string[] = [];
 
         for (const trade of executableTrades) {
-          if (executionMode === 'live') {
-            const blocker = getLiveExecutionBlocker(trade, account, contractAddress);
-            if (blocker) {
-              blockedTrades.push(`${trade.tokenPair}: ${blocker}`);
-              continue;
-            }
+          const blocker = getLiveExecutionBlocker(trade, account, contractAddress);
+          if (blocker) {
+            blockedTrades.push(`${trade.tokenPair}: ${blocker}`);
+            continue;
           }
 
           tradesAttempted += 1;
@@ -612,7 +593,6 @@ export const AutoPilotDashboard: React.FC = () => {
           try {
             const result = await executeArbitrageTrade({
               trade,
-              mode: executionMode,
               account,
               contractAddress,
               maxSlippagePercent: safetyConfig.maxSlippagePercent,
@@ -666,9 +646,8 @@ export const AutoPilotDashboard: React.FC = () => {
           return;
         }
 
-        const modeLabel = executionMode === 'live' ? 'LIVE' : 'DEMO';
         toast({
-          title: `${modeLabel} Auto-Pilot ${tradesSuccessful}/${tradesAttempted} Trades`,
+          title: `LIVE Auto-Pilot ${tradesSuccessful}/${tradesAttempted} Trades`,
           description: `Profit: $${totalProfit.toFixed(2)} | Loss: $${totalLoss.toFixed(2)}${blockedTrades.length > 0 ? ` | Blocked: ${blockedTrades.length}` : ''}`,
           duration: 5000,
         });
@@ -726,15 +705,12 @@ export const AutoPilotDashboard: React.FC = () => {
     const interval = setInterval(runScan, 30000);
     setScanInterval(interval);
     
-    const mode = safetyConfig.executionMode === 'live' ? 'LIVE MODE' : 'Simulation Mode';
-    const mode = safetyConfig.executionMode === 'live' ? 'LIVE MODE' : 'Demo Mode';
     toast({
-      title: `Auto-Pilot Activated (${mode})`,
+      title: 'Auto-Pilot Activated (LIVE MODE)',
       description: `Bot scanning every 30s. Min profit: $${safetyConfig.minProfitThreshold}`,
       duration: 5000,
     });
   }, [runScan, toast, circuitBreaker, safetyConfig, account]);
-                      Demo (Safe)
 
   /*
   // Stop auto-pilot
@@ -819,7 +795,7 @@ export const AutoPilotDashboard: React.FC = () => {
               </div>
               <p className="text-gray-400">
                 {isAutoPilotOn 
-                  ? `Bot actively trading (${safetyConfig.executionMode === 'live' ? 'REAL MONEY' : 'Demo'})`
+                  ? 'Bot actively trading (REAL MONEY)'
                   : 'Click Start to begin automatic trading'}
               </p>
             </div>
@@ -943,38 +919,7 @@ export const AutoPilotDashboard: React.FC = () => {
             </div>
             
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* Execution Mode */}
-              <div className="col-span-full">
-                <label className="text-gray-400 text-sm block mb-2">Execution Mode</label>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => handleExecutionModeChange('simulation')}
-                    className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-all ${
-                      safetyConfig.executionMode === 'simulation'
-                        ? 'bg-green-500 text-white'
-                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                    }`}
-                  >
-                    <div className="flex items-center justify-center gap-2">
-                      <ShieldCheck className="h-5 w-5" />
-                      Simulation (Safe)
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => handleExecutionModeChange('live')}
-                    className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-all ${
-                      safetyConfig.executionMode === 'live'
-                        ? 'bg-red-500 text-white'
-                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                    }`}
-                  >
-                    <div className="flex items-center justify-center gap-2">
-                      <AlertTriangle className="h-5 w-5" />
-                      Live Trading (Real Money)
-                    </div>
-                  </button>
-                </div>
-              </div>
+              {/* Execution Mode: Live only — simulation toggle removed (no fake data policy) */}
 
               {/* Min Profit Threshold */}
               <div>
@@ -1366,35 +1311,16 @@ export const AutoPilotDashboard: React.FC = () => {
 
 
       {/* Mode Notice */}
-      <div className={`border rounded-xl p-4 flex items-start gap-3 ${
-        safetyConfig.executionMode === 'live'
-          ? 'bg-red-500/10 border-red-500/30'
-          : 'bg-yellow-500/10 border-yellow-500/30'
-      }`}>
-        {safetyConfig.executionMode === 'live' ? (
-          <>
-            <AlertTriangle className="h-5 w-5 text-red-400 mt-0.5" />
-            <div>
-              <h3 className="text-red-400 font-semibold">Live Trading Mode Active</h3>
-              <p className="text-gray-400 text-sm mt-1">
-                Real money is being used for trades. Ensure you have sufficient funds and understand the risks.
-                Circuit breaker is {safetyConfig.circuitBreakerEnabled ? 'enabled' : 'DISABLED'} - 
-                max daily loss: ${safetyConfig.maxDailyLoss}.
-              </p>
-            </div>
-          </>
-        ) : (
-          <>
-            <Shield className="h-5 w-5 text-yellow-400 mt-0.5" />
-            <div>
-              <h3 className="text-yellow-400 font-semibold">Simulation Mode Active</h3>
-              <p className="text-gray-400 text-sm mt-1">
-                All trades are simulated - no real money is being used. This mode lets you see how the bot performs 
-                Trades are executed in demo mode against live market data. No real money is used until you switch to Live Mode.
-              </p>
-            </div>
-          </>
-        )}
+      <div className="border rounded-xl p-4 flex items-start gap-3 bg-red-500/10 border-red-500/30">
+        <AlertTriangle className="h-5 w-5 text-red-400 mt-0.5" />
+        <div>
+          <h3 className="text-red-400 font-semibold">Live Trading Mode Active</h3>
+          <p className="text-gray-400 text-sm mt-1">
+            Real money is being used for trades. Ensure you have sufficient funds and understand the risks.
+            Circuit breaker is {safetyConfig.circuitBreakerEnabled ? 'enabled' : 'DISABLED'} - 
+            max daily loss: ${safetyConfig.maxDailyLoss}.
+          </p>
+        </div>
       </div>
 
       {/* Recent Trades */}

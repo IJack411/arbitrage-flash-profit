@@ -30,7 +30,7 @@ import {
 interface TradingState {
   mode: 'manual' | 'auto';
   status: 'idle' | 'scanning' | 'executing' | 'paused';
-  executionMode: 'demo' | 'live';
+  executionMode: 'live';
   lastScan: Date | null;
   tradesExecuted: number;
   profitToday: number;
@@ -268,8 +268,6 @@ interface SpectrumDebugSnapshot {
   rejectedNegativeNet: number;
   rejectedByMinProfit: number;
   rejectedByGas: number;
-  rejectedByDemoCooldown: number;
-  rejectedByDemoWatchlistGate: number;
   rejectedSamples: SpectrumRejectedSample[];
 }
 
@@ -555,12 +553,9 @@ const extractServerErrorMessage = (input: unknown): string | null => {
   return null;
 };
 
-const DEMO_AUTO_MAX_DISTANCE_TO_EXECUTABLE_USD = 3;
-const DEMO_PROMOTION_MAX_DISTANCE_TO_EXECUTABLE_USD = 12;
-const DEMO_PROMOTION_MIN_NET_PROFIT_USD = 0;
-const EDGE_SCAN_INVOKE_TIMEOUT_MS = 20_000;
-const LOCAL_SCAN_TIMEOUT_MS = 20_000;
-const SCAN_HARD_TIMEOUT_MS = 75_000;
+const EDGE_SCAN_INVOKE_TIMEOUT_MS = 50_000;
+const LOCAL_SCAN_TIMEOUT_MS = 30_000;
+const SCAN_HARD_TIMEOUT_MS = 90_000;
 const TRANSPORT_BACKOFF_BASE_MS = 4_000;
 const TRANSPORT_BACKOFF_MAX_MS = 60_000;
 const LIVE_AUTO_EXECUTION_TRANSPORT_BLOCK_STREAK = 3;
@@ -573,19 +568,21 @@ const LIVE_AUTO_ADAPTIVE_PRESSURE_MIN_RATIO = 0.45;
 const LIVE_AUTO_ADAPTIVE_TIGHTEN_STREAK = 2;
 const LIVE_AUTO_ADAPTIVE_RELAX_STREAK = 3;
 const MIN_PROFIT_FLOOR_USD = 0;
-const DEMO_REPEAT_LOSS_COOLDOWN_MS = 10 * 60 * 1000;
-const DISCOVERY_SCAN_MAX_LOAN_USD = 400;
+const DISCOVERY_SCAN_MAX_LOAN_USD = 8000;
+const LIVE_DISCOVERY_ETHEREUM_LOAN_CAP_USD = 2000;
+const LIVE_DISCOVERY_ARBITRUM_LOAN_CAP_USD = 1500;
+const LIVE_DISCOVERY_BASE_LOAN_CAP_USD = 1250;
+const LIVE_DISCOVERY_POLYGON_LOAN_CAP_USD = 1500;
 type ScannerProfileMode = 'discovery' | 'live';
 type ExternalFeedStatus = 'off' | 'connecting' | 'connected' | 'error';
 
-const PRESET_DEMO = { loanAmount: 600, minProfit: MIN_PROFIT_FLOOR_USD, maxSlippage: 7.0, estimatedGasUsd: 3, maxLiquidityUsagePercent: 35 };
-const PRESET_REALISTIC = { loanAmount: 6000, minProfit: 15, maxSlippage: 2.0, estimatedGasUsd: 25, maxLiquidityUsagePercent: 20, autoExecuteThreshold: 90 };
+const PRESET_REALISTIC = { loanAmount: 50000, minProfit: 15, maxSlippage: 3.0, estimatedGasUsd: 45, maxLiquidityUsagePercent: 20, autoExecuteThreshold: 90 };
 const PRESET_FIRST_LIVE = {
-  loanAmount: 10000,
-  minProfit: 100,
-  maxSlippage: 1.2,
-  estimatedGasUsd: 12,
-  maxLiquidityUsagePercent: 15,
+  loanAmount: 50000,
+  minProfit: 15,
+  maxSlippage: 3.0,
+  estimatedGasUsd: 45,
+  maxLiquidityUsagePercent: 20,
   autoExecuteThreshold: 150,
 };
 
@@ -627,7 +624,7 @@ const isTransientSupabaseError = (error: unknown): boolean => {
       ? error
       : '';
 
-  return /err_connection_closed|connection closed|failed to fetch|network|timeout|temporar/i.test(message);
+  return /err_connection_closed|connection closed|failed to fetch|network|timeout|temporar|non-2xx|500|502|503|504/i.test(message);
 };
 
 async function withTransientRetry<T>(operation: () => PromiseLike<T> | T, maxAttempts = 3): Promise<T> {
@@ -747,18 +744,18 @@ const loadAdaptiveTelemetryEvents = (): AdaptiveThresholdTelemetryEvent[] => {
 
 const loadPersistedSettings = (fallbackLoanAmount: number) => {
   const safeFallbackLoan = Number.isFinite(Number(fallbackLoanAmount)) && Number(fallbackLoanAmount) > 0
-    ? Math.max(500, Math.min(12000, Number(fallbackLoanAmount)))
-    : 8000;
+    ? Math.max(500, Math.min(500_000, Number(fallbackLoanAmount)))
+    : 50_000;
 
   const defaults = {
     minProfit: 15,
-    maxGas: 40,
-    maxSlippage: 2.0,
-    estimatedGasUsd: 25,
+    maxGas: 100,
+    maxSlippage: 3.0,
+    estimatedGasUsd: 45,
     maxLiquidityUsagePercent: 20,
     loanAmount: safeFallbackLoan,
     autoExecuteThreshold: 80,
-    scanIntervalSeconds: 45,
+    scanIntervalSeconds: 30,
     maxConcurrentTrades: 1,
     dailyLossLimit: 120,
     contractAddress: getContractAddresses().arbitrageContract,
@@ -782,25 +779,41 @@ const loadPersistedSettings = (fallbackLoanAmount: number) => {
       Number.isFinite(parsedSlippage) && parsedSlippage === 1.5 &&
       Number.isFinite(parsedEstimatedGas) && parsedEstimatedGas === 8;
 
-    if (looksLikeLegacyTightProfile) {
+    // Migrate away from low loan amounts (< $50k) that make ETH arb unprofitable.
+    // ETH gas ~$26/tx requires $50k loan to break even at 5.2 bps.
+    const looksLikeLegacyLowLoan =
+      Number.isFinite(parsedLoanAmount) && parsedLoanAmount < 50_000 &&
+      Number.isFinite(parsedMinProfit) && parsedMinProfit <= 15;
+
+    if (looksLikeLegacyTightProfile || looksLikeLegacyLowLoan) {
       return defaults;
     }
 
+    const parsedMaxGas = Number(parsed.maxGas);
+    // Migrate legacy tight slippage settings (≤2.0%) that block most candidates.
+    const migratedSlippage = Number.isFinite(parsedSlippage) && parsedSlippage > 0 && parsedSlippage <= 2.0
+      ? 3.0
+      : Number.isFinite(parsedSlippage) && parsedSlippage > 0
+        ? parsedSlippage
+        : defaults.maxSlippage;
     return {
       ...defaults,
       ...parsed,
+      maxSlippage: migratedSlippage,
       minProfit: Number.isFinite(parsedMinProfit)
         ? Math.max(MIN_PROFIT_FLOOR_USD, parsedMinProfit)
         : defaults.minProfit,
       loanAmount: Number.isFinite(parsedLoanAmount)
-        ? Math.max(500, Math.min(15000, parsedLoanAmount))
+        ? Math.max(500, Math.min(500_000, parsedLoanAmount))
         : defaults.loanAmount,
+      maxGas: Number.isFinite(parsedMaxGas) && parsedMaxGas > 0
+        ? parsedMaxGas
+        : defaults.maxGas,
     };
   } catch {
     return defaults;
   }
 };
-
 interface LiveTradingPanelProps {
   leanMode?: boolean;
 }
@@ -816,7 +829,7 @@ export const LiveTradingPanel: React.FC<LiveTradingPanelProps> = ({ leanMode = f
   const [tradingState, setTradingState] = useState<TradingState>({
     mode: 'manual',
     status: 'idle',
-    executionMode: 'demo',
+    executionMode: 'live',
     lastScan: null,
     tradesExecuted: 0,
     profitToday: 0,
@@ -881,7 +894,6 @@ export const LiveTradingPanel: React.FC<LiveTradingPanelProps> = ({ leanMode = f
   const externalFeedReconnectTimerRef = useRef<number | null>(null);
   const previousLoanRef = useRef<number | null>(null);
   const loanChangeDebounceRef = useRef<NodeJS.Timeout | null>(null);
-  const demoLossCooldownRef = useRef<Record<string, number>>({});
   const logThrottleStateRef = useRef<Record<string, number>>({});
   const [scanLog, setScanLog] = useState<Array<{ time: string; message: string; type: 'info' | 'success' | 'warn' | 'error' }>>([]);
 
@@ -1279,7 +1291,7 @@ export const LiveTradingPanel: React.FC<LiveTradingPanelProps> = ({ leanMode = f
     }
   }, [clearTransportFailures, registerTransportFailure]);
 
-  const [settings, setSettings] = useState(() => loadPersistedSettings(strategySettings.loanSize || PRESET_DEMO.loanAmount));
+  const [settings, setSettings] = useState(() => loadPersistedSettings(strategySettings.loanSize || PRESET_REALISTIC.loanAmount));
 
   const setLoanAmount = useCallback((value: number) => {
     const normalizedValue = Math.max(100, Math.min(1000000, Number(value) || 100));
@@ -1294,6 +1306,7 @@ export const LiveTradingPanel: React.FC<LiveTradingPanelProps> = ({ leanMode = f
     estimatedGasUsd: number;
     maxLiquidityUsagePercent: number;
     autoExecuteThreshold?: number;
+    maxGas?: number;
   }) => {
     setSettings((prev) => ({
       ...prev,
@@ -1303,13 +1316,14 @@ export const LiveTradingPanel: React.FC<LiveTradingPanelProps> = ({ leanMode = f
       estimatedGasUsd: preset.estimatedGasUsd,
       maxLiquidityUsagePercent: preset.maxLiquidityUsagePercent,
       autoExecuteThreshold: preset.autoExecuteThreshold ?? prev.autoExecuteThreshold,
+      maxGas: preset.maxGas ?? prev.maxGas,
     }));
     updateStrategySettings({ loanSize: preset.loanAmount });
   }, [updateStrategySettings]);
 
   const switchScannerProfile = useCallback((profile: ScannerProfileMode) => {
     setScannerProfile(profile);
-    const preset = profile === 'live' ? PRESET_REALISTIC : PRESET_DEMO;
+    const preset = profile === 'live' ? PRESET_REALISTIC : PRESET_FIRST_LIVE;
     applyPreset(preset);
     addLog(
       profile === 'live'
@@ -1320,11 +1334,11 @@ export const LiveTradingPanel: React.FC<LiveTradingPanelProps> = ({ leanMode = f
   }, [applyPreset, addLog]);
 
   const liveExecutionBlocker = useMemo(
-    () => getLiveExecutionBlocker({ network: 'ethereum' }, account, settings.contractAddress),
+    () => getLiveExecutionBlocker({ network: 'base' }, account, settings.contractAddress),
     [account, settings.contractAddress],
   );
   const liveTradingEnabledFlag = String(import.meta.env.VITE_LIVE_TRADING_ENABLED || '').toLowerCase() === 'true';
-  const effectiveLiveSlippageCap = 1.75;
+  const effectiveLiveSlippageCap = 3.0;
   const defaultContractAddress = useMemo(() => getContractAddresses().arbitrageContract, []);
   const effectiveAutoExecuteThreshold = useMemo(() => {
     const base = Math.max(0, Number(settings.autoExecuteThreshold) || 0);
@@ -1567,7 +1581,7 @@ order by e.direction;`;
         passed: scannerProfile === 'live',
         required: false,
         detail: scannerProfile === 'live'
-          ? 'Using live profile with multi-chain scan visibility (Ethereum-only live execution)'
+          ? 'Using live profile with Ethereum + Arbitrum scanning (low gas on Arbitrum)'
           : 'Switch scanner profile to Live for production routing',
       },
       {
@@ -1774,7 +1788,7 @@ order by e.direction;`;
     const distanceToExecutableUsd = Number.isFinite(trade.distanceToExecutableUsd ?? NaN)
       ? Math.max(0, Number(trade.distanceToExecutableUsd))
       : 0;
-    if (trade.status === 'watchlist' && distanceToExecutableUsd > DEMO_AUTO_MAX_DISTANCE_TO_EXECUTABLE_USD) {
+    if (trade.status === 'watchlist' && distanceToExecutableUsd > 25) {
       penalty += 8;
     }
 
@@ -1816,20 +1830,20 @@ order by e.direction;`;
       || latestScanDiagnostics.droppedByNetProfit >= Math.max(3, latestScanDiagnostics.droppedBySlippage, latestScanDiagnostics.droppedBySameDex, latestScanDiagnostics.droppedBySpread);
 
     const targetLoan = sameDexDominant || slippageDominant || netDominant
-      ? 400
-      : 600;
+      ? 8000
+      : 8000;
     const targetSlippage = sameDexDominant
-      ? 1.20
+      ? 2.0
       : slippageDominant
-        ? 1.20
-        : 1.50;
+        ? 3.0
+        : 2.5;
     const targetLiquidity = sameDexDominant
       ? 10
       : 15;
     const targetMinProfit = netDominant
       ? Math.max(MIN_PROFIT_FLOOR_USD, 15)
       : Math.max(MIN_PROFIT_FLOOR_USD, 25);
-    const targetMaxGas = 25;
+    const targetMaxGas = 100;
 
     const nextSlippage = Math.min(targetSlippage, effectiveLiveSlippageCap);
     const alreadyApplied = scannerProfile === 'live'
@@ -2051,16 +2065,27 @@ order by e.direction;`;
       registerTransportFailure('watchdog-timeout', `scan exceeded ${SCAN_HARD_TIMEOUT_MS}ms`);
     }, SCAN_HARD_TIMEOUT_MS);
 
-    const activeScannerProfile: ScannerProfileMode = tradingState.executionMode === 'live' ? 'live' : scannerProfile;
+    const activeScannerProfile: ScannerProfileMode = scannerProfile;
     if (activeScannerProfile !== scannerProfile) {
       addLog('⚠️ Live execution mode detected; enforcing Live scanner profile for this scan.', 'warn');
+    }
+    if (tradingState.executionMode === 'live' && activeScannerProfile === 'discovery') {
+      addLog('🧭 Live execution safeguards remain active while using Discovery scan profile.', 'info');
     }
     const effectiveMinProfitUsd = Math.max(MIN_PROFIT_FLOOR_USD, settings.minProfit);
     const effectiveLoanAmount = activeScannerProfile === 'discovery'
       ? Math.min(settings.loanAmount, DISCOVERY_SCAN_MAX_LOAN_USD)
       : settings.loanAmount;
+    const liveDiscoveryPerNetworkLoanAmountUsd = tradingState.executionMode === 'live'
+      ? {
+          ethereum: Math.min(effectiveLoanAmount, LIVE_DISCOVERY_ETHEREUM_LOAN_CAP_USD),
+          arbitrum: Math.min(effectiveLoanAmount, LIVE_DISCOVERY_ARBITRUM_LOAN_CAP_USD),
+          base: Math.min(effectiveLoanAmount, LIVE_DISCOVERY_BASE_LOAN_CAP_USD),
+          polygon: Math.min(effectiveLoanAmount, LIVE_DISCOVERY_POLYGON_LOAN_CAP_USD),
+        }
+      : undefined;
     addLog(
-      `🔍 Starting scan [${activeScannerProfile.toUpperCase()}]: loan=$${effectiveLoanAmount.toLocaleString()} minProfit=$${effectiveMinProfitUsd} slip=${settings.maxSlippage.toFixed(1)}% gasEst=$${settings.estimatedGasUsd}(fallback) liqUse=${settings.maxLiquidityUsagePercent.toFixed(0)}%...`,
+      `🔍 Starting scan [${activeScannerProfile.toUpperCase()}]: loan=$${effectiveLoanAmount.toLocaleString()} minProfit=$${effectiveMinProfitUsd} slip=${settings.maxSlippage.toFixed(1)}% gasEst=$${settings.estimatedGasUsd} liqUse=${settings.maxLiquidityUsagePercent.toFixed(0)}%...`,
       'info',
     );
     if (activeScannerProfile === 'discovery' && effectiveLoanAmount !== settings.loanAmount) {
@@ -2100,7 +2125,7 @@ order by e.direction;`;
       if (supabaseConfigured && transportBackoffRemainingMs <= 0) {
         try {
         const scanNetworks = tradingState.executionMode === 'live'
-          ? (['ethereum'] as const)
+          ? (['ethereum', 'arbitrum', 'base', 'polygon'] as const)
           : (['ethereum', 'arbitrum', 'base', 'polygon'] as const);
         const perNetworkMinNetProfitUsd = {
           ethereum: effectiveMinProfitUsd,
@@ -2111,17 +2136,20 @@ order by e.direction;`;
 
         addLog('🌐 Invoking server scan (Edge Function)...', 'info');
         if (tradingState.executionMode === 'live') {
-          addLog('🛰️ Live mode scan narrowed to Ethereum to reduce noise and latency.', 'info');
+          addLog('🛰️ Live mode scanning Ethereum + Arbitrum + Base + Polygon (low gas on L2s).', 'info');
+        } else {
+          addLog('🔎 Discovery scanning Ethereum + Arbitrum + Base + Polygon (multi-chain spreads + low L2 gas).', 'info');
         }
         const payload = {
           networks: scanNetworks,
           loanAmountUsd: effectiveLoanAmount,
+          perNetworkLoanAmountUsd: liveDiscoveryPerNetworkLoanAmountUsd,
           minNetProfitUsd: effectiveMinProfitUsd,
           perNetworkMinNetProfitUsd,
           enableDexScreener: true,
-          enableGecko: activeScannerProfile !== 'live',
-          minLiquidityUsd: activeScannerProfile === 'live' ? 60000 : 20000,
-          minSpreadPercent: activeScannerProfile === 'live' ? 0.02 : 0.01,
+          enableGecko: false,
+          minLiquidityUsd: activeScannerProfile === 'live' ? 50000 : 25000,
+          minSpreadPercent: activeScannerProfile === 'live' ? 0.003 : 0.003,
           maxResults: 25,
           maxSlippageBps: Math.max(1, Math.round(settings.maxSlippage * 100)),
           maxLiquidityUsagePercent: settings.maxLiquidityUsagePercent,
@@ -2154,13 +2182,20 @@ order by e.direction;`;
           if (!error) break;
 
           const message = error instanceof Error ? error.message : String(error);
-          const isTransientNetworkError = /failed to fetch|fetch failed|network|connection closed|err_connection_closed/i.test(message);
-          if (!isTransientNetworkError || attempt === 3) {
+          // Try to extract the actual error body from non-2xx Supabase response
+          const errCtx = (error as Record<string, unknown>)?.context as Response | undefined;
+          let errBody = '';
+          if (errCtx && typeof errCtx.text === 'function') {
+            try { errBody = await errCtx.clone().text(); } catch { /* ignore */ }
+          }
+          const isRetryable = /failed to fetch|fetch failed|network|connection closed|err_connection_closed|non-2xx|500|502|503|504/i.test(message);
+          if (!isRetryable || attempt === 3) {
+            if (errBody) addLog(`🔍 Edge Function error body: ${errBody.slice(0, 300)}`, 'warn');
             throw error;
           }
 
           addLog(`🌐 Temporary scanner transport issue (attempt ${attempt}/3). Retrying quietly...`, 'warn');
-          await new Promise((resolve) => setTimeout(resolve, attempt * 600));
+          await new Promise((resolve) => setTimeout(resolve, attempt * 1200));
         }
 
         if (error) throw error;
@@ -2183,48 +2218,6 @@ order by e.direction;`;
               'info',
             );
 
-            if (tradingState.executionMode === 'demo' && watchlist.length > 0) {
-              // Demo-only: promote plausible near-miss items to keep strategy testing visible in tight markets.
-              const now = Date.now();
-              let suppressedByCooldownAtPromotion = 0;
-              let skippedCycleShadowAtPromotion = 0;
-              const promotable = watchlist.filter((item) => {
-                if (isCycleShadowOpportunity(item)) {
-                  skippedCycleShadowAtPromotion += 1;
-                  return false;
-                }
-                const cooldownKey = buildRouteKey(item);
-                const cooldownUntil = demoLossCooldownRef.current[cooldownKey] ?? 0;
-                if (cooldownUntil > now) {
-                  suppressedByCooldownAtPromotion += 1;
-                  return false;
-                }
-                const distanceToExecutableUsd = Number(item.distanceToExecutableUsd ?? Infinity);
-                const netProfit = Number(item.netProfit ?? item.expectedProfit ?? item.estimated_profit ?? Number.NEGATIVE_INFINITY);
-                return netProfit >= DEMO_PROMOTION_MIN_NET_PROFIT_USD
-                  && distanceToExecutableUsd <= DEMO_PROMOTION_MAX_DISTANCE_TO_EXECUTABLE_USD;
-              }).slice(0, 5);
-              if (suppressedByCooldownAtPromotion > 0) {
-                addLog(
-                  `🧯 Cooldown gate: skipped ${suppressedByCooldownAtPromotion} watchlist near-miss opportunit${suppressedByCooldownAtPromotion === 1 ? 'y' : 'ies'} before demo promotion.`,
-                  'info',
-                );
-              }
-              if (skippedCycleShadowAtPromotion > 0) {
-                addLog(
-                  `🧭 Cycle-shadow diagnostics: retained ${skippedCycleShadowAtPromotion} cycle path${skippedCycleShadowAtPromotion === 1 ? '' : 's'} as watchlist-only (not demo-promoted).`,
-                  'info',
-                );
-              }
-              if (promotable.length > 0) {
-                opportunities = promotable;
-                addLog(
-                  `🧪 Demo mode: promoted ${promotable.length} near-miss opportunit${promotable.length === 1 ? 'y' : 'ies'} for strategy testing.`,
-                  'warn',
-                );
-              }
-            }
-
             if (watchlist.length > 0) {
               const topWatch = watchlist[0];
               const watchNet = Number(topWatch.netProfit ?? 0);
@@ -2239,10 +2232,6 @@ order by e.direction;`;
                 const cyclePrefix = isCycleShadowOpportunity(item) ? '[CYCLE] ' : '';
                 return `${cyclePrefix}${pair} (Net $${net.toFixed(2)}, Need +$${gap.toFixed(2)})`;
               }).join(' | ');
-              const gateBlocked = tradingState.executionMode === 'demo' && (
-                watchNet < DEMO_PROMOTION_MIN_NET_PROFIT_USD ||
-                watchDistance > DEMO_PROMOTION_MAX_DISTANCE_TO_EXECUTABLE_USD
-              );
               const gasNote = watchGas > 0 ? ` | ActualGas $${watchGas.toFixed(2)}` : '';
               const quoteAttribution = buildQuoteAttributionSummary(topWatch as OpportunityLike);
               const quoteNote = quoteAttribution ? ` | Quotes ${quoteAttribution}` : '';
@@ -2254,7 +2243,7 @@ order by e.direction;`;
               const sourceRiskNote = fallbackOnlySameSource ? ' | ⚠️ low-trust fallback-only same-source quotes' : '';
 
               addLog(
-                `${isCycleTop ? '🧭 Top cycle-shadow' : '👀 Top near-miss'}: ${topWatch.tokenPair || 'Unknown'} | Net $${watchNet.toFixed(2)} | Need +$${Math.max(0, watchDistance).toFixed(2)} | ExecLoan $${Math.round(watchLoan).toLocaleString()}${gasNote}${quoteNote}${sourceRiskNote}${gateBlocked ? ` | demo gate blocked (needs net >= $${DEMO_PROMOTION_MIN_NET_PROFIT_USD.toFixed(2)} and distance <= $${DEMO_PROMOTION_MAX_DISTANCE_TO_EXECUTABLE_USD.toFixed(2)})` : ''}${topThree ? ` | Top 3: ${topThree}` : ''}`,
+                `${isCycleTop ? '🧭 Top cycle-shadow' : '👀 Top near-miss'}: ${topWatch.tokenPair || 'Unknown'} | Net $${watchNet.toFixed(2)} | Need +$${Math.max(0, watchDistance).toFixed(2)} | ExecLoan $${Math.round(watchLoan).toLocaleString()}${gasNote}${quoteNote}${sourceRiskNote}${topThree ? ` | Top 3: ${topThree}` : ''}`,
                 'info',
               );
 
@@ -2441,7 +2430,7 @@ order by e.direction;`;
                 sameDexDominantStreakRef.current = 0;
                 if (spectrumDebugEnabled) {
                   addLog(
-                    '🧭 Tight market guidance: net profit is the main blocker. For demo, reduce loan size to find cleaner non-negative candidates; lowering min profit will not queue net-negative routes. For live safety, keep strict thresholds and wait for wider spreads.',
+                    '🧭 Tight market guidance: net profit is the main blocker. Reduce loan size to find cleaner non-negative candidates; lowering min profit will not queue net-negative routes. For live safety, keep strict thresholds and wait for wider spreads.',
                     'info',
                   );
                 }
@@ -2457,7 +2446,7 @@ order by e.direction;`;
                 sameDexDominantStreakRef.current = 0;
                 if (spectrumDebugEnabled) {
                   addLog(
-                    '🧭 Tight market guidance: spread quality is thin this cycle. Keep scanning and consider a smaller loan for demo to broaden executable pair coverage.',
+                    '🧭 Tight market guidance: spread quality is thin this cycle. Keep scanning and consider a smaller loan to broaden executable pair coverage.',
                     'info',
                   );
                 }
@@ -2612,14 +2601,11 @@ order by e.direction;`;
           };
         });
 
-        let suppressedByDemoCooldown = 0;
         const now = Date.now();
         const rejectedSamples: SpectrumRejectedSample[] = [];
         let rejectedNegativeNet = 0;
         let rejectedByMinProfit = 0;
         let rejectedByGas = 0;
-        let rejectedByDemoWatchlistGate = 0;
-        let rejectedByDemoCooldown = 0;
 
         const recordRejectedSample = (trade: PendingTrade, reason: string) => {
           if (rejectedSamples.length >= 8) return;
@@ -2635,29 +2621,6 @@ order by e.direction;`;
         };
 
         const newTrades: PendingTrade[] = candidateTrades.filter((trade) => {
-          const isDemoPromotedNearMiss = tradingState.executionMode === 'demo' && trade.status === 'watchlist';
-          if (isDemoPromotedNearMiss) {
-            const cooldownKey = buildRouteKey(trade);
-            const cooldownUntil = demoLossCooldownRef.current[cooldownKey] ?? 0;
-            if (cooldownUntil > now) {
-              suppressedByDemoCooldown += 1;
-              rejectedByDemoCooldown += 1;
-              recordRejectedSample(trade, 'demo-cooldown');
-              return false;
-            }
-            if (trade.expectedProfit < DEMO_PROMOTION_MIN_NET_PROFIT_USD) {
-              rejectedByDemoWatchlistGate += 1;
-              recordRejectedSample(trade, 'demo-watchlist-net');
-              return false;
-            }
-            if (trade.gasCost > settings.maxGas) {
-              rejectedByGas += 1;
-              recordRejectedSample(trade, 'gas-cap');
-              return false;
-            }
-            return true;
-          }
-
           if (trade.expectedProfit < 0) {
             rejectedNegativeNet += 1;
             recordRejectedSample(trade, 'negative-net');
@@ -2682,19 +2645,15 @@ order by e.direction;`;
           rejectedNegativeNet,
           rejectedByMinProfit,
           rejectedByGas,
-          rejectedByDemoCooldown,
-          rejectedByDemoWatchlistGate,
           rejectedSamples,
         });
 
-        const orderedNewTrades = tradingState.executionMode === 'live'
-          ? [...newTrades].sort((left, right) => (
-            (getPairExecutionPriority(right) + getRouteMemoryPriorityAdjustment(right) + getScanQualityPriorityAdjustment(right))
-            - (getPairExecutionPriority(left) + getRouteMemoryPriorityAdjustment(left) + getScanQualityPriorityAdjustment(left))
-          ))
-          : newTrades;
+        const orderedNewTrades = [...newTrades].sort((left, right) => (
+          (getPairExecutionPriority(right) + getRouteMemoryPriorityAdjustment(right) + getScanQualityPriorityAdjustment(right))
+          - (getPairExecutionPriority(left) + getRouteMemoryPriorityAdjustment(left) + getScanQualityPriorityAdjustment(left))
+        ));
 
-        if (tradingState.executionMode === 'live' && orderedNewTrades.length > 0) {
+        if (orderedNewTrades.length > 0) {
           const qualityPenalized = orderedNewTrades.filter((trade) => getScanQualityPriorityAdjustment(trade) < 0).length;
           if (qualityPenalized > 0) {
             addLog(
@@ -2715,16 +2674,9 @@ order by e.direction;`;
           }
         }
 
-        if (suppressedByDemoCooldown > 0) {
-          addLog(
-            `🧯 Cooldown active: skipped ${suppressedByDemoCooldown} repeated demo near-miss opportunit${suppressedByDemoCooldown === 1 ? 'y' : 'ies'} after a recent losing demo execution.`,
-            'info',
-          );
-        }
-
         for (const trade of orderedNewTrades) {
           const promotedTag = trade.status === 'watchlist'
-            ? (isCycleShadowOpportunity(trade) ? ' [CYCLE SHADOW]' : ' [DEMO NEAR-MISS]')
+            ? (isCycleShadowOpportunity(trade) ? ' [CYCLE SHADOW]' : ' [NEAR-MISS]')
             : '';
           const routeTag = getRouteMemorySummary(trade);
           const adjustmentParts = [trade.loanAdjustmentReason, routeTag].filter(Boolean);
@@ -2734,12 +2686,31 @@ order by e.direction;`;
 
         if (candidateTrades.length > 0 && orderedNewTrades.length === 0) {
           const hasNegativeNetCandidates = candidateTrades.some((trade) => trade.expectedProfit < 0);
-          addLog(
-            hasNegativeNetCandidates
-              ? 'ℹ️ Candidates were found, but all remaining paths are net-negative after costs and were excluded.'
-              : 'ℹ️ Candidates were found but filtered out by current thresholds (min profit / max gas).',
-            'info',
-          );
+          if (rejectedByMinProfit > 0) {
+            const topMinProfitSamples = rejectedSamples
+              .filter((s) => s.reason === 'min-profit')
+              .sort((a, b) => b.expectedProfit - a.expectedProfit)
+              .slice(0, 3);
+            const sampleStr = topMinProfitSamples
+              .map((s) => `${s.tokenPair} Net $${s.expectedProfit.toFixed(2)}`)
+              .join(' | ');
+            addLog(
+              `💸 ${rejectedByMinProfit} opportunity${rejectedByMinProfit === 1 ? '' : 'ies'} found but below minProfit $${settings.minProfit} threshold. Top: ${sampleStr}. Lower minProfit to capture these.`,
+              'warn',
+            );
+          } else if (rejectedByGas > 0) {
+            addLog(
+              `⛽ ${rejectedByGas} candidate${rejectedByGas === 1 ? '' : 's'} found but gas cost exceeds maxGas $${settings.maxGas} limit.`,
+              'warn',
+            );
+          } else {
+            addLog(
+              hasNegativeNetCandidates
+                ? 'ℹ️ Candidates were found, but all remaining paths are net-negative after costs and were excluded.'
+                : 'ℹ️ Candidates were found but filtered out by current thresholds (min profit / max gas).',
+              'info',
+            );
+          }
         }
 
         setPendingTrades((prev) => {
@@ -2780,27 +2751,17 @@ order by e.direction;`;
             if (liveAutoTransportBlocked) {
               return false;
             }
-            if (tradingState.executionMode === 'live') {
-              const qualityBlocker = getLiveAutoQualityBlocker(t);
-              if (qualityBlocker) {
-                blockedByQualityGate += 1;
-                if (!firstQualityGateReason) {
-                  firstQualityGateReason = qualityBlocker;
-                }
-                return false;
+            const qualityBlocker = getLiveAutoQualityBlocker(t);
+            if (qualityBlocker) {
+              blockedByQualityGate += 1;
+              if (!firstQualityGateReason) {
+                firstQualityGateReason = qualityBlocker;
               }
-            }
-            if (tradingState.executionMode === 'live' && !supportsLiveExecution(t.executionPayload?.network || t.network)) {
-              blockedByUnsupportedNetwork += 1;
               return false;
             }
-            const isDemoPromotedNearMiss = tradingState.executionMode === 'demo' && t.status === 'watchlist';
-            if (isDemoPromotedNearMiss) {
-              const withinDemoDistance = (t.distanceToExecutableUsd ?? Infinity) <= DEMO_AUTO_MAX_DISTANCE_TO_EXECUTABLE_USD;
-              if (!withinDemoDistance) {
-                blockedByThreshold += 1;
-              }
-              return withinDemoDistance;
+            if (!supportsLiveExecution(t.executionPayload?.network || t.network)) {
+              blockedByUnsupportedNetwork += 1;
+              return false;
             }
             const meetsThreshold = t.expectedProfit >= effectiveAutoExecuteThreshold;
             if (!meetsThreshold) {
@@ -2809,7 +2770,7 @@ order by e.direction;`;
             return meetsThreshold;
           });
 
-          if (tradingState.executionMode === 'live' && blockedByQualityGate > 0) {
+          if (blockedByQualityGate > 0) {
             const suffix = firstQualityGateReason ? ` Example: ${firstQualityGateReason}` : '';
             addLog(
               `🧱 Live auto quality gate withheld ${blockedByQualityGate} route${blockedByQualityGate === 1 ? '' : 's'} under transport instability.${suffix}`,
@@ -2935,8 +2896,6 @@ order by e.direction;`;
           rejectedNegativeNet: 0,
           rejectedByMinProfit: 0,
           rejectedByGas: 0,
-          rejectedByDemoCooldown: 0,
-          rejectedByDemoWatchlistGate: 0,
           rejectedSamples: [],
         });
         const summary = noResultSummary;
@@ -3093,7 +3052,6 @@ order by e.direction;`;
     try {
       const result = await executeArbitrageTrade({
         trade: effectiveTrade,
-        mode: tradingState.executionMode,
         account,
         contractAddress: settings.contractAddress,
         maxSlippagePercent: settings.maxSlippage,
@@ -3113,21 +3071,12 @@ order by e.direction;`;
       setPendingTrades(prev => prev.filter(t => t.id !== trade.id));
 
       addLog(
-        `${tradingState.executionMode === 'live' ? '🚀' : '🧪'} ${tradingState.executionMode === 'live' ? 'Live' : 'Demo'} execution: ${trade.tokenPair} | net=$${result.actualProfit.toFixed(2)} | ref=${result.txHash.slice(0, 18)}...`,
+        `🚀 Live execution: ${trade.tokenPair} | net=$${result.actualProfit.toFixed(2)} | ref=${result.txHash.slice(0, 18)}...`,
         'success',
       );
 
-      if (tradingState.executionMode === 'demo' && result.actualProfit < 0) {
-        const cooldownKey = buildRouteKey(trade);
-        demoLossCooldownRef.current[cooldownKey] = Date.now() + DEMO_REPEAT_LOSS_COOLDOWN_MS;
-        addLog(
-          `🧯 Applied demo cooldown (${Math.round(DEMO_REPEAT_LOSS_COOLDOWN_MS / 60000)}m) for ${trade.tokenPair} ${trade.buyDex} → ${trade.sellDex} after negative execution.`,
-          'info',
-        );
-      }
-
       toast({
-        title: tradingState.executionMode === 'live' ? 'Live Trade Submitted' : 'Demo Trade Executed',
+        title: 'Live Trade Submitted',
         description: `Net: $${result.actualProfit.toFixed(2)} | Ref: ${result.txHash.slice(0, 10)}...`
       });
 
@@ -3147,59 +3096,6 @@ order by e.direction;`;
       inFlightTradeIdsRef.current.delete(trade.id);
       setExecutingTradeId(null);
     }
-  };
-
-  const setExecutionMode = async (mode: 'demo' | 'live') => {
-    if (mode === 'live' && !account) {
-      toast({
-        title: 'Wallet Required',
-        description: 'Connect your wallet (top-right or from this panel) to enable live trading',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    if (mode === 'live') {
-      const breaker = await getLiveCircuitBreakerStatus();
-      setCircuitBreakerState({
-        active: breaker.active,
-        reason: breaker.reason || null,
-        minutesRemaining: breaker.minutesRemaining ?? null,
-        loading: false,
-      });
-      if (breaker.active) {
-        toast({
-          title: 'Live Mode Blocked by Circuit Breaker',
-          description: `${breaker.reason || 'Safety threshold reached'} (${breaker.minutesRemaining || 1}m remaining).`,
-          variant: 'destructive',
-        });
-        return;
-      }
-    }
-
-    setTradingState(prev => ({ 
-      ...prev, 
-      executionMode: mode,
-      status: prev.mode === 'auto' ? 'scanning' : 'idle'
-    }));
-
-    if (mode === 'live') {
-      const blocker = getLiveExecutionBlocker({ network: 'ethereum' }, account, settings.contractAddress);
-      if (blocker && blocker.includes('Configure your arbitrage contract address')) {
-        toast({
-          title: 'Live Mode Armed',
-          description: 'Wallet is connected. Add your arbitrage contract address to submit live trades.',
-        });
-        return;
-      }
-    }
-
-    toast({
-      title: mode === 'live' ? 'Live Mode Enabled' : 'Demo Mode Enabled',
-      description: mode === 'live'
-        ? 'Live execution is armed. Supported trades will be submitted with real funds.'
-        : 'Using real market data with simulated execution.'
-    });
   };
 
   const handleCircuitBreakerReset = async () => {
@@ -3252,17 +3148,17 @@ order by e.direction;`;
   return (
     <div className="space-y-6">
       {/* Live Trading Status Bar */}
-      <Card className={`border-2 transition-all ${tradingState.executionMode === 'live' ? 'bg-gradient-to-r from-red-900/30 to-gray-800 border-red-500' : 'bg-gradient-to-r from-blue-900/30 to-gray-800 border-blue-500'}`}>
+      <Card className="border-2 transition-all bg-gradient-to-r from-red-900/30 to-gray-800 border-red-500">
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className={`p-3 rounded-xl ${tradingState.executionMode === 'live' ? 'bg-red-500/20' : 'bg-blue-500/20'}`}>
-                <Power className={`h-6 w-6 ${tradingState.executionMode === 'live' ? 'text-red-400' : 'text-blue-400'}`} />
+              <div className="p-3 rounded-xl bg-red-500/20">
+                <Power className="h-6 w-6 text-red-400" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="text-white font-bold text-lg">
-                    {tradingState.executionMode === 'live' ? 'LIVE EXECUTION MODE' : 'DEMO EXECUTION MODE'}
+                    LIVE EXECUTION MODE
                   </h3>
                   <Badge className={adaptiveTelemetryRemoteStatus === 'ready'
                     ? 'bg-green-500/20 text-green-200 border border-green-500/50'
@@ -3272,41 +3168,33 @@ order by e.direction;`;
                     Telemetry {adaptiveTelemetryRemoteStatus}
                     {adaptiveTelemetryPendingCount > 0 ? ` • ${adaptiveTelemetryPendingCount} pending` : ''}
                   </Badge>
-                  {tradingState.executionMode === 'live' && (
-                    <Badge className={liveProductionReady
-                      ? 'bg-green-500/20 text-green-200 border border-green-500/50'
-                      : 'bg-red-500/20 text-red-200 border border-red-500/50'}>
-                      {liveProductionReady ? 'Production Ready' : 'Not Ready'}
-                    </Badge>
-                  )}
-                  {tradingState.executionMode === 'live' ? (
-                    <span className="relative flex h-3 w-3">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-                    </span>
-                  ) : (
-                    <Badge className="bg-blue-500/20 text-blue-300 border border-blue-400/30">Real data, simulated fills</Badge>
-                  )}
-                  {tradingState.executionMode === 'live' && circuitBreakerState.loading && (
+                  <Badge className={liveProductionReady
+                    ? 'bg-green-500/20 text-green-200 border border-green-500/50'
+                    : 'bg-red-500/20 text-red-200 border border-red-500/50'}>
+                    {liveProductionReady ? 'Production Ready' : 'Not Ready'}
+                  </Badge>
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                  </span>
+                  {circuitBreakerState.loading && (
                     <Badge className="bg-gray-700/60 text-gray-200 border border-gray-500/60">Checking safety lock...</Badge>
                   )}
-                  {tradingState.executionMode === 'live' && circuitBreakerState.active && (
+                  {circuitBreakerState.active && (
                     <Badge className="bg-yellow-500/20 text-yellow-200 border border-yellow-500/50">
                       Circuit Breaker: {circuitBreakerState.minutesRemaining || 1}m remaining
                     </Badge>
                   )}
                 </div>
                 <p className="text-gray-400 text-sm">
-                  {tradingState.executionMode === 'live'
-                    ? 'Real transactions will be executed with your connected wallet when the route is supported'
-                    : 'Scanner uses live market data, but executions are recorded in demo mode'}
+                  Real transactions will be executed with your connected wallet when the route is supported
                 </p>
                 {adaptiveTelemetryPendingCount > 0 && (
                   <p className="text-gray-500 text-xs mt-1">
                     Adaptive telemetry queue: {adaptiveTelemetryPendingCount} pending, {adaptiveTelemetrySyncedCount} synced, oldest pending {adaptiveTelemetryOldestPendingMinutes}m.
                   </p>
                 )}
-                {tradingState.executionMode === 'live' && circuitBreakerState.active && (
+                {circuitBreakerState.active && (
                   <p className="text-yellow-300 text-xs mt-1">
                     {circuitBreakerState.reason || 'Safety threshold reached. Live execution is temporarily locked.'}
                   </p>
@@ -3339,74 +3227,46 @@ order by e.direction;`;
                   )}
                 </Button>
               )}
-              <div className="flex items-center gap-2 rounded-lg border border-gray-700 bg-gray-900 p-1">
-                <button
-                  onClick={() => { void setExecutionMode('demo'); }}
-                  className={`rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
-                    tradingState.executionMode === 'demo'
-                      ? 'bg-blue-500 text-white'
-                      : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  Demo
-                </button>
-                <button
-                  onClick={() => { void setExecutionMode('live'); }}
-                  disabled={circuitBreakerState.active || circuitBreakerState.loading}
-                  className={`rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
-                    tradingState.executionMode === 'live'
-                      ? 'bg-red-500 text-white'
-                      : (circuitBreakerState.active || circuitBreakerState.loading)
-                        ? 'text-gray-600 cursor-not-allowed'
-                        : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  Live
-                </button>
-              </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Warning Banner for Live Mode */}
-      {tradingState.executionMode === 'live' && (
-        <Alert className="bg-yellow-900/30 border-yellow-500/50">
-          <AlertTriangle className="h-5 w-5 text-yellow-400" />
-          <AlertDescription className="text-yellow-200">
-            <strong>Live Trading Warning:</strong> Real funds will be used. Ensure you understand the risks. 
-            Current live executor is wired for Ethereum routes; Base and Arbitrum opportunities remain executable in demo mode until network-specific live routes are configured.
-            {circuitBreakerState.active && (
-              <div className="mt-3 flex items-center gap-3">
-                <span className="text-yellow-100 text-xs">Circuit breaker is active.</span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => { void handleCircuitBreakerReset(); }}
-                  className="h-7 border-yellow-400/60 text-yellow-100 hover:bg-yellow-500/20"
-                >
-                  Reset Circuit Breaker
-                </Button>
-              </div>
-            )}
-          </AlertDescription>
-        </Alert>
-      )}
+      <Alert className="bg-yellow-900/30 border-yellow-500/50">
+        <AlertTriangle className="h-5 w-5 text-yellow-400" />
+        <AlertDescription className="text-yellow-200">
+          <strong>Live Trading Warning:</strong> Real funds will be used. Ensure you understand the risks. 
+          Current live executor is wired for Ethereum routes; Base and Arbitrum opportunities will be skipped until network-specific live routes are configured.
+          {circuitBreakerState.active && (
+            <div className="mt-3 flex items-center gap-3">
+              <span className="text-yellow-100 text-xs">Circuit breaker is active.</span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => { void handleCircuitBreakerReset(); }}
+                className="h-7 border-yellow-400/60 text-yellow-100 hover:bg-yellow-500/20"
+              >
+                Reset Circuit Breaker
+              </Button>
+            </div>
+          )}
+        </AlertDescription>
+      </Alert>
 
-      {tradingState.executionMode === 'live' && (
-        <Card className="bg-gray-900 border-gray-700">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-white flex items-center gap-2 text-base">
-              <Shield className="h-4 w-4 text-cyan-300" />
-              Live Readiness Checklist
-              <Badge className={liveProductionReady
-                ? 'bg-green-500/20 text-green-200 border border-green-500/50'
-                : 'bg-red-500/20 text-red-200 border border-red-500/50'}>
-                {liveProductionReady ? 'READY' : 'BLOCKED'}
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
+      <Card className="bg-gray-900 border-gray-700">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-white flex items-center gap-2 text-base">
+            <Shield className="h-4 w-4 text-cyan-300" />
+            Live Readiness Checklist
+            <Badge className={liveProductionReady
+              ? 'bg-green-500/20 text-green-200 border border-green-500/50'
+              : 'bg-red-500/20 text-red-200 border border-red-500/50'}>
+              {liveProductionReady ? 'READY' : 'BLOCKED'}
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
             {liveReadinessChecks.map((check) => (
               <div key={check.id} className="flex items-start justify-between gap-3 rounded-md border border-gray-800 bg-black/30 p-2">
                 <div>
@@ -3474,7 +3334,6 @@ order by e.direction;`;
             )}
           </CardContent>
         </Card>
-      )}
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Trading Mode Selection */}
@@ -3683,13 +3542,6 @@ order by e.direction;`;
             {/* Scan presets */}
             <div className="flex gap-2">
               <button
-                onClick={() => applyPreset(PRESET_DEMO)}
-                className="flex-1 rounded px-3 py-1.5 text-xs font-semibold border border-yellow-500/60 text-yellow-400 hover:bg-yellow-500/10 transition-colors"
-                title="Permissive settings — shows activity in any market"
-              >
-                Practice Preset
-              </button>
-              <button
                 onClick={() => applyPreset(PRESET_REALISTIC)}
                 className="flex-1 rounded px-3 py-1.5 text-xs font-semibold border border-green-500/60 text-green-400 hover:bg-green-500/10 transition-colors"
                 title="Real-world profitable thresholds"
@@ -3724,7 +3576,7 @@ order by e.direction;`;
                 Auto Tuner
               </Button>
               <div className="text-[11px] text-gray-400">
-                Active scanner profile: <span className="text-gray-200 font-semibold">{scannerProfile === 'live' ? 'Live (multi-chain visibility, Ethereum-only execution, higher liquidity floor)' : 'Discovery (multi-chain, broader search)'}</span>
+                Active scanner profile: <span className="text-gray-200 font-semibold">{scannerProfile === 'live' ? 'Live (Ethereum + Arbitrum, higher liquidity floor)' : 'Discovery (multi-chain, broader search)'}</span>
               </div>
               {!leanMode && (
                 <button
@@ -3853,11 +3705,10 @@ order by e.direction;`;
           <CardContent className="space-y-3">
             {latestSpectrumSnapshot ? (
               <>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
                   <div className="rounded border border-gray-700 bg-black/30 p-2 text-gray-300">Negative net: <span className="text-red-300 font-semibold">{latestSpectrumSnapshot.rejectedNegativeNet}</span></div>
                   <div className="rounded border border-gray-700 bg-black/30 p-2 text-gray-300">Min profit: <span className="text-yellow-300 font-semibold">{latestSpectrumSnapshot.rejectedByMinProfit}</span></div>
                   <div className="rounded border border-gray-700 bg-black/30 p-2 text-gray-300">Gas cap: <span className="text-orange-300 font-semibold">{latestSpectrumSnapshot.rejectedByGas}</span></div>
-                  <div className="rounded border border-gray-700 bg-black/30 p-2 text-gray-300">Demo gates: <span className="text-blue-300 font-semibold">{latestSpectrumSnapshot.rejectedByDemoCooldown + latestSpectrumSnapshot.rejectedByDemoWatchlistGate}</span></div>
                 </div>
                 {latestSpectrumSnapshot.rejectedSamples.length > 0 ? (
                   <div className="space-y-1">
@@ -3933,7 +3784,7 @@ order by e.direction;`;
                           <span className="text-white font-semibold">{trade.tokenPair}</span>
                           {trade.status === 'watchlist' && (
                             <Badge variant="outline" className="text-xs border-yellow-500/60 text-yellow-300">
-                              {isCycleShadowOpportunity(trade) ? 'cycle shadow' : 'demo near-miss'}
+                              {isCycleShadowOpportunity(trade) ? 'cycle shadow' : 'near-miss'}
                             </Badge>
                           )}
                           <Badge variant="outline" className="text-xs capitalize">
@@ -3974,7 +3825,7 @@ order by e.direction;`;
                           ) : isCycleShadowOpportunity(trade) ? (
                             <>Diagnostics Only</>
                           ) : (
-                            <><Zap className="h-4 w-4 mr-1" /> {tradingState.executionMode === 'live' ? (getPairHistoryThrottle(trade) ? 'Execute Live (Throttled)' : 'Execute Live') : 'Execute Demo'}</>
+                            <><Zap className="h-4 w-4 mr-1" /> {getPairHistoryThrottle(trade) ? 'Execute Live (Throttled)' : 'Execute Live'}</>
                           )}
                         </Button>
                       )}
@@ -4381,7 +4232,7 @@ order by e.direction;`;
         </CardHeader>
         <CardContent>
           {recentExecutionLogs.length === 0 ? (
-            <p className="text-gray-500 text-sm">No execution history yet. Executed demo and live trades will appear here.</p>
+            <p className="text-gray-500 text-sm">No execution history yet. Executed live trades will appear here.</p>
           ) : (
             <div className="space-y-2">
               {recentExecutionLogs.map((log) => {

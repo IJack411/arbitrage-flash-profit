@@ -1,0 +1,585 @@
+{
+  "timestamp": "2026-06-10T15:30:26.433Z",
+  "result": "ALERT",
+  "checkIndex": 1,
+  "maxChecks": 1,
+  "scoutSummary": {
+    "anyAlert": true,
+    "precheckAlert": false,
+    "warmAlert": false,
+    "endpointHealth": {
+      "status": "reachable",
+      "errorProfiles": 0,
+      "totalProfiles": 14
+    },
+    "dataHeartbeat": {
+      "status": "ok",
+      "anyPairKeysSeen": true,
+      "zeroPairProfiles": 0,
+      "totalProfiles": 14,
+      "bestPairKeysMedian": 69
+    },
+    "thresholds": {
+      "activeMin": 1,
+      "topWatchNetMin": -5,
+      "topWatchDistanceMax": 15,
+      "badQuotesMax": 1
+    },
+    "precheckThresholds": {
+      "topWatchNetMin": -5,
+      "topWatchDistanceMax": 22,
+      "badQuotesMax": 1
+    },
+    "warmThresholds": {
+      "closenessMin": -35,
+      "deltaMin": 8,
+      "badQuotesMax": 2
+    },
+    "bestProfile": {
+      "profile": "subgraph-3000-highloan-discovery",
+      "alert": false,
+      "medians": {
+        "active": 0,
+        "badQuotes": 3,
+        "pairKeys": 69
+      },
+      "bestSeen": {
+        "topWatchNet": -4.876267,
+        "topDistance": 8.179096000000001
+      },
+      "heartbeat": {
+        "anyPairKeysSeen": true
+      },
+      "closenessScore": 6.944636999999998,
+      "config": {
+        "id": "subgraph-3000-highloan-discovery",
+        "minNetProfitUsd": 2,
+        "perNetworkMinNetProfitUsd": {
+          "ethereum": 6,
+          "arbitrum": 3,
+          "base": 2,
+          "polygon": 2
+        },
+        "minSpreadPercent": 0.015,
+        "estimatedGasUsd": 8,
+        "maxSlippageBps": 80,
+        "maxLiquidityUsagePercent": 25,
+        "minLiquidityUsd": 180000,
+        "maxResults": 40,
+        "loanAmountUsd": 3000,
+        "enableDexScreener": false,
+        "enableGecko": false
+      }
+    },
+    "trend": {
+      "recentMedianCloseness": 7.712226,
+      "deltaVsRecentMedian": -0.7675890000000019
+    },
+    "results": [
+      {
+        "profile": "subgraph-1500-discovery",
+        "alert": false,
+        "medians": {
+          "active": 0,
+          "badQuotes": 3,
+          "pairKeys": 69
+        },
+        "bestSeen": {
+          "topWatchNet": -4.883538,
+          "topDistance": 8.953975999999999
+        },
+        "heartbeat": {
+          "anyPairKeysSeen": true
+        },
+        "closenessScore": 6.162486000000001,
+        "config": {
+          "id": "subgraph-1500-discovery",
+          "minNetProfitUsd": 2,
+          "perNetworkMinNetProfitUsd": {
+            "ethereum": 8,
+            "arbitrum": 4,
+            "base": 3,
+            "polygon": 3
+          },
+          "minSpreadPercent": 0.02,
+          "estimatedGasUsd": 8,
+          "maxSlippageBps": 75,
+          "maxLiquidityUsagePercent": 25,
+          "minLiquidityUsd": 60000,
+          "maxResults": 40,
+          "loanAmountUsd": 1500,
+          "enableDexScreener": false,
+          "enableGecko": false
+        }
+      },
+      {
+        "profile": "subgraph-1000",
+        "alert": false,
+        "medians": {
+          "active": 0,
+          "badQuotes": 3,
+          "pairKeys": 69
+        },
+        "bestSeen": {
+          "topWatchNet": -5.365871,
+          "topDistance": 9.436309
+        },
+        "heartbeat": {
+          "anyPairKeysSeen": true
+        },
+        "closenessScore": 5.19782,
+        "config": {
+          "id": "subgraph-1000",
+          "minNetProfitUsd": 3,
+          "perNetworkMinNetProfitUsd": {
+            "ethereum": 8,
+            "arbitrum": 4,
+            "base": 3,
+            "polygon": 3
+          },
+          "minSpreadPercent": 0.02,
+          "estimatedGasUsd": 8,
+          "maxSlippageBps": 65,
+          "maxLiquidityUsagePercent": 25,
+          "minLiquidityUsd": 120000,
+          "maxResults": 40,
+          "loanAmountUsd": 1000,
+          "enableDexScreener": false,
+          "enableGecko": false
+        }
+      },
+      {
+        "profile": "subgraph-600",
+        "alert": false,
+        "medians": {
+          "active": 0,
+          "badQuotes": 3,
+          "pairKeys": 76
+        },
+        "bestSeen": {
+          "topWatchNet": -4.994405,
+          "topDistance": 9.064843
+        },
+        "heartbeat": {
+          "anyPairKeysSeen": true
+        },
+        "closenessScore": 5.940752,
+        "config": {
+          "id": "subgraph-600",
+          "minNetProfitUsd": 2,
+          "perNetworkMinNetProfitUsd": {
+            "ethereum": 8,
+            "arbitrum": 4,
+            "base": 3,
+            "polygon": 3
+          },
+          "minSpreadPercent": 0.02,
+          "estimatedGasUsd": 8,
+          "maxSlippageBps": 75,
+          "maxLiquidityUsagePercent": 25,
+          "minLiquidityUsd": 60000,
+          "maxResults": 40,
+          "loanAmountUsd": 600,
+          "enableDexScreener": false,
+          "enableGecko": false
+        }
+      },
+      {
+        "profile": "subgraph-400-discovery",
+        "alert": false,
+        "medians": {
+          "active": 0,
+          "badQuotes": 3,
+          "pairKeys": 76
+        },
+        "bestSeen": {
+          "topWatchNet": null,
+          "topDistance": null
+        },
+        "heartbeat": {
+          "anyPairKeysSeen": true
+        },
+        "closenessScore": -999,
+        "config": {
+          "id": "subgraph-400-discovery",
+          "minNetProfitUsd": 2,
+          "perNetworkMinNetProfitUsd": {
+            "ethereum": 8,
+            "arbitrum": 4,
+            "base": 3,
+            "polygon": 3
+          },
+          "minSpreadPercent": 0.02,
+          "estimatedGasUsd": 8,
+          "maxSlippageBps": 75,
+          "maxLiquidityUsagePercent": 25,
+          "minLiquidityUsd": 60000,
+          "maxResults": 40,
+          "loanAmountUsd": 400,
+          "enableDexScreener": false,
+          "enableGecko": false
+        }
+      },
+      {
+        "profile": "mixed-1500-discovery",
+        "alert": false,
+        "medians": {
+          "active": 0,
+          "badQuotes": 15,
+          "pairKeys": 101
+        },
+        "bestSeen": {
+          "topWatchNet": null,
+          "topDistance": null
+        },
+        "heartbeat": {
+          "anyPairKeysSeen": true
+        },
+        "closenessScore": -999,
+        "config": {
+          "id": "mixed-1500-discovery",
+          "minNetProfitUsd": 2,
+          "perNetworkMinNetProfitUsd": {
+            "ethereum": 8,
+            "arbitrum": 4,
+            "base": 3,
+            "polygon": 3
+          },
+          "minSpreadPercent": 0.02,
+          "estimatedGasUsd": 8,
+          "maxSlippageBps": 75,
+          "maxLiquidityUsagePercent": 25,
+          "minLiquidityUsd": 60000,
+          "maxResults": 40,
+          "loanAmountUsd": 1500,
+          "enableDexScreener": true,
+          "enableGecko": true
+        }
+      },
+      {
+        "profile": "mixed-1000",
+        "alert": false,
+        "medians": {
+          "active": 0,
+          "badQuotes": 15,
+          "pairKeys": 97
+        },
+        "bestSeen": {
+          "topWatchNet": -5.519798,
+          "topDistance": 9.590235999999999
+        },
+        "heartbeat": {
+          "anyPairKeysSeen": true
+        },
+        "closenessScore": 4.889966000000001,
+        "config": {
+          "id": "mixed-1000",
+          "minNetProfitUsd": 3,
+          "perNetworkMinNetProfitUsd": {
+            "ethereum": 8,
+            "arbitrum": 4,
+            "base": 3,
+            "polygon": 3
+          },
+          "minSpreadPercent": 0.02,
+          "estimatedGasUsd": 8,
+          "maxSlippageBps": 65,
+          "maxLiquidityUsagePercent": 25,
+          "minLiquidityUsd": 120000,
+          "maxResults": 40,
+          "loanAmountUsd": 1000,
+          "enableDexScreener": true,
+          "enableGecko": true
+        }
+      },
+      {
+        "profile": "mixed-1000-aggressive",
+        "alert": false,
+        "medians": {
+          "active": 0,
+          "badQuotes": 15,
+          "pairKeys": 97
+        },
+        "bestSeen": {
+          "topWatchNet": -5.408908,
+          "topDistance": 8.711737
+        },
+        "heartbeat": {
+          "anyPairKeysSeen": true
+        },
+        "closenessScore": 5.879355,
+        "config": {
+          "id": "mixed-1000-aggressive",
+          "minNetProfitUsd": 2,
+          "perNetworkMinNetProfitUsd": {
+            "ethereum": 6,
+            "arbitrum": 3,
+            "base": 2,
+            "polygon": 2
+          },
+          "minSpreadPercent": 0.02,
+          "estimatedGasUsd": 8,
+          "maxSlippageBps": 75,
+          "maxLiquidityUsagePercent": 25,
+          "minLiquidityUsd": 120000,
+          "maxResults": 40,
+          "loanAmountUsd": 1000,
+          "enableDexScreener": true,
+          "enableGecko": true
+        }
+      },
+      {
+        "profile": "mixed-1000-ultra-discovery",
+        "alert": false,
+        "medians": {
+          "active": 0,
+          "badQuotes": 15,
+          "pairKeys": 101
+        },
+        "bestSeen": {
+          "topWatchNet": -5.525645,
+          "topDistance": 8.065895
+        },
+        "heartbeat": {
+          "anyPairKeysSeen": true
+        },
+        "closenessScore": 6.408460000000001,
+        "config": {
+          "id": "mixed-1000-ultra-discovery",
+          "minNetProfitUsd": 1,
+          "perNetworkMinNetProfitUsd": {
+            "ethereum": 4,
+            "arbitrum": 2,
+            "base": 1,
+            "polygon": 1
+          },
+          "minSpreadPercent": 0.02,
+          "estimatedGasUsd": 7,
+          "maxSlippageBps": 80,
+          "maxLiquidityUsagePercent": 25,
+          "minLiquidityUsd": 90000,
+          "maxResults": 40,
+          "loanAmountUsd": 1000,
+          "enableDexScreener": true,
+          "enableGecko": true
+        }
+      },
+      {
+        "profile": "mixed-600",
+        "alert": false,
+        "medians": {
+          "active": 0,
+          "badQuotes": 15,
+          "pairKeys": 97
+        },
+        "bestSeen": {
+          "topWatchNet": -5.525645,
+          "topDistance": 9.596083
+        },
+        "heartbeat": {
+          "anyPairKeysSeen": true
+        },
+        "closenessScore": 4.878272,
+        "config": {
+          "id": "mixed-600",
+          "minNetProfitUsd": 2,
+          "perNetworkMinNetProfitUsd": {
+            "ethereum": 8,
+            "arbitrum": 4,
+            "base": 3,
+            "polygon": 3
+          },
+          "minSpreadPercent": 0.02,
+          "estimatedGasUsd": 8,
+          "maxSlippageBps": 75,
+          "maxLiquidityUsagePercent": 25,
+          "minLiquidityUsd": 60000,
+          "maxResults": 40,
+          "loanAmountUsd": 600,
+          "enableDexScreener": true,
+          "enableGecko": true
+        }
+      },
+      {
+        "profile": "mixed-400-discovery",
+        "alert": false,
+        "medians": {
+          "active": 0,
+          "badQuotes": 15,
+          "pairKeys": 97
+        },
+        "bestSeen": {
+          "topWatchNet": -5.225934,
+          "topDistance": 9.296371999999998
+        },
+        "heartbeat": {
+          "anyPairKeysSeen": true
+        },
+        "closenessScore": 5.477694000000002,
+        "config": {
+          "id": "mixed-400-discovery",
+          "minNetProfitUsd": 2,
+          "perNetworkMinNetProfitUsd": {
+            "ethereum": 8,
+            "arbitrum": 4,
+            "base": 3,
+            "polygon": 3
+          },
+          "minSpreadPercent": 0.02,
+          "estimatedGasUsd": 8,
+          "maxSlippageBps": 75,
+          "maxLiquidityUsagePercent": 25,
+          "minLiquidityUsd": 60000,
+          "maxResults": 40,
+          "loanAmountUsd": 400,
+          "enableDexScreener": true,
+          "enableGecko": true
+        }
+      },
+      {
+        "profile": "subgraph-3000-highloan-discovery",
+        "alert": false,
+        "medians": {
+          "active": 0,
+          "badQuotes": 3,
+          "pairKeys": 69
+        },
+        "bestSeen": {
+          "topWatchNet": -4.876267,
+          "topDistance": 8.179096000000001
+        },
+        "heartbeat": {
+          "anyPairKeysSeen": true
+        },
+        "closenessScore": 6.944636999999998,
+        "config": {
+          "id": "subgraph-3000-highloan-discovery",
+          "minNetProfitUsd": 2,
+          "perNetworkMinNetProfitUsd": {
+            "ethereum": 6,
+            "arbitrum": 3,
+            "base": 2,
+            "polygon": 2
+          },
+          "minSpreadPercent": 0.015,
+          "estimatedGasUsd": 8,
+          "maxSlippageBps": 80,
+          "maxLiquidityUsagePercent": 25,
+          "minLiquidityUsd": 180000,
+          "maxResults": 40,
+          "loanAmountUsd": 3000,
+          "enableDexScreener": false,
+          "enableGecko": false
+        }
+      },
+      {
+        "profile": "mixed-3000-highloan-discovery",
+        "alert": false,
+        "medians": {
+          "active": 0,
+          "badQuotes": 15,
+          "pairKeys": 101
+        },
+        "bestSeen": {
+          "topWatchNet": -4.931451,
+          "topDistance": 8.23428
+        },
+        "heartbeat": {
+          "anyPairKeysSeen": true
+        },
+        "closenessScore": 6.834269,
+        "config": {
+          "id": "mixed-3000-highloan-discovery",
+          "minNetProfitUsd": 2,
+          "perNetworkMinNetProfitUsd": {
+            "ethereum": 6,
+            "arbitrum": 3,
+            "base": 2,
+            "polygon": 2
+          },
+          "minSpreadPercent": 0.015,
+          "estimatedGasUsd": 8,
+          "maxSlippageBps": 80,
+          "maxLiquidityUsagePercent": 25,
+          "minLiquidityUsd": 180000,
+          "maxResults": 40,
+          "loanAmountUsd": 3000,
+          "enableDexScreener": true,
+          "enableGecko": true
+        }
+      },
+      {
+        "profile": "subgraph-10000-highloan-discovery",
+        "alert": true,
+        "medians": {
+          "active": 1,
+          "badQuotes": 3,
+          "pairKeys": 76
+        },
+        "bestSeen": {
+          "topWatchNet": -3.14867,
+          "topDistance": 31.14867
+        },
+        "heartbeat": {
+          "anyPairKeysSeen": true
+        },
+        "closenessScore": -14.297339999999998,
+        "config": {
+          "id": "subgraph-10000-highloan-discovery",
+          "minNetProfitUsd": 2,
+          "perNetworkMinNetProfitUsd": {
+            "ethereum": 6,
+            "arbitrum": 3,
+            "base": 2,
+            "polygon": 2
+          },
+          "minSpreadPercent": 0.015,
+          "estimatedGasUsd": 8,
+          "maxSlippageBps": 80,
+          "maxLiquidityUsagePercent": 25,
+          "minLiquidityUsd": 180000,
+          "maxResults": 40,
+          "loanAmountUsd": 10000,
+          "enableDexScreener": false,
+          "enableGecko": false
+        }
+      },
+      {
+        "profile": "mixed-10000-highloan-discovery",
+        "alert": false,
+        "medians": {
+          "active": 0,
+          "badQuotes": 15,
+          "pairKeys": 100
+        },
+        "bestSeen": {
+          "topWatchNet": -35.250814,
+          "topDistance": 63.250814
+        },
+        "heartbeat": {
+          "anyPairKeysSeen": true
+        },
+        "closenessScore": -78.501628,
+        "config": {
+          "id": "mixed-10000-highloan-discovery",
+          "minNetProfitUsd": 2,
+          "perNetworkMinNetProfitUsd": {
+            "ethereum": 6,
+            "arbitrum": 3,
+            "base": 2,
+            "polygon": 2
+          },
+          "minSpreadPercent": 0.015,
+          "estimatedGasUsd": 8,
+          "maxSlippageBps": 80,
+          "maxLiquidityUsagePercent": 25,
+          "minLiquidityUsd": 180000,
+          "maxResults": 40,
+          "loanAmountUsd": 10000,
+          "enableDexScreener": true,
+          "enableGecko": true
+        }
+      }
+    ]
+  }
+}

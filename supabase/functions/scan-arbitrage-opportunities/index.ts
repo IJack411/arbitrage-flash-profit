@@ -16,7 +16,7 @@ const UNI_V3_SUBGRAPH_PUBLIC = 'https://api.thegraph.com/subgraphs/name/uniswap/
 const UNI_V2_SUBGRAPH_PUBLIC = 'https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v2';
 const SUSHI_SUBGRAPH_PUBLIC = 'https://api.thegraph.com/subgraphs/name/sushiswap/exchange';
 const BALANCER_SUBGRAPH_PUBLIC = 'https://api.thegraph.com/subgraphs/name/balancer-labs/balancer-v2';
-const CURVE_SUBGRAPH_PUBLIC = 'https://api.thegraph.com/subgraphs/name/curvefi/curve';
+const CURVE_SUBGRAPH_PUBLIC_DEPRECATED = 'https://api.thegraph.com/subgraphs/name/curvefi/curve';
 
 const THEGRAPH_API_KEY = (Deno.env.get('THEGRAPH_API_KEY') || '').trim();
 const LEGACY_GRAPH_HOST = 'api.thegraph.com/subgraphs/name/';
@@ -56,12 +56,18 @@ const UNI_V2_SUBGRAPH = buildGraphEndpoint('THEGRAPH_UNI_V2', UNI_V2_SUBGRAPH_PU
   defaultGatewayId: 'A3Np3RQbaBA6oKJgiwDJeo5T3zrYfGHPWFYayMwtNDum',
   gatewayIdEnvKey: 'THEGRAPH_UNI_V2_ID',
 });
+// Balancer V2 Ethereum gateway subgraph (verified 2026-06: returns real pool data with `pools { tokensList, totalLiquidity, totalSwapVolume }`).
 const BALANCER_SUBGRAPH = buildGraphEndpoint('THEGRAPH_BALANCER', BALANCER_SUBGRAPH_PUBLIC, {
+  defaultGatewayId: 'C4ayEZP2yTXRAB8vSaTrgN4m9anTe9Mdm2ViyiAuV9TV',
   gatewayIdEnvKey: 'THEGRAPH_BALANCER_ID',
 });
-const CURVE_SUBGRAPH = buildGraphEndpoint('THEGRAPH_CURVE', CURVE_SUBGRAPH_PUBLIC, {
-  gatewayIdEnvKey: 'THEGRAPH_CURVE_ID',
-});
+// Curve: legacy hosted subgraph is dead and no public gateway deployment is consistently available.
+// We bypass the subgraph layer entirely and query Curve's official REST API (api.curve.fi),
+// which exposes the same data (pool address, coins with balance + decimals + symbol, USD TVL)
+// across the active registries (main, crypto, factory, factory-crypto, factory-stable-ng).
+// See `fetchCurveOfficialPools` / `toPoolFromCurve` below.
+const CURVE_OFFICIAL_API_BASE = 'https://api.curve.fi/api/getPools/ethereum';
+const CURVE_OFFICIAL_REGISTRIES = ['main', 'crypto', 'factory', 'factory-crypto', 'factory-stable-ng'] as const;
 
 // Arbitrum-specific subgraphs — separate deployments required for cross-chain DEX diversity.
 // IDs verified against gateway.thegraph.com with real Arbitrum token data (ARB, WETH, WBTC, USDC).
@@ -76,6 +82,20 @@ const UNI_V3_ARB_SUBGRAPH = buildGraphEndpoint('THEGRAPH_UNI_V3_ARB', UNI_V3_ARB
 const SUSHI_ARB_SUBGRAPH = buildGraphEndpoint('THEGRAPH_SUSHI_ARB', SUSHI_ARB_SUBGRAPH_PUBLIC, {
   defaultGatewayId: '8yBXBTMfdhsoE5QCf7KnoPmQb7QAWtRzESfYjiCjGEM9',
   gatewayIdEnvKey: 'THEGRAPH_SUSHI_ARB_ID',
+});
+
+// Base-specific subgraphs — Uniswap V3 + SushiSwap V2 on Base mainnet.
+// UNI_V3_BASE: GqzP4Xaehti8KSfQmv3ZctFSjnSUYZ4En5NRsiTbvZpz (Uniswap V3 Base, verified on gateway.thegraph.com)
+// SUSHI_BASE: QmQfYe5Ygg9A3mAiuBZYj5a64bDKLF4gF6sezfhgxKvb9y (SushiSwap V2 Base, verified live 2025)
+const UNI_V3_BASE_SUBGRAPH_PUBLIC = 'https://api.thegraph.com/subgraphs/name/ianlapham/uniswap-v3-base';
+const UNI_V3_BASE_SUBGRAPH = buildGraphEndpoint('THEGRAPH_UNI_V3_BASE', UNI_V3_BASE_SUBGRAPH_PUBLIC, {
+  defaultGatewayId: 'GqzP4Xaehti8KSfQmv3ZctFSjnSUYZ4En5NRsiTbvZpz',
+  gatewayIdEnvKey: 'THEGRAPH_UNI_V3_BASE_ID',
+});
+const SUSHI_BASE_SUBGRAPH_PUBLIC = 'https://api.thegraph.com/subgraphs/name/sushiswap/exchange-base';
+const SUSHI_BASE_SUBGRAPH = buildGraphEndpoint('THEGRAPH_SUSHI_BASE', SUSHI_BASE_SUBGRAPH_PUBLIC, {
+  defaultGatewayId: 'QmQfYe5Ygg9A3mAiuBZYj5a64bDKLF4gF6sezfhgxKvb9y',
+  gatewayIdEnvKey: 'THEGRAPH_SUSHI_BASE_ID',
 });
 
 type NetworkName = 'ethereum' | 'polygon' | 'arbitrum' | 'base' | 'bsc';
@@ -109,6 +129,7 @@ interface ScannerConfig {
   maxLiquidityUsageFraction: number;
   maxResults: number;
   loanAmountUsd: number;
+  perNetworkLoanAmountUsd: Partial<Record<NetworkName, number>>;
   estimatedGasUsd: number;
   gasUnits: number;
   gasSafetyMultiplier: number;
@@ -1520,7 +1541,10 @@ const evaluateSingleVolumeDetailed = (
   const buyPriceFixed = decimalToFixed(buyPrice, FP_SCALE);
   const sellPriceFixed = decimalToFixed(sellPrice, FP_SCALE);
   const loanFixed = decimalToFixed(executableLoanAmount, USD_SCALE);
-  const configLoanFixed = decimalToFixed(config.loanAmountUsd, USD_SCALE);
+  // Use the per-network loan cap as the baseline for gas scaling (not the global loanAmountUsd).
+  // This prevents inflated gas multipliers when L2 loans are capped to $500-$1000.
+  const networkLoanBaseline = config.perNetworkLoanAmountUsd?.[network] ?? config.loanAmountUsd;
+  const configLoanFixed = decimalToFixed(networkLoanBaseline, USD_SCALE);
   if (buyPriceFixed <= 0n || sellPriceFixed <= 0n || loanFixed <= 0n || configLoanFixed <= 0n) {
     return { candidate: null, reason: 'invalidLoanOrScale' };
   }
@@ -1679,8 +1703,9 @@ const evaluateExecutionCandidate = (
   let prevCandidate: ExecutionCandidate | null = null;
   let prevVolume = 0;
 
+  const networkLoanUsd = config.perNetworkLoanAmountUsd?.[network] ?? config.loanAmountUsd;
   for (const step of SIZE_STEPS) {
-    const requestedLoanAmount = config.loanAmountUsd * step;
+    const requestedLoanAmount = networkLoanUsd * step;
     const executableLoanAmount = Math.min(requestedLoanAmount, executableLiquidityUsd * config.maxLiquidityUsageFraction);
 
     const detailed = evaluateSingleVolumeDetailed(
@@ -1944,6 +1969,12 @@ const buildCycleShadowWatchlist = (
 const buildScannerConfig = (body: Record<string, unknown>): ScannerConfig => {
   const envLoanAmountUsd = parseNumberEnv(Deno.env.get('SCANNER_LOAN_AMOUNT_USD'), 50_000);
   const bodyLoanAmountUsd = parseNumberInput(body.loanAmountUsd);
+  // Per-network loan caps: L2 pools are much thinner than ETH mainnet.
+  // At $8k loan, a $124k TVL Arbitrum pool has 6.5% impact >> 3% cap.
+  // Default: ETH=$8k, ARB=$1k, Base=$500 (tuned for ~3% impact on $20k-$33k TVL pools)
+  const bodyPerNetworkLoan = (body.perNetworkLoanAmountUsd && typeof body.perNetworkLoanAmountUsd === 'object')
+    ? body.perNetworkLoanAmountUsd as Partial<Record<NetworkName, number>>
+    : {};
   const bodyMinSpreadPercent = parseNumberInput(body.minSpreadPercent);
   const bodyMinLiquidityUsd = parseNumberInput(body.minLiquidityUsd);
   const bodyMinNetProfitUsd = parseNumberInput(body.minNetProfitUsd);
@@ -1951,7 +1982,10 @@ const buildScannerConfig = (body: Record<string, unknown>): ScannerConfig => {
   const bodyAdaptiveProfitReliefMultiplier = parseNumberInput(body.adaptiveProfitReliefMultiplier);
   const bodyAdaptiveMinNetFloorPercent = parseNumberInput(body.adaptiveMinNetFloorPercent);
   const bodyAdaptiveMinNetFloorFraction = parseNumberInput(body.adaptiveMinNetFloorFraction);
-  const bodyMaxSlippageBps = parseNumberInput(body.maxSlippageBps);
+  const bodyMaxSlippageBps = parseNumberInput(body.maxSlippageBps)
+    ?? (body.maxSlippagePercent != null
+      ? Math.round((parseNumberInput(body.maxSlippagePercent) ?? 0) * 100)
+      : undefined);
   const bodyMaxLiquidityUsagePercent = parseNumberInput(body.maxLiquidityUsagePercent);
   const bodyMaxLiquidityUsageFraction = parseNumberInput(body.maxLiquidityUsageFraction);
   const bodyMaxResults = parseNumberInput(body.maxResults);
@@ -2075,11 +2109,19 @@ const buildScannerConfig = (body: Record<string, unknown>): ScannerConfig => {
     adaptiveProfitPressureMultiplier: bodyAdaptiveProfitPressureMultiplier ?? parseNumberEnv(Deno.env.get('SCANNER_NET_PROFIT_GAS_MULTIPLIER'), 0.35),
     adaptiveProfitReliefMultiplier: bodyAdaptiveProfitReliefMultiplier ?? parseNumberEnv(Deno.env.get('SCANNER_NET_PROFIT_GAS_RELIEF_MULTIPLIER'), 0.25),
     adaptiveMinNetFloorFraction,
-    maxSlippageBps: bodyMaxSlippageBps ?? parseNumberEnv(Deno.env.get('SCANNER_MAX_SLIPPAGE_BPS'), 55),
+    maxSlippageBps: bodyMaxSlippageBps ?? parseNumberEnv(Deno.env.get('SCANNER_MAX_SLIPPAGE_BPS'), 300),
     maxLiquidityUsageFraction,
     maxResults: Math.max(1, Math.min(50, bodyMaxResults ?? parseNumberEnv(Deno.env.get('SCANNER_MAX_RESULTS'), 25))),
     loanAmountUsd: bodyLoanAmountUsd ?? envLoanAmountUsd,
-    estimatedGasUsd: bodyEstimatedGasUsd ?? parseNumberEnv(Deno.env.get('SCANNER_ESTIMATED_GAS_USD'), 18),
+    perNetworkLoanAmountUsd: {
+      ethereum: bodyLoanAmountUsd ?? envLoanAmountUsd,
+      arbitrum: bodyPerNetworkLoan.arbitrum ?? 1000,
+      base: bodyPerNetworkLoan.base ?? 500,
+      polygon: bodyPerNetworkLoan.polygon ?? 2000,
+      bsc: bodyPerNetworkLoan.bsc ?? 2000,
+      ...bodyPerNetworkLoan,
+    },
+    estimatedGasUsd: bodyEstimatedGasUsd ?? parseNumberEnv(Deno.env.get('SCANNER_ESTIMATED_GAS_USD'), 45),
     gasUnits: bodyGasUnits ?? parseNumberEnv(Deno.env.get('SCANNER_GAS_UNITS'), 350_000),
     gasSafetyMultiplier: bodyGasSafetyMultiplier ?? parseNumberEnv(Deno.env.get('SCANNER_GAS_SAFETY_MULTIPLIER'), 1.15),
     gasPriceGweiByNetwork: {
@@ -2237,7 +2279,7 @@ const evaluateScannerReadinessGates = async () => {
     testSubgraphConnectivity('uniswapV2', UNI_V2_SUBGRAPH, UNI_V2_SUBGRAPH_PUBLIC),
     testSubgraphConnectivity('sushiswap', SUSHI_SUBGRAPH, SUSHI_SUBGRAPH_PUBLIC),
     testSubgraphConnectivity('balancer', BALANCER_SUBGRAPH, BALANCER_SUBGRAPH_PUBLIC),
-    testSubgraphConnectivity('curve', CURVE_SUBGRAPH, CURVE_SUBGRAPH_PUBLIC),
+    testCurveOfficialApiConnectivity(),
   ]);
 
   const healthySources = graphConnectivity.filter((source) => source.status === 'ok').length;
@@ -2288,16 +2330,38 @@ const topV2PairsQuery = (limit = 20) => `
   }
 }`;
 
-const topBalancerPoolsQuery = (limit = 20) => `
+// Balancer V2 weighted/stable pool subgraph query.
+// Fetches per-token balances and weights so the parser can compute real spot prices
+// (previously this query returned only `tokensList`/`totalLiquidity`, which forced the
+// parser to insert identity 1:1 prices and made every Balancer pair invisible to
+// cross-DEX edge detection).
+const topBalancerPoolsQuery = (limit = 100) => `
 {
-  pools(first: ${limit}, orderBy: totalLiquidity, orderDirection: desc, where: { totalLiquidity_gt: "100000" }) {
-    tokensList
+  pools(
+    first: ${limit},
+    orderBy: totalLiquidity,
+    orderDirection: desc,
+    where: {
+      totalLiquidity_gt: "100000",
+      poolType_in: ["Weighted", "Stable", "MetaStable", "ComposableStable", "LiquidityBootstrappingPool", "Investment"]
+    }
+  ) {
+    id
+    address
+    poolType
+    swapFee
     totalLiquidity
-    totalSwapVolume
+    tokens {
+      address
+      symbol
+      decimals
+      balance
+      weight
+    }
   }
 }`;
 
-const topCurvePoolsQuery = (limit = 20) => `
+const topCurvePoolsQuery_DEPRECATED = (limit = 20) => `
 {
   pools(first: ${limit}, orderBy: cumulativeVolumeUSD, orderDirection: desc) {
     coins
@@ -2305,16 +2369,25 @@ const topCurvePoolsQuery = (limit = 20) => `
     cumulativeVolumeUSD
   }
 }`;
+void topCurvePoolsQuery_DEPRECATED;  // retained only to document the old schema; queries go through fetchCurveOfficialPools().
 
 const PRIORITY_PAIR_SUBGRAPH_LIMIT_PER_PAIR = Math.max(
   1,
   Math.round(parseNumberEnv(Deno.env.get('SCANNER_PRIORITY_PAIR_SUBGRAPH_LIMIT'), 8)),
 );
 
-const PRIORITY_PAIR_SUBGRAPH_MIN_LIQUIDITY_USD = Math.max(
-  500,
-  parseNumberEnv(Deno.env.get('SCANNER_PRIORITY_PAIR_SUBGRAPH_MIN_LIQUIDITY_USD'), 10_000),
-);
+// Per-network minimum pool TVL — keeps thin ETH V2 pools (which cause 1844bps slippage) out of the scan.
+// Calculation: to stay under 3% slippage on $8k trade on a CPAMM, pool needs ≥ $8k/0.03 ≈ $267k TVL.
+// ETH mainnet V2 pools are often far below this; raise the floor to filter them.
+const PRIORITY_PAIR_SUBGRAPH_MIN_LIQUIDITY_USD_BY_NETWORK = {
+  ethereum: Math.max(100_000, parseNumberEnv(Deno.env.get('SCANNER_ETH_MIN_LIQUIDITY_USD'), 100_000)),
+  arbitrum: Math.max(20_000, parseNumberEnv(Deno.env.get('SCANNER_ARB_MIN_LIQUIDITY_USD'), 20_000)),
+  base: Math.max(20_000, parseNumberEnv(Deno.env.get('SCANNER_BASE_MIN_LIQUIDITY_USD'), 20_000)),
+};
+const getMinPoolLiquidityUsd = (network: string): number =>
+  (PRIORITY_PAIR_SUBGRAPH_MIN_LIQUIDITY_USD_BY_NETWORK as Record<string, number>)[network] ?? 50_000;
+// Keep legacy constant for any fallback path that still references it
+const PRIORITY_PAIR_SUBGRAPH_MIN_LIQUIDITY_USD = 50_000;
 
 const priorityPairV3Query = (tokenA: string, tokenB: string, limit = PRIORITY_PAIR_SUBGRAPH_LIMIT_PER_PAIR) => `
 {
@@ -2330,9 +2403,9 @@ const priorityPairV3Query = (tokenA: string, tokenB: string, limit = PRIORITY_PA
   }
 }`;
 
-const priorityPairV2Query = (tokenA: string, tokenB: string, limit = PRIORITY_PAIR_SUBGRAPH_LIMIT_PER_PAIR) => `
+const priorityPairV2Query = (tokenA: string, tokenB: string, minLiquidityUsd = 20_000, limit = PRIORITY_PAIR_SUBGRAPH_LIMIT_PER_PAIR) => `
 {
-  pairs(first: ${limit}, orderBy: reserveUSD, orderDirection: desc, where: { token0_in: ["${tokenA}", "${tokenB}"], token1_in: ["${tokenA}", "${tokenB}"], reserveUSD_gt: "5000", reserveUSD_lt: "10000000000" }) {
+  pairs(first: ${limit}, orderBy: reserveUSD, orderDirection: desc, where: { token0_in: ["${tokenA}", "${tokenB}"], token1_in: ["${tokenA}", "${tokenB}"], reserveUSD_gt: "${minLiquidityUsd}", reserveUSD_lt: "10000000000" }) {
     id
     token0 { symbol address: id }
     token1 { symbol address: id }
@@ -2419,20 +2492,22 @@ const fetchPriorityPairSubgraphPools = async (
     return { uniV3Pools, uniV2Pools, sushiPools, balancerPools, curvePools, meta };
   }
 
-  for (const target of targets) {
+  // Run all target queries in parallel instead of sequentially
+  const targetResults = await Promise.allSettled(targets.map(async (target) => {
+    const minLiquidity = getMinPoolLiquidityUsd(target.network);
     const queryV3 = priorityPairV3Query(target.baseAddress, target.quoteAddress);
-    const queryV2 = priorityPairV2Query(target.baseAddress, target.quoteAddress);
+    const queryV2 = priorityPairV2Query(target.baseAddress, target.quoteAddress, minLiquidity);
 
-    // Route to correct chain-specific subgraphs based on target network.
     const isArbitrum = target.network === 'arbitrum';
-    const v3SubgraphPrimary = isArbitrum ? UNI_V3_ARB_SUBGRAPH : UNI_V3_SUBGRAPH;
-    const v3SubgraphFallback = isArbitrum ? UNI_V3_ARB_SUBGRAPH_PUBLIC : UNI_V3_SUBGRAPH_PUBLIC;
-    const sushiSubgraphPrimary = isArbitrum ? SUSHI_ARB_SUBGRAPH : SUSHI_SUBGRAPH;
-    const sushiSubgraphFallback = isArbitrum ? SUSHI_ARB_SUBGRAPH_PUBLIC : SUSHI_SUBGRAPH_PUBLIC;
+    const isBase = target.network === 'base';
+    const v3SubgraphPrimary = isArbitrum ? UNI_V3_ARB_SUBGRAPH : isBase ? UNI_V3_BASE_SUBGRAPH : UNI_V3_SUBGRAPH;
+    const v3SubgraphFallback = isArbitrum ? UNI_V3_ARB_SUBGRAPH_PUBLIC : isBase ? UNI_V3_BASE_SUBGRAPH_PUBLIC : UNI_V3_SUBGRAPH_PUBLIC;
+    const sushiSubgraphPrimary = isArbitrum ? SUSHI_ARB_SUBGRAPH : isBase ? SUSHI_BASE_SUBGRAPH : SUSHI_SUBGRAPH;
+    const sushiSubgraphFallback = isArbitrum ? SUSHI_ARB_SUBGRAPH_PUBLIC : isBase ? SUSHI_BASE_SUBGRAPH_PUBLIC : SUSHI_SUBGRAPH_PUBLIC;
 
     const requests = [
       fetchSubgraphWithFallback(v3SubgraphPrimary, v3SubgraphFallback, queryV3),
-      isArbitrum
+      (isArbitrum || isBase)
         ? Promise.resolve({ pairs: [] })
         : fetchSubgraphWithFallback(UNI_V2_SUBGRAPH, UNI_V2_SUBGRAPH_PUBLIC, queryV2),
       fetchSubgraphWithFallback(sushiSubgraphPrimary, sushiSubgraphFallback, queryV2),
@@ -2440,6 +2515,12 @@ const fetchPriorityPairSubgraphPools = async (
 
     meta.queries += requests.length;
     const results = await Promise.allSettled(requests);
+    return { target, results };
+  }));
+
+  for (const settled of targetResults) {
+    if (settled.status !== 'fulfilled') { meta.errors += 1; continue; }
+    const { target, results } = settled.value;
 
     const v3 = results[0];
     if (v3.status === 'fulfilled') {
@@ -2447,7 +2528,7 @@ const fetchPriorityPairSubgraphPools = async (
       const pools = ((v3.value as { pools?: Record<string, unknown>[] })?.pools || [])
         .map((pool) => ({ ...toPoolFromPair(pool, 'Uniswap V3'), network: target.network }))
         .filter((pool) => matchesPriorityTarget(pool, target))
-        .filter((pool) => parsePoolLiquidity(pool) >= PRIORITY_PAIR_SUBGRAPH_MIN_LIQUIDITY_USD);
+        .filter((pool) => parsePoolLiquidity(pool) >= getMinPoolLiquidityUsd(target.network));
       for (const pool of pools) {
         upsertFallbackPool(uniV3Pools, pool);
         meta.entriesAccepted += 1;
@@ -2462,7 +2543,7 @@ const fetchPriorityPairSubgraphPools = async (
       const pools = ((v2.value as { pairs?: Record<string, unknown>[] })?.pairs || [])
         .map((pair) => ({ ...toPoolFromPair(pair, 'Uniswap V2'), network: target.network }))
         .filter((pool) => matchesPriorityTarget(pool, target))
-        .filter((pool) => parsePoolLiquidity(pool) >= PRIORITY_PAIR_SUBGRAPH_MIN_LIQUIDITY_USD);
+        .filter((pool) => parsePoolLiquidity(pool) >= getMinPoolLiquidityUsd(target.network));
       for (const pool of pools) {
         upsertFallbackPool(uniV2Pools, pool);
         meta.entriesAccepted += 1;
@@ -2477,7 +2558,7 @@ const fetchPriorityPairSubgraphPools = async (
       const pools = ((sushi.value as { pairs?: Record<string, unknown>[] })?.pairs || [])
         .map((pair) => ({ ...toPoolFromPair(pair, 'SushiSwap'), network: target.network }))
         .filter((pool) => matchesPriorityTarget(pool, target))
-        .filter((pool) => parsePoolLiquidity(pool) >= PRIORITY_PAIR_SUBGRAPH_MIN_LIQUIDITY_USD);
+        .filter((pool) => parsePoolLiquidity(pool) >= getMinPoolLiquidityUsd(target.network));
       for (const pool of pools) {
         upsertFallbackPool(sushiPools, pool);
         meta.entriesAccepted += 1;
@@ -2507,49 +2588,274 @@ const toPoolFromPair = (pair: Record<string, unknown>, dex: 'Uniswap V3' | 'Unis
   };
 };
 
-const toPoolFromBalancer = (pool: Record<string, unknown>): Pool | null => {
-  const tokens = (pool.tokensList as string[] | undefined) || [];
-  if (tokens.length < 2) return null;
+// Balancer V2 emits one Pool per token pair within a multi-token pool, so a 3-token
+// stable pool yields C(3,2)=3 distinct pairs (USDC/DAI, USDC/USDT, DAI/USDT, etc.).
+//
+// Spot-price math:
+//   - Weighted (and LBP/Investment which are weighted variants):
+//       token0Price = (B_b / W_b) / (B_a / W_a)
+//       token1Price = (B_a / W_a) / (B_b / W_b)
+//     Reference: Balancer V2 whitepaper section 3.3 ("SP_o^i = (B_i/W_i)/(B_o/W_o)");
+//     for 50/50 weighted (== CPMM) this collapses to token0Price = B_b/B_a as expected.
+//   - Stable / MetaStable / ComposableStable:
+//       token0Price ≈ B_b / B_a (and inverse) — captures depeg signal accurately near peg.
+//
+// Subgraph balances are already decimal-adjusted (human-readable strings), so direct
+// float math is safe at the precision needed for spread detection (~1 bp).
+const toPoolFromBalancer = (pool: Record<string, unknown>): Pool[] => {
+  const tokens = (pool.tokens as Array<Record<string, unknown>> | undefined) || [];
+  if (tokens.length < 2) return [];
 
-  const token0 = tokens[0] || '';
-  const token1 = tokens[1] || '';
-  if (!token0 || !token1) return null;
+  const poolType = String(pool.poolType || 'Weighted');
+  const isStable = poolType.includes('Stable');
+  const swapFeeFraction = Number(pool.swapFee || 0);
+  const feeTier = Math.round(Math.max(0, swapFeeFraction) * 1_000_000);
+  const poolAddress = String(pool.address || pool.id || '');
+  const reserveUSD = String(pool.totalLiquidity || '0');
 
-  // Balancer response here does not expose token balances directly in this lightweight query.
-  // Use neutral prices to keep pair present; spread decisions still require cross-dex deltas.
-  return {
-    token0: { symbol: token0 },
-    token1: { symbol: token1 },
-    token0Price: '1',
-    token1Price: '1',
-    reserveUSD: String(pool.totalLiquidity || '0'),
-    network: 'ethereum',
-    sourceType: 'subgraph',
-  };
+  type ParsedTok = { address: string; symbol: string; balance: number; weight: number };
+  const parsed: ParsedTok[] = [];
+  for (const t of tokens) {
+    const address = String(t.address || '').toLowerCase();
+    const symbol = String(t.symbol || '');
+    const balance = Number(t.balance || 0);
+    // Stable pools have no per-token weight in the schema; treat them as equal-weighted
+    // (the stable invariant cancels weights in the spot-price approximation we use).
+    const weight = isStable ? 1 : Number(t.weight || 0);
+    if (!address || balance <= 0 || (!isStable && weight <= 0)) continue;
+    parsed.push({ address, symbol, balance, weight });
+  }
+  if (parsed.length < 2) return [];
+
+  // Cap token count per pool so an N-token pool can't generate C(N,2) pathological pair counts.
+  // 8 tokens => 28 pairs is plenty; the Vault rarely exceeds 8 anyway.
+  const MAX_TOKENS_PER_POOL = 8;
+  const limited = parsed.slice(0, MAX_TOKENS_PER_POOL);
+
+  const out: Pool[] = [];
+  for (let i = 0; i < limited.length; i++) {
+    for (let j = i + 1; j < limited.length; j++) {
+      const a = limited[i];
+      const b = limited[j];
+      // HONESTY GATE — skip stable/stable pairs from Balancer Stable / MetaStable /
+      // ComposableStable pools for the same reason as Curve: stable invariant math means the
+      // marginal price stays ≈1.0 across a wide range of imbalance, so balance ratios are wrong.
+      // Weighted Balancer pools (50/50, 80/20 etc.) use proper CPMM-style math and are fine.
+      if (isStable) {
+        const aStable = STABLE_QUOTES.has(normalizeTokenSymbol(a.symbol));
+        const bStable = STABLE_QUOTES.has(normalizeTokenSymbol(b.symbol));
+        if (aStable && bStable) continue;
+      }
+      // Convention (matches Uniswap subgraph + downstream canonicalization at L~4504):
+      //   token1Price = "token1 per token0" = reserves1/reserves0
+      //   token0Price = "token0 per token1" = reserves0/reserves1
+      // Where a=token0, b=token1.
+      let token1PerToken0 = 0;
+      let token0PerToken1 = 0;
+      if (isStable) {
+        token1PerToken0 = a.balance > 0 ? b.balance / a.balance : 0;
+        token0PerToken1 = b.balance > 0 ? a.balance / b.balance : 0;
+      } else {
+        const ra = a.weight > 0 ? a.balance / a.weight : 0;
+        const rb = b.weight > 0 ? b.balance / b.weight : 0;
+        token1PerToken0 = ra > 0 ? rb / ra : 0;
+        token0PerToken1 = rb > 0 ? ra / rb : 0;
+      }
+      if (!Number.isFinite(token1PerToken0) || !Number.isFinite(token0PerToken1) || token1PerToken0 <= 0 || token0PerToken1 <= 0) continue;
+      out.push({
+        token0: { symbol: a.symbol, address: a.address },
+        token1: { symbol: b.symbol, address: b.address },
+        token0Price: String(token0PerToken1),
+        token1Price: String(token1PerToken0),
+        reserveUSD,
+        network: 'ethereum',
+        poolAddress,
+        feeTier: feeTier > 0 ? feeTier : undefined,
+        dex: 'Balancer',
+        sourceType: 'subgraph',
+      });
+    }
+  }
+  return out;
 };
 
-const toPoolFromCurve = (pool: Record<string, unknown>): Pool | null => {
-  const coins = (pool.coins as string[] | undefined) || [];
-  const balances = (pool.balances as string[] | undefined) || [];
-  if (coins.length < 2 || balances.length < 2) return null;
+// Curve official REST API replacement for the dead curvefi/curve hosted subgraph.
+// Returns a `{ pools: [...] }` shape so it slots into the existing Promise.allSettled flow,
+// matching the contract `curveData?.pools`. Each entry already conforms to the input shape
+// expected by `toPoolFromCurve`.
+type CurveOfficialCoin = {
+  address?: string;
+  symbol?: string;
+  decimals?: number | string;
+  poolBalance?: string;
+};
+type CurveOfficialPool = {
+  address?: string;
+  name?: string;
+  coins?: CurveOfficialCoin[];
+  usdTotal?: number;
+};
 
-  const token0 = coins[0] || '';
-  const token1 = coins[1] || '';
-  const b0Fixed = decimalToFixed(String(balances[0] || '0'), FP_SCALE);
-  const b1Fixed = decimalToFixed(String(balances[1] || '0'), FP_SCALE);
-  if (!token0 || !token1 || b0Fixed <= 0n || b1Fixed <= 0n) return null;
-
-  const p01Fixed = mulDiv(b1Fixed, FP_SCALE, b0Fixed);
-  const p10Fixed = mulDiv(b0Fixed, FP_SCALE, b1Fixed);
-  return {
-    token0: { symbol: token0 },
-    token1: { symbol: token1 },
-    token0Price: String(fixedToNumber(p01Fixed, FP_SCALE, 12)),
-    token1Price: String(fixedToNumber(p10Fixed, FP_SCALE, 12)),
-    reserveUSD: String(pool.cumulativeVolumeUSD || '0'),
-    network: 'ethereum',
-    sourceType: 'subgraph',
+const fetchCurveOfficialPools = async (): Promise<{ pools: CurveOfficialPool[] }> => {
+  const timeoutMs = Math.max(
+    2500,
+    parseNumberEnv(Deno.env.get('SCANNER_CURVE_API_TIMEOUT_MS'), 8_000),
+  );
+  const fetchOne = async (registry: string): Promise<CurveOfficialPool[]> => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort('curve-api-timeout'), timeoutMs);
+    try {
+      const res = await fetch(`${CURVE_OFFICIAL_API_BASE}/${registry}`, {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        signal: controller.signal,
+      });
+      if (!res.ok) throw new Error(`Curve API ${registry} HTTP ${res.status}`);
+      const json = await res.json();
+      if (json && json.success === false) throw new Error(`Curve API ${registry} returned success=false`);
+      const data = json?.data?.poolData;
+      return Array.isArray(data) ? (data as CurveOfficialPool[]) : [];
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new Error(`Curve API ${registry} timeout after ${timeoutMs}ms`);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timer);
+    }
   };
+
+  const results = await Promise.allSettled(CURVE_OFFICIAL_REGISTRIES.map(fetchOne));
+  const pools: CurveOfficialPool[] = [];
+  let ok = 0;
+  for (const r of results) {
+    if (r.status === 'fulfilled') {
+      ok += 1;
+      pools.push(...r.value);
+    } else {
+      console.warn(`Curve API registry fetch failed: ${r.reason instanceof Error ? r.reason.message : String(r.reason)}`);
+    }
+  }
+  if (ok === 0) {
+    throw new Error(`Curve API: all ${CURVE_OFFICIAL_REGISTRIES.length} registries failed`);
+  }
+  return { pools };
+};
+
+const testCurveOfficialApiConnectivity = async () => {
+  const detail = {
+    name: 'curve',
+    primaryUrl: `${CURVE_OFFICIAL_API_BASE}/main`,
+    fallbackUrl: `${CURVE_OFFICIAL_API_BASE}/main`,
+    usedSource: 'none' as 'primary' | 'fallback' | 'none',
+    status: 'failed' as 'ok' | 'failed',
+    error: '',
+  };
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort('curve-probe-timeout'), 5_000);
+  try {
+    const res = await fetch(`${CURVE_OFFICIAL_API_BASE}/main`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      signal: controller.signal,
+    });
+    if (!res.ok) throw new Error(`Curve API HTTP ${res.status}`);
+    detail.usedSource = 'primary';
+    detail.status = 'ok';
+    return detail;
+  } catch (error) {
+    detail.error = error instanceof Error ? error.message : 'Unknown Curve API error';
+    return detail;
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
+// Emits one Pool per token pair from a Curve pool (so a 3-coin stableswap yields C(3,2)=3 pairs).
+// `poolBalance` is a raw BigInt-as-string; we divide by 10^decimals to get the human-readable balance,
+// then approximate the marginal spot price as balance_b/balance_a. This is exact for 50/50 CPMM
+// behavior and a very tight approximation for stable/MetaPool/Tricrypto math near the pool's current
+// state (which is all that matters for spread/edge detection).
+//
+// Quality gates:
+// - Pools with usdTotal below CURVE_MIN_POOL_TVL_USD are skipped (abandoned factory pools produce
+//   noise prices from negligible residual balances).
+// - LP-token "coins" whose address equals the pool address itself are dropped (metapools list the
+//   underlying basepool LP token as a coin which would create a phantom asset with garbage pricing).
+const CURVE_MIN_POOL_TVL_USD = Math.max(
+  0,
+  parseNumberEnv(Deno.env.get('SCANNER_CURVE_MIN_POOL_TVL_USD'), 50_000),
+);
+const toPoolFromCurve = (pool: CurveOfficialPool): Pool[] => {
+  const coins = pool.coins || [];
+  if (coins.length < 2) return [];
+
+  const poolAddress = String(pool.address || '').toLowerCase();
+  const usdTotal = Number(pool.usdTotal ?? 0);
+  if (!Number.isFinite(usdTotal) || usdTotal < CURVE_MIN_POOL_TVL_USD) return [];
+  const reserveUSD = String(usdTotal);
+
+  type ParsedCoin = { address: string; symbol: string; humanBalance: number };
+  const parsed: ParsedCoin[] = [];
+  for (const c of coins) {
+    const address = String(c.address || '').toLowerCase();
+    const symbol = String(c.symbol || '');
+    const decimals = Number(c.decimals ?? 18);
+    const raw = String(c.poolBalance || '0');
+    if (!address || !raw || raw === '0') continue;
+    // Skip LP-token coins (basepool LP listed inside metapool coins array).
+    if (address === poolAddress) continue;
+    let humanBalance: number;
+    try {
+      humanBalance = Number(raw) / Math.pow(10, Number.isFinite(decimals) ? decimals : 18);
+    } catch {
+      continue;
+    }
+    if (!Number.isFinite(humanBalance) || humanBalance <= 0) continue;
+    parsed.push({ address, symbol, humanBalance });
+  }
+  if (parsed.length < 2) return [];
+
+  const MAX_COINS_PER_POOL = 8;
+  const limited = parsed.slice(0, MAX_COINS_PER_POOL);
+
+  const out: Pool[] = [];
+  for (let i = 0; i < limited.length; i++) {
+    for (let j = i + 1; j < limited.length; j++) {
+      const a = limited[i];
+      const b = limited[j];
+      // HONESTY GATE — skip stable/stable Curve pairs.
+      // Curve stableswap invariant produces a marginal price ≈ 1.0 near peg even when the pool
+      // is heavily imbalanced (e.g., 3pool with USDT 2.2× USDC still trades USDC/USDT ≈ 1.0001
+      // due to high amplification A). A naive `balance/balance` ratio is wrong by orders of
+      // magnitude for stable pools. Until a proper stableswap solver is wired in, emit no
+      // Curve quote for stable/stable pairs — cross-DEX detection still works via the V3/V2/
+      // Balancer/DexScreener legs. Non-stable pairs (Tricrypto WBTC/WETH, stable/crypto in
+      // metapools, etc.) use the correct CPMM-style balance ratio.
+      const aStable = STABLE_QUOTES.has(normalizeTokenSymbol(a.symbol));
+      const bStable = STABLE_QUOTES.has(normalizeTokenSymbol(b.symbol));
+      if (aStable && bStable) continue;
+      // Convention (matches Uniswap subgraph + downstream canonicalization at L~4504):
+      //   token1Price = "token1 per token0" = balance1/balance0
+      //   token0Price = "token0 per token1" = balance0/balance1
+      // Where a=token0, b=token1.
+      const token1PerToken0 = b.humanBalance / a.humanBalance;
+      const token0PerToken1 = a.humanBalance / b.humanBalance;
+      if (!Number.isFinite(token1PerToken0) || !Number.isFinite(token0PerToken1) || token1PerToken0 <= 0 || token0PerToken1 <= 0) continue;
+      out.push({
+        token0: { symbol: a.symbol, address: a.address },
+        token1: { symbol: b.symbol, address: b.address },
+        token0Price: String(token0PerToken1),
+        token1Price: String(token1PerToken0),
+        reserveUSD,
+        network: 'ethereum',
+        poolAddress,
+        dex: 'Curve',
+        sourceType: 'subgraph',
+      });
+    }
+  }
+  return out;
 };
 
 const CHAIN_MAP: Record<string, NetworkName> = {
@@ -2562,10 +2868,10 @@ const CHAIN_MAP: Record<string, NetworkName> = {
 
 const NETWORK_GAS_MULTIPLIER: Record<NetworkName, number> = {
   ethereum: 1,
-  polygon: 0.18,
-  arbitrum: 0.012,  // $26×0.012 ≈ $0.31 — matches Arbitrum reality (was 0.35 = $6.30 overestimate)
-  base: 0.015,      // $26×0.015 ≈ $0.39 — matches Base reality (was 0.22 = $3.96 overestimate)
-  bsc: 0.22,
+  polygon: 0.044,   // $45×0.044 ≈ $2.00 — Base reality for L2 chains
+  arbitrum: 0.067,  // $45×0.067 ≈ $3.00 — Arbitrum reality ($0.30/tx on fast L2)
+  base: 0.044,      // $45×0.044 ≈ $2.00 — Base reality (low-fee OP-stack chain)
+  bsc: 0.11,        // $45×0.11  ≈ $5.00 — BSC moderate gas
 };
 
 const DEFAULT_GAS_PRICE_GWEI_BY_NETWORK: Record<NetworkName, number> = {
@@ -2654,9 +2960,9 @@ const DEX_ROUTERS: Record<NetworkName, Partial<Record<'Uniswap V3' | 'Uniswap V2
     'Curve': '0x9823df5f33cAf82e9aF0b9405053ae367eA9b847',
   },
   base: {
-    'Uniswap V3': '0xE592427A0AEce92De3Edee1F18E0157C05861564',
+    'Uniswap V3': '0x2626664c2603336E57B271c5C0b26F421741e481',
     'Uniswap V2': '0x4752ba5DBc23f44D87826239FF86bbF073A9f58D',
-    'SushiSwap': '0x6BDED42c6DA8FBf0d2f43e8F9328aBDADA431163',
+    'SushiSwap': '0x6BDED42c6DA8FBf0d2bA55B2fa120C5e0c8D7891',
     'Balancer': '0xBA12222222228d8Ba445958a75a0704d566BF2C8',
     'Curve': '0xd66116D54d1D74c752C33221A881852bEe2e129c',
   },
@@ -2681,43 +2987,48 @@ const PRIORITY_FALLBACK_LIQUIDITY_FRACTION = Math.min(
 
 const OVERLAP_PRIORITY_PAIR_TERMS_BY_NETWORK: Partial<Record<NetworkName, string[]>> = {
   ethereum: [
-    // WETH pairs: exist on V2 + V3 + SushiSwap for real cross-DEX arbitrage
+    // WETH pairs: V2 Uniswap + V3 Uniswap + SushiSwap (only major pairs with deep V2 TVL ≥$100k)
     'LINK WETH', 'WBTC WETH', 'AAVE WETH', 'UNI WETH', 'COMP WETH',
-    // Stablecoin pairs
-    'WBTC USDC',
-    'WBTC USDT',
-    'LINK USDC',
-    'LINK USDT',
-    'UNI USDC',
-    'AAVE USDC',
-    'CRV USDC',
-    'SNX USDC',
-    'LDO USDC',
-    'MKR USDC',
+    'MKR WETH', 'LDO WETH', 'CRV WETH', 'SNX WETH', 'YFI WETH',
+    'ENS WETH', 'RPL WETH', 'GRT WETH', 'BAL WETH', 'CVX WETH',
+    'FXS WETH', 'DYDX WETH', '1INCH WETH', 'MATIC WETH', 'FET WETH',
+    'PEPE WETH', 'SHIB WETH', 'FLOKI WETH',
+    // V3 cross-fee-tier pairs (0.05% vs 0.3% vs 1%) — no V2 needed
+    'WETH USDC', 'WETH USDT', 'WETH DAI',
+    // Stablecoin pairs (only if V2 TVL is likely ≥$100k)
+    'WBTC USDC', 'WBTC USDT',
+    'LINK USDC', 'LINK USDT',
+    'UNI USDC', 'AAVE USDC',
+    'CRV USDC', 'SNX USDC',
+    'LDO USDC', 'MKR USDC',
+    'GRT USDC', 'ENS USDC',
   ],
   arbitrum: [
-    // WETH pairs: exist on V3 + SushiSwap for cross-DEX arb (gas ~$0.31/tx)
-    'MAGIC WETH', 'ARB WETH', 'GMX WETH',
+    // WETH pairs: exist on V3 + SushiSwap V2 for cross-DEX arb (gas ~$0.31/tx)
+    'MAGIC WETH', 'ARB WETH', 'GMX WETH', 'PENDLE WETH',
+    'RDNT WETH', 'LINK WETH', 'GRT WETH', 'JONES WETH',
+    'WBTC WETH', 'UNI WETH', 'AAVE WETH', 'CRV WETH',
+    'SNX WETH', 'BAL WETH', 'FXS WETH', 'COMP WETH',
+    'YFI WETH', 'LDO WETH', 'SUSHI WETH', 'VELA WETH',
+    // V3 cross-fee-tier (0.05% vs 0.3%)
+    'WETH USDC', 'WETH USDT',
     // Stablecoin pairs
-    'ARB USDC',
-    'GMX USDC',
-    'MAGIC USDC',
-    'LINK USDC',
-    'GRAIL USDC',
-    'DPX USDC',
+    'ARB USDC', 'GMX USDC',
+    'MAGIC USDC', 'LINK USDC',
+    'GRAIL USDC', 'DPX USDC',
+    'ARB USDT', 'WBTC USDC',
+    'PENDLE USDC', 'RDNT USDC',
   ],
   base: [
-    'AERO USDC',
-    'DEGEN USDC',
-    'BRETT USDC',
-    'LINK USDC',
+    // WETH pairs: highest-liquidity pools on Base Uniswap V3 + SushiSwap V2
+    'WETH USDC', 'CBETH WETH', 'WETH USDT', 'WBTC WETH', 'DAI WETH',
+    'BRETT WETH', 'DEGEN WETH', 'AERO WETH', 'VIRTUAL WETH',
+    'TOSHI WETH', 'HIGHER WETH', 'WELL WETH',
+    'USDC DAI', 'CBETH USDC',
   ],
   polygon: [
-    'WMATIC USDC',
-    'WMATIC USDT',
-    'LINK USDC',
-    'AAVE USDC',
-    'GHST USDC',
+    'WMATIC USDC', 'WMATIC USDT',
+    'LINK USDC', 'AAVE USDC', 'GHST USDC',
   ],
 };
 
@@ -3072,9 +3383,12 @@ const KNOWN_TOKEN_ADDRESSES: Partial<Record<NetworkName, Record<string, string>>
     USDT: '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2',
     DAI: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb',
     WETH: '0x4200000000000000000000000000000000000006',
+    CBETH: '0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22',
     AERO: '0x940181a94A35A4569E4529A3CDfB74e38FD98631',
     LINK: '0x88Fb150BDc53A65fe94Dea0c9BA0a6dAf8C6e196',
     WBTC: '0x0555E30da8f98308EeBD78F1251D2Abb99f8F78b',
+    BRETT: '0x532f27101965dd16442E59d40670FaF5eBB142E4',
+    DEGEN: '0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed',
   },
 };
 
@@ -3495,6 +3809,18 @@ const getTrackableBaseQuote = (
     const base = leftWeth ? right : left;
     if (!CORE_BASE_TOKENS[network].has(base)) return null;
     return { base, quote: 'WETH' };
+  }
+
+  // STABLE/STABLE pairs (USDC/USDT, USDC/DAI, USDT/DAI): track for depeg arbitrage on Curve 3pool
+  // and equivalent stable AMMs. We choose canonical ordering by sorting alphabetically so the same
+  // pair always maps to one key regardless of token0/token1 ordering in the pool. The lexicographic
+  // first stable becomes `base` (which is token0 in the pair key) — execution code at L3548 picks
+  // token0 as the borrowable asset when both sides are stable, so this is a valid quote side.
+  // Canonical price = "quote per base" ≈ 1.0 near peg; spread = depeg signal.
+  if (leftStable && rightStable) {
+    if (left === right) return null;
+    const [base, quote] = left < right ? [left, right] : [right, left];
+    return { base, quote };
   }
 
   if (leftStable === rightStable) return null;
@@ -4260,12 +4586,23 @@ const findSpreads = (
 
   for (const p of balancerPools || []) {
     const { key, price, pool } = mapPrice(p);
-    if (key && price > 0) balancerMap.set(key, { price, pool });
+    if (!key || price <= 0) continue;
+    // Curve and Balancer can have many pools per canonical (base/quote) pair (e.g., 3pool +
+    // factory-stable-ng metapools all expose USDC/USDT). Keep the highest-TVL pool so noisy
+    // low-TVL pools can't clobber the canonical anchor.
+    const existing = balancerMap.get(key);
+    if (!existing || Number(pool.reserveUSD || 0) > Number(existing.pool.reserveUSD || 0)) {
+      balancerMap.set(key, { price, pool });
+    }
   }
 
   for (const p of curvePools || []) {
     const { key, price, pool } = mapPrice(p);
-    if (key && price > 0) curveMap.set(key, { price, pool });
+    if (!key || price <= 0) continue;
+    const existing = curveMap.get(key);
+    if (!existing || Number(pool.reserveUSD || 0) > Number(existing.pool.reserveUSD || 0)) {
+      curveMap.set(key, { price, pool });
+    }
   }
 
   // Normalize TOKEN/WETH prices from "WETH per TOKEN" to "USD per TOKEN" so the CPMM
@@ -4281,7 +4618,7 @@ const findSpreads = (
     }
   }
   const wethUsdPrice = (() => {
-    if (wethUsdPriceArr.length === 0) return 2000; // fallback if WETH/stable not yet indexed
+    if (wethUsdPriceArr.length === 0) return 3500; // fallback if WETH/stable not yet indexed
     const s = [...wethUsdPriceArr].sort((a, b) => a - b);
     const mid = Math.floor(s.length / 2);
     return s.length % 2 !== 0 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
@@ -4577,6 +4914,7 @@ const findSpreads = (
     const hasSubgraph = buySource === 'subgraph' || sellSource === 'subgraph';
     const fallbackOnly = !hasSubgraph;
     const mixed = buySource !== sellSource;
+    const involvesGecko = buySource === 'gecko' || sellSource === 'gecko';
 
     if (mode === 'prefer_subgraph') {
       if (hasSubgraph && !mixed) return 400_000n;
@@ -4592,7 +4930,12 @@ const findSpreads = (
       return -250_000n;
     }
 
-    return 0n;
+    // Neutral mode still needs a light quality bias so noisy mixed-source routes do not
+    // eclipse cleaner subgraph-anchored candidates before quote sanity checks run.
+    if (hasSubgraph && !mixed) return 160_000n;
+    if (hasSubgraph && mixed) return involvesGecko ? -240_000n : -120_000n;
+    if (fallbackOnly && !mixed) return -180_000n;
+    return -260_000n;
   };
 
   const selectRouteForPolicy = (
@@ -4837,7 +5180,13 @@ const findSpreads = (
     const [networkPart] = key.split(':');
     const pairNetwork = toNetworkName(networkPart);
     const isPriorityOverlapPair = getPriorityOverlapPairKeys(dynamicPriorityTermsByNetwork).has(key);
-    const dexCount = new Set(quotes.map((quote) => canonicalizeDex(quote.dex))).size;
+    // Count distinct venues: different DEX names OR same DEX with different fee tiers (e.g. V3 0.05% vs 0.3%)
+    const venueSet = new Set(quotes.map((quote) => {
+      const dex = canonicalizeDex(quote.dex);
+      const fee = quote.pool.feeTier ?? 0;
+      return dex === 'Uniswap V3' ? `${dex}:${fee}` : dex;
+    }));
+    const dexCount = venueSet.size;
     const sourceSet = new Set(quotes.map((quote) => quote.pool.sourceType || 'subgraph'));
     const hasSubgraphAnchor = sourceSet.has('subgraph');
     const fallbackOnlySingleSource = !hasSubgraphAnchor && sourceSet.size === 1;
@@ -4924,7 +5273,11 @@ const findSpreads = (
 
     for (const buy of buys) {
       for (const sell of sells) {
-        if (buy.dex === sell.dex) continue;
+        // Allow same-named DEX when fee tiers differ (e.g. Uniswap V3 0.05% vs 0.3%) — these are
+        // fully separate liquidity pools and can diverge in price.
+        const sameDexSameFee = buy.dex === sell.dex
+          && (buy.pool.feeTier ?? 0) === (sell.pool.feeTier ?? 0);
+        if (sameDexSameFee) continue;
         if (sell.price <= buy.price) continue;
         const buyLiquidity = parsePoolLiquidity(buy.pool);
         const sellLiquidity = parsePoolLiquidity(sell.pool);
@@ -5194,6 +5547,18 @@ const findSpreads = (
     const buyLiquidityUsd = parsePoolLiquidity(buyEntry.pool);
     const sellLiquidityUsd = parsePoolLiquidity(sellEntry.pool);
     const network = toNetworkName(buyEntry.pool.network || sellEntry.pool.network);
+
+    // Gas-adjusted minimum spread gate: skip pairs whose spread can't realistically cover gas.
+    // ETH mainnet gas ~$42 on $8k loan requires ≥0.55% gross spread just to break even.
+    // L2s (gas ~$0.31) need only ≈0.005% — effectively no gate needed.
+    const gasUsdForNetwork = estimateGasUsdForNetwork(network, config);
+    const networkLoanForSpreadGate = config.perNetworkLoanAmountUsd?.[network] ?? config.loanAmountUsd;
+    const gasAdjustedMinSpreadPercent = (gasUsdForNetwork / networkLoanForSpreadGate) * 100 * 1.4;
+    if (spread < gasAdjustedMinSpreadPercent && gasAdjustedMinSpreadPercent > sourceAdjustedMinSpreadPercent) {
+      diagnostics.droppedBySpread++;
+      pushRejectionSample(diagnostics, { tokenPair: key, reason: 'spread', buyDex: buyEntry.dex, sellDex: sellEntry.dex, spread });
+      continue;
+    }
     const minNetProfitUsd = getRequiredActiveNetProfitUsd(config, network);
     const routeMemoryKey = buildRouteMemoryKey(network, key, buyEntry.dex, sellEntry.dex);
     const routeMemory = routeMemoryByKey.get(routeMemoryKey);
@@ -5274,7 +5639,8 @@ const findSpreads = (
     }
 
     const effectiveMinNetProfitUsd = Math.max(0, minNetProfitUsd + historicalPenaltyUsd + executionPenaltyUsd - executionReliefUsd);
-    const liquidityUsd = Math.max(...quotes.map((q) => parsePoolLiquidity(q.pool)));
+    // Use the MINIMUM of the two trade-side pools — the thin side limits profitability
+    const liquidityUsd = Math.min(buyLiquidityUsd, sellLiquidityUsd);
     if (liquidityUsd < config.minLiquidityUsd) {
       diagnostics.droppedByLiquidity++;
       pushRejectionSample(diagnostics, {
@@ -5301,7 +5667,8 @@ const findSpreads = (
     );
     const executionCandidate = executionEvaluation.candidate;
     if (!executionCandidate) {
-      const requestedLoanAmount = Math.min(config.loanAmountUsd, Math.min(buyLiquidityUsd, sellLiquidityUsd) * config.maxLiquidityUsageFraction);
+      const networkLoanUsd = config.perNetworkLoanAmountUsd?.[network] ?? config.loanAmountUsd;
+      const requestedLoanAmount = Math.min(networkLoanUsd, Math.min(buyLiquidityUsd, sellLiquidityUsd) * config.maxLiquidityUsageFraction);
       const minNetEdgeBpsRequired = getMinNetEdgeBpsForNetwork(config, network);
       const minNetByEdgeRequestedLoan = (requestedLoanAmount * minNetEdgeBpsRequired) / 10_000;
       const effectiveRequiredNetRequestedLoan = Math.max(effectiveMinNetProfitUsd, minNetByEdgeRequestedLoan);
@@ -5902,17 +6269,17 @@ const runScan = async (config: ScannerConfig, networks: string[]) => {
     executionFeedbackByRoute,
   ] = await Promise.all([
     Promise.allSettled([
-      fetchSubgraphWithFallback(UNI_V3_SUBGRAPH, UNI_V3_SUBGRAPH_PUBLIC, topPairsQuery(1000)),
-      fetchSubgraphWithFallback(UNI_V2_SUBGRAPH, UNI_V2_SUBGRAPH_PUBLIC, topV2PairsQuery(1000)),
-      fetchSubgraphWithFallback(SUSHI_SUBGRAPH, SUSHI_SUBGRAPH_PUBLIC, topV2PairsQuery(1000)),
-      fetchSubgraphWithFallback(BALANCER_SUBGRAPH, BALANCER_SUBGRAPH_PUBLIC, topBalancerPoolsQuery(1000)),
-      fetchSubgraphWithFallback(CURVE_SUBGRAPH, CURVE_SUBGRAPH_PUBLIC, topCurvePoolsQuery(1000)),
+      fetchSubgraphWithFallback(UNI_V3_SUBGRAPH, UNI_V3_SUBGRAPH_PUBLIC, topPairsQuery(200)),
+      fetchSubgraphWithFallback(UNI_V2_SUBGRAPH, UNI_V2_SUBGRAPH_PUBLIC, topV2PairsQuery(200)),
+      fetchSubgraphWithFallback(SUSHI_SUBGRAPH, SUSHI_SUBGRAPH_PUBLIC, topV2PairsQuery(200)),
+      fetchSubgraphWithFallback(BALANCER_SUBGRAPH, BALANCER_SUBGRAPH_PUBLIC, topBalancerPoolsQuery(100)),
+      fetchCurveOfficialPools(),
     ]),
     // Arbitrum-specific subgraphs: fetched only when Arbitrum is in the requested networks.
     networks.includes('arbitrum')
       ? Promise.allSettled([
-          fetchSubgraphWithFallback(UNI_V3_ARB_SUBGRAPH, UNI_V3_ARB_SUBGRAPH_PUBLIC, topPairsQuery(500)),
-          fetchSubgraphWithFallback(SUSHI_ARB_SUBGRAPH, SUSHI_ARB_SUBGRAPH_PUBLIC, topV2PairsQuery(500)),
+          fetchSubgraphWithFallback(UNI_V3_ARB_SUBGRAPH, UNI_V3_ARB_SUBGRAPH_PUBLIC, topPairsQuery(200)),
+          fetchSubgraphWithFallback(SUSHI_ARB_SUBGRAPH, SUSHI_ARB_SUBGRAPH_PUBLIC, topV2PairsQuery(200)),
         ])
       : Promise.resolve([] as PromiseSettledResult<unknown>[]),
     fetchPriorityPairSubgraphPools(networks, dynamicPriority.termsByNetwork),
@@ -5977,11 +6344,9 @@ const runScan = async (config: ScannerConfig, networks: string[]) => {
   const uniV2Pools: Pool[] = (uniV2Data?.pairs || []).map((pair: Record<string, unknown>) => toPoolFromPair(pair, 'Uniswap V2'));
   const sushiPools: Pool[] = (sushiData?.pairs || []).map((pair: Record<string, unknown>) => toPoolFromPair(pair, 'SushiSwap'));
   const balancerPools: Pool[] = (balancerData?.pools || [])
-    .map((pool: Record<string, unknown>) => toPoolFromBalancer(pool))
-    .filter((pool: Pool | null): pool is Pool => pool !== null);
+    .flatMap((pool: Record<string, unknown>) => toPoolFromBalancer(pool));
   const curvePools: Pool[] = (curveData?.pools || [])
-    .map((pool: Record<string, unknown>) => toPoolFromCurve(pool))
-    .filter((pool: Pool | null): pool is Pool => pool !== null);
+    .flatMap((pool: CurveOfficialPool) => toPoolFromCurve(pool));
 
   // Process Arbitrum-specific subgraph results and tag pools with network='arbitrum'.
   const arbResults = (arbSubgraphResults as PromiseSettledResult<unknown>[]) || [];
@@ -6030,12 +6395,12 @@ const runScan = async (config: ScannerConfig, networks: string[]) => {
   mergeFallbackPools(hardenedSushiPools, hardenDexPoolSet('sushi', prioritySubgraph.sushiPools));
 
   // Enable index read-through so scanner reads pre-fetched quotes from indexer-refresh-fast.
-  // DexScreener/Gecko data flows: indexer-refresh-fast → quotes_index_latest → scanner (here).
-  // Direct DexScreener/Gecko fallbacks in the scanner are intentionally kept off.
+  // Direct fallbacks remain available when explicitly enabled by request/env so the scanner
+  // can recover cross-source overlap during thin sameDex regimes.
   const subgraphFailCount = subgraphResults.filter((r) => r.status === 'rejected').length;
   const subgraphStarved = subgraphFailCount >= 3;
-  const effectiveEnableDexScreener = enableDexScreener || subgraphStarved;
-  const effectiveEnableGecko = enableGecko || subgraphStarved;
+  const effectiveEnableDexScreener = enableDexScreener;
+  const effectiveEnableGecko = enableGecko;
 
   if (effectiveEnableDexScreener) {
     mergeFallbackPools(hardenedUniV3Pools, dexFallback.uniV3Pools);

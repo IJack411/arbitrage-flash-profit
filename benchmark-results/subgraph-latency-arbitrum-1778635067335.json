@@ -1,0 +1,228 @@
+{
+  "benchmark_run": "2026-05-13T01:17:21.811Z",
+  "network": "arbitrum",
+  "endpoints": {
+    "Uniswap V3": {
+      "samples": [
+        {
+          "test_id": 1,
+          "success": false,
+          "latency": 1397,
+          "error": "fetch failed",
+          "timestamp": "2026-05-13T01:17:23.209Z"
+        },
+        {
+          "test_id": 2,
+          "success": false,
+          "latency": 546,
+          "error": "fetch failed",
+          "timestamp": "2026-05-13T01:17:24.261Z"
+        },
+        {
+          "test_id": 3,
+          "success": false,
+          "latency": 532,
+          "error": "fetch failed",
+          "timestamp": "2026-05-13T01:17:25.306Z"
+        },
+        {
+          "test_id": 4,
+          "success": false,
+          "latency": 529,
+          "error": "fetch failed",
+          "timestamp": "2026-05-13T01:17:26.349Z"
+        },
+        {
+          "test_id": 5,
+          "success": false,
+          "latency": 517,
+          "error": "fetch failed",
+          "timestamp": "2026-05-13T01:17:27.379Z"
+        },
+        {
+          "test_id": 6,
+          "success": false,
+          "latency": 583,
+          "error": "auth error: missing authorization header",
+          "timestamp": "2026-05-13T01:17:28.511Z"
+        },
+        {
+          "test_id": 7,
+          "success": false,
+          "latency": 449,
+          "error": "auth error: missing authorization header",
+          "timestamp": "2026-05-13T01:17:29.480Z"
+        },
+        {
+          "test_id": 8,
+          "success": false,
+          "latency": 508,
+          "error": "auth error: missing authorization header",
+          "timestamp": "2026-05-13T01:17:30.506Z"
+        },
+        {
+          "test_id": 9,
+          "success": false,
+          "latency": 575,
+          "error": "auth error: missing authorization header",
+          "timestamp": "2026-05-13T01:17:31.586Z"
+        },
+        {
+          "test_id": 10,
+          "success": false,
+          "latency": 230,
+          "error": "auth error: missing authorization header",
+          "timestamp": "2026-05-13T01:17:32.329Z"
+        }
+      ]
+    },
+    "SushiSwap": {
+      "samples": [
+        {
+          "test_id": 1,
+          "success": false,
+          "latency": 596,
+          "error": "fetch failed",
+          "timestamp": "2026-05-13T01:17:33.426Z"
+        },
+        {
+          "test_id": 2,
+          "success": false,
+          "latency": 182,
+          "error": "fetch failed",
+          "timestamp": "2026-05-13T01:17:34.111Z"
+        },
+        {
+          "test_id": 3,
+          "success": false,
+          "latency": 64,
+          "error": "fetch failed",
+          "timestamp": "2026-05-13T01:17:34.692Z"
+        },
+        {
+          "test_id": 4,
+          "success": false,
+          "latency": 58,
+          "error": "fetch failed",
+          "timestamp": "2026-05-13T01:17:35.261Z"
+        },
+        {
+          "test_id": 5,
+          "success": false,
+          "latency": 57,
+          "error": "fetch failed",
+          "timestamp": "2026-05-13T01:17:35.827Z"
+        },
+        {
+          "test_id": 6,
+          "success": false,
+          "latency": 151,
+          "error": "fetch failed",
+          "timestamp": "2026-05-13T01:17:36.490Z"
+        },
+        {
+          "test_id": 7,
+          "success": false,
+          "latency": 37,
+          "error": "fetch failed",
+          "timestamp": "2026-05-13T01:17:37.030Z"
+        },
+        {
+          "test_id": 8,
+          "success": false,
+          "latency": 40,
+          "error": "fetch failed",
+          "timestamp": "2026-05-13T01:17:37.578Z"
+        },
+        {
+          "test_id": 9,
+          "success": false,
+          "latency": 54,
+          "error": "fetch failed",
+          "timestamp": "2026-05-13T01:17:38.134Z"
+        },
+        {
+          "test_id": 10,
+          "success": false,
+          "latency": 37,
+          "error": "fetch failed",
+          "timestamp": "2026-05-13T01:17:38.677Z"
+        }
+      ]
+    },
+    "Curve": {
+      "samples": [
+        {
+          "test_id": 1,
+          "success": false,
+          "latency": 2739,
+          "error": "fetch failed",
+          "timestamp": "2026-05-13T01:17:41.924Z"
+        },
+        {
+          "test_id": 2,
+          "success": false,
+          "latency": 41,
+          "error": "fetch failed",
+          "timestamp": "2026-05-13T01:17:42.468Z"
+        },
+        {
+          "test_id": 3,
+          "success": false,
+          "latency": 37,
+          "error": "fetch failed",
+          "timestamp": "2026-05-13T01:17:43.007Z"
+        },
+        {
+          "test_id": 4,
+          "success": false,
+          "latency": 40,
+          "error": "fetch failed",
+          "timestamp": "2026-05-13T01:17:43.551Z"
+        },
+        {
+          "test_id": 5,
+          "success": false,
+          "latency": 37,
+          "error": "fetch failed",
+          "timestamp": "2026-05-13T01:17:44.092Z"
+        },
+        {
+          "test_id": 6,
+          "success": false,
+          "latency": 36,
+          "error": "fetch failed",
+          "timestamp": "2026-05-13T01:17:44.640Z"
+        },
+        {
+          "test_id": 7,
+          "success": false,
+          "latency": 36,
+          "error": "fetch failed",
+          "timestamp": "2026-05-13T01:17:45.184Z"
+        },
+        {
+          "test_id": 8,
+          "success": false,
+          "latency": 36,
+          "error": "fetch failed",
+          "timestamp": "2026-05-13T01:17:45.733Z"
+        },
+        {
+          "test_id": 9,
+          "success": false,
+          "latency": 40,
+          "error": "fetch failed",
+          "timestamp": "2026-05-13T01:17:46.278Z"
+        },
+        {
+          "test_id": 10,
+          "success": false,
+          "latency": 38,
+          "error": "fetch failed",
+          "timestamp": "2026-05-13T01:17:46.826Z"
+        }
+      ]
+    }
+  }
+}

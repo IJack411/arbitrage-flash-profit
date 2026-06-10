@@ -5,8 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { indexerService, PoolData, IndexerStats } from '@/lib/web3/indexerService';
 import { IndexerStatsCard } from './indexer/IndexerStatsCard';
 import { PoolDataTable } from './indexer/PoolDataTable';
-import { MempoolMonitor } from './indexer/MempoolMonitor';
-import { Database, Zap, RefreshCw, Settings, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { Database, RefreshCw, Settings, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import { getUnifiedConfig, saveApiConfig } from '@/lib/web3/unifiedApiConfig';
 
 export const IndexerDashboard: React.FC = () => {
@@ -54,7 +53,7 @@ export const IndexerDashboard: React.FC = () => {
             <Database className="h-7 w-7 text-[#00F0FF]" />
             High-Speed Indexer
           </h2>
-          <p className="text-gray-400 mt-1">Optimized data fetching via The Graph + WebSocket mempool monitoring</p>
+          <p className="text-gray-400 mt-1">Optimized pool data fetching via The Graph subgraphs.</p>
         </div>
         <div className="flex items-center gap-3">
           <Badge variant={isRpcConfigured ? 'default' : 'destructive'} className="flex items-center gap-1">
@@ -79,16 +78,11 @@ export const IndexerDashboard: React.FC = () => {
       <Tabs defaultValue="pools" className="space-y-4">
         <TabsList className="bg-gray-800 border border-gray-700">
           <TabsTrigger value="pools">Pool Data</TabsTrigger>
-          <TabsTrigger value="mempool">Mempool</TabsTrigger>
           <TabsTrigger value="config">Configuration</TabsTrigger>
         </TabsList>
 
         <TabsContent value="pools">
           <PoolDataTable pools={pools} loading={loading} />
-        </TabsContent>
-
-        <TabsContent value="mempool">
-          <MempoolMonitor />
         </TabsContent>
 
         <TabsContent value="config">

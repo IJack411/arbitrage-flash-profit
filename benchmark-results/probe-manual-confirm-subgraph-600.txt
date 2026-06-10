@@ -1,0 +1,16 @@
+Probe target: https://ujhsrxinfcycjtulpvqk.supabase.co/functions/v1/scan-arbitrage-opportunities
+Probe networks: ethereum
+Resolved host: ujhsrxinfcycjtulpvqk.supabase.co -> 172.64.149.246
+profitabilityScorecard: quoteOverlap=weak slippageControl=ok netMargin=weak executionRisk=ok routeDiversity=none overlapGatePassRate=0.0%
+active=0 watch=0 pairKeys=0 cand=0 badQuotes=0 spreadDrop=0 liqDrop=0 slipDrop=0 netDrop=0 sameDexDrop=0 riskDrop=0
+sourcePolicy: mode=neutral useExternalRawFeed=false
+sourcePolicyNotes: External raw feed mode is disabled; current scanner behavior unchanged.
+quoteFilterStats: dexscreenerOutliersDropped=0
+indexCache enabled=true requested=1 accepted=0 hits=0 misses=0 stale=0 saved=0 p90AgeMs=0
+sameDexSourceComposition: subgraphOnly=0 fallbackOnly=0 mixed=0
+sameDexReasons: insufficientQuotes=0 insufficientValidPrices=0 insufficientDexOverlap=0 noCrossDexPositiveSpread=0 missingBestPairEntries=0
+badQuoteReasons: invalidPriceSet=0 nonPositiveOrInvalidCross=0 unreasonableSpread=0 unreasonableNearMissRoi=0
+badQuoteSourceComposition: subgraphOnly=0 fallbackOnly=0 mixed=0 subgraphDexscreener=0 subgraphGecko=0 dexscreenerOnly=0 geckoOnly=0 crossFallback=0 unknownRoute=0
+routeAlternativeInsights: inspectedPairs=0 samples=0
+policyDryRunSummary: enabled=true preferSubgraph.diff=0 preferSubgraph.mixedExtreme=0 preferSubgraph.subgraphAnchored=0 preferSubgraph.marginMedian=0 preferSubgraph.marginMin=0 preferSubgraph.marginDistinctMedian=0 preferSubgraph.marginDistinctMin=0 preferSubgraph.flipThresholdMedian=0 preferSubgraph.flipThresholdMin=0 preferSubgraph.topTies=0 preferExternalRaw.diff=0 preferExternalRaw.mixedExtreme=0 preferExternalRaw.subgraphAnchored=0 preferExternalRaw.marginMedian=0 preferExternalRaw.marginMin=0 preferExternalRaw.marginDistinctMedian=0 preferExternalRaw.marginDistinctMin=0 preferExternalRaw.flipThresholdMedian=0 preferExternalRaw.flipThresholdMin=0 preferExternalRaw.topTies=0
+rejectionSamples= []

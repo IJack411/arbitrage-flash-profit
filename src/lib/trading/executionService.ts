@@ -1,7 +1,5 @@
 import { supabase } from '@/lib/supabase';
 
-export type TradeExecutionMode = 'demo' | 'live';
-
 export interface CanonicalExecutionPayload {
   version: 'v1';
   network: string;
@@ -60,7 +58,6 @@ interface OpportunityLike {
 
 interface ExecuteTradeRequest {
   trade: ExecutableTrade;
-  mode: TradeExecutionMode;
   account?: string | null;
   contractAddress?: string;
   maxSlippagePercent: number;
@@ -69,8 +66,7 @@ interface ExecuteTradeRequest {
 
 export interface ExecuteTradeResult {
   success: boolean;
-  mode: TradeExecutionMode;
-  status: 'simulated' | 'submitted';
+  status: 'submitted';
   actualProfit: number;
   gasCost: number;
   txHash: string;
@@ -78,7 +74,7 @@ export interface ExecuteTradeResult {
   message: string;
 }
 
-const LIVE_SUPPORTED_NETWORKS = new Set(['ethereum']);
+const LIVE_SUPPORTED_NETWORKS = new Set(['ethereum', 'base', 'arbitrum']);
 const KNOWN_DEV_CONTRACT_ADDRESSES = new Set([
   '0xe7f1725e7734ce288f8367e1bb143e90bb3f0512', // common local hardhat deploy address
   '0x5fbdb2315678afecb367f032d93f642f64180aa3', // common local hardhat deploy address
@@ -90,14 +86,14 @@ const getEnvNumber = (key: string, fallback: number): number => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 };
 
-const LIVE_MAX_SLIPPAGE_PERCENT = getEnvNumber('LIVE_MAX_SLIPPAGE_PERCENT', 2.0);
+const LIVE_MAX_SLIPPAGE_PERCENT = getEnvNumber('LIVE_MAX_SLIPPAGE_PERCENT', 3.0);
 const LIVE_MAX_LOAN_USD = getEnvNumber('LIVE_MAX_LOAN_USD', 25000);
-const LIVE_MIN_NET_PROFIT_USD = getEnvNumber('LIVE_MIN_NET_PROFIT_USD', 25);
-const LIVE_MAX_GAS_TO_PROFIT_RATIO = getEnvNumber('LIVE_MAX_GAS_TO_PROFIT_RATIO', 0.4);
+const LIVE_MIN_NET_PROFIT_USD = getEnvNumber('LIVE_MIN_NET_PROFIT_USD', 3);
+const LIVE_MAX_GAS_TO_PROFIT_RATIO = getEnvNumber('LIVE_MAX_GAS_TO_PROFIT_RATIO', 0.6);
 const LIVE_PROFIT_BUFFER_FRACTION = Math.max(0, Math.min(0.8, getEnvNumber('LIVE_PROFIT_BUFFER_PERCENT', 15) / 100));
 const LIVE_GAS_BUFFER_FRACTION = Math.max(0, Math.min(1, getEnvNumber('LIVE_GAS_BUFFER_PERCENT', 20) / 100));
-const LIVE_SLIPPAGE_BUFFER_PERCENT = Math.max(0, getEnvNumber('LIVE_SLIPPAGE_BUFFER_PERCENT', 0.25));
-const LIVE_MIN_BUFFERED_NET_USD = getEnvNumber('LIVE_MIN_BUFFERED_NET_USD', 10);
+const LIVE_SLIPPAGE_BUFFER_PERCENT = Math.max(0, getEnvNumber('LIVE_SLIPPAGE_BUFFER_PERCENT', 0));
+const LIVE_MIN_BUFFERED_NET_USD = getEnvNumber('LIVE_MIN_BUFFERED_NET_USD', 2);
 const LIVE_CIRCUIT_BREAKER_ENABLED = String(import.meta.env.VITE_LIVE_CIRCUIT_BREAKER_ENABLED || 'true').toLowerCase() !== 'false';
 const LIVE_CIRCUIT_BREAKER_CONSECUTIVE_LOSSES = Math.max(1, Math.round(getEnvNumber('LIVE_CIRCUIT_BREAKER_CONSECUTIVE_LOSSES', 3)));
 const LIVE_CIRCUIT_BREAKER_DAILY_LOSS_USD = Math.max(1, getEnvNumber('LIVE_CIRCUIT_BREAKER_DAILY_LOSS_USD', 250));
@@ -118,7 +114,7 @@ const buildRouteMemoryKey = (trade: ExecutableTrade): string => {
 const persistRouteMemory = async (
   trade: ExecutableTrade,
   payload: {
-    status: 'simulated' | 'submitted' | 'failed';
+    status: 'submitted' | 'failed';
     actualProfit?: number;
     errorMessage?: string;
   },
@@ -304,7 +300,7 @@ const enforceLiveCircuitBreaker = async (): Promise<string | null> => {
 
 const updateLiveCircuitBreakerAfterExecution = async (
   payload: {
-    status: 'simulated' | 'submitted' | 'failed';
+    status: 'submitted' | 'failed';
     actualProfit?: number;
   },
   fallbackGasCost: number,
@@ -359,16 +355,10 @@ const updateLiveCircuitBreakerAfterExecution = async (
   await persistCircuitBreakerState(state);
 };
 
-const buildSyntheticTxHash = (prefix: string, seed: string): string => {
-  const normalized = `${prefix}-${seed}-${Date.now()}`.replace(/[^a-zA-Z0-9-]/g, '').slice(0, 48);
-  return `${prefix}-${normalized}`;
-};
-
 const persistExecutionLog = async (
   trade: ExecutableTrade,
-  mode: TradeExecutionMode,
   payload: {
-    status: 'simulated' | 'submitted' | 'failed';
+    status: 'submitted' | 'failed';
     actualProfit?: number;
     txHash?: string;
     bundleHash?: string;
@@ -377,8 +367,6 @@ const persistExecutionLog = async (
     metadata?: Record<string, unknown>;
   },
 ) => {
-  const executionMode = mode === 'demo' ? 'simulation' : 'live';
-
   try {
     await supabase.from('trade_execution_logs').insert({
       user_id: 'default',
@@ -396,7 +384,7 @@ const persistExecutionLog = async (
       tx_hash: payload.txHash ?? null,
       flashbots_bundle_hash: payload.bundleHash ?? null,
       status: payload.status,
-      execution_mode: executionMode,
+      execution_mode: 'live',
       error_message: payload.errorMessage ?? null,
       failure_reason: payload.status === 'failed' ? payload.errorMessage ?? 'Execution failed' : null,
       executed_at: new Date().toISOString(),
@@ -413,15 +401,13 @@ const persistExecutionLog = async (
       errorMessage: payload.errorMessage,
     });
 
-    if (mode === 'live') {
-      await updateLiveCircuitBreakerAfterExecution(
-        {
-          status: payload.status,
-          actualProfit: payload.actualProfit,
-        },
-        trade.gasCost,
-      );
-    }
+    await updateLiveCircuitBreakerAfterExecution(
+      {
+        status: payload.status,
+        actualProfit: payload.actualProfit,
+      },
+      trade.gasCost,
+    );
   } catch (error) {
     console.warn('Failed to persist trade execution log', error);
   }
@@ -449,7 +435,7 @@ export const getLiveExecutionBlocker = (
     return 'Configured contract address looks like a local test deployment. Set your real mainnet contract address before live trading.';
   }
   if (!supportsLiveExecution(trade.network)) {
-    return `Live execution is currently wired for Ethereum mainnet only. ${trade.network} trades can still run in demo mode.`;
+    return `Live execution is currently wired for Ethereum mainnet only. ${trade.network} is not yet supported for live trades.`;
   }
   return null;
 };
@@ -525,7 +511,6 @@ export const normalizeOpportunityToTrade = (
 
 export const executeArbitrageTrade = async ({
   trade,
-  mode,
   account,
   contractAddress,
   maxSlippagePercent,
@@ -537,176 +522,152 @@ export const executeArbitrageTrade = async ({
     ...(metadata ?? {}),
   });
 
-  if (mode === 'live') {
-    const circuitBreakerBlocker = await enforceLiveCircuitBreaker();
-    if (circuitBreakerBlocker) {
-      await persistExecutionLog(trade, mode, {
-        status: 'failed',
-        errorMessage: circuitBreakerBlocker,
-        metadata: mergeExecutionMetadata({ blocked: true, reason: 'circuit_breaker_active' }),
-      });
-      throw new Error(circuitBreakerBlocker);
-    }
-
-    const blocker = getLiveExecutionBlocker({ network: routeNetwork }, account, contractAddress);
-    if (blocker) {
-      await persistExecutionLog(trade, mode, {
-        status: 'failed',
-        errorMessage: blocker,
-        metadata: mergeExecutionMetadata({ blocked: true }),
-      });
-      throw new Error(blocker);
-    }
-
-    const effectiveMaxSlippagePercent = Math.max(0.1, LIVE_MAX_SLIPPAGE_PERCENT - LIVE_SLIPPAGE_BUFFER_PERCENT);
-    if (maxSlippagePercent > effectiveMaxSlippagePercent) {
-      const riskBlocker = `Live trade blocked: max slippage is above buffered cap ${effectiveMaxSlippagePercent.toFixed(2)}% (base ${LIVE_MAX_SLIPPAGE_PERCENT.toFixed(2)}%, buffer ${LIVE_SLIPPAGE_BUFFER_PERCENT.toFixed(2)}%).`;
-      await persistExecutionLog(trade, mode, {
-        status: 'failed',
-        errorMessage: riskBlocker,
-        metadata: mergeExecutionMetadata({
-          blocked: true,
-          reason: 'slippage_cap',
-          slippageCapPercent: LIVE_MAX_SLIPPAGE_PERCENT,
-          slippageBufferPercent: LIVE_SLIPPAGE_BUFFER_PERCENT,
-          effectiveMaxSlippagePercent,
-        }),
-      });
-      throw new Error(riskBlocker);
-    }
-
-    if (trade.loanAmount > LIVE_MAX_LOAN_USD) {
-      const riskBlocker = `Live trade blocked: loan amount exceeds $${Math.round(LIVE_MAX_LOAN_USD).toLocaleString()} safety cap. Increase only after stable live results.`;
-      await persistExecutionLog(trade, mode, {
-        status: 'failed',
-        errorMessage: riskBlocker,
-        metadata: mergeExecutionMetadata({ blocked: true, reason: 'loan_cap' }),
-      });
-      throw new Error(riskBlocker);
-    }
-
-    if (trade.expectedProfit < LIVE_MIN_NET_PROFIT_USD) {
-      const riskBlocker = `Live trade blocked: expected net profit is below $${LIVE_MIN_NET_PROFIT_USD.toFixed(2)} minimum live threshold.`;
-      await persistExecutionLog(trade, mode, {
-        status: 'failed',
-        errorMessage: riskBlocker,
-        metadata: mergeExecutionMetadata({ blocked: true, reason: 'profit_floor' }),
-      });
-      throw new Error(riskBlocker);
-    }
-
-    const bufferedExpectedNet = (trade.expectedProfit * (1 - LIVE_PROFIT_BUFFER_FRACTION))
-      - (trade.gasCost * LIVE_GAS_BUFFER_FRACTION);
-    if (bufferedExpectedNet < LIVE_MIN_BUFFERED_NET_USD) {
-      const riskBlocker = `Live trade blocked: buffered net profit $${bufferedExpectedNet.toFixed(2)} is below minimum $${LIVE_MIN_BUFFERED_NET_USD.toFixed(2)} (profit buffer ${(LIVE_PROFIT_BUFFER_FRACTION * 100).toFixed(0)}%, gas buffer ${(LIVE_GAS_BUFFER_FRACTION * 100).toFixed(0)}%).`;
-      await persistExecutionLog(trade, mode, {
-        status: 'failed',
-        errorMessage: riskBlocker,
-        metadata: mergeExecutionMetadata({
-          blocked: true,
-          reason: 'buffered_net_floor',
-          bufferedExpectedNet,
-          minBufferedNetUsd: LIVE_MIN_BUFFERED_NET_USD,
-          profitBufferFraction: LIVE_PROFIT_BUFFER_FRACTION,
-          gasBufferFraction: LIVE_GAS_BUFFER_FRACTION,
-        }),
-      });
-      throw new Error(riskBlocker);
-    }
-
-    if (trade.gasCost > trade.expectedProfit * LIVE_MAX_GAS_TO_PROFIT_RATIO) {
-      const riskBlocker = `Live trade blocked: gas cost is too high relative to expected net profit (ratio cap ${LIVE_MAX_GAS_TO_PROFIT_RATIO}).`;
-      await persistExecutionLog(trade, mode, {
-        status: 'failed',
-        errorMessage: riskBlocker,
-        metadata: mergeExecutionMetadata({ blocked: true, reason: 'gas_efficiency' }),
-      });
-      throw new Error(riskBlocker);
-    }
-
-    try {
-      const { data, error } = await supabase.functions.invoke('flashbots-executor', {
-        body: {
-          action: 'execute-arbitrage',
-          params: {
-            opportunity: {
-              tokenPair: trade.tokenPair,
-              buyDex: trade.buyDex,
-              sellDex: trade.sellDex,
-              network: routeNetwork,
-              loanAmount: trade.loanAmount,
-              expectedProfit: trade.expectedProfit,
-              executionPayload: trade.executionPayload ?? null,
-            },
-            walletAddress: account,
-            contractAddress,
-            maxSlippage: maxSlippagePercent,
-          },
-        },
-      });
-
-      if (error) throw error;
-
-      const actualProfit = roundToCents(Number(data?.actualProfit ?? trade.expectedProfit));
-      const txHash = typeof data?.txHash === 'string' && data.txHash.length > 0
-        ? data.txHash
-        : typeof data?.bundleHash === 'string' && data.bundleHash.length > 0
-          ? data.bundleHash
-          : buildSyntheticTxHash('live', trade.id);
-
-      const result: ExecuteTradeResult = {
-        success: true,
-        mode,
-        status: 'submitted',
-        actualProfit,
-        gasCost: trade.gasCost,
-        txHash,
-        bundleHash: typeof data?.bundleHash === 'string' ? data.bundleHash : undefined,
-        message: 'Live trade submitted to the execution backend.',
-      };
-
-      await persistExecutionLog(trade, mode, {
-        status: 'submitted',
-        actualProfit,
-        txHash: result.txHash,
-        bundleHash: result.bundleHash,
-        rawResponse: data,
-        metadata: mergeExecutionMetadata({ liveSubmission: true }),
-      });
-
-      return result;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Live execution failed';
-      await persistExecutionLog(trade, mode, {
-        status: 'failed',
-        errorMessage,
-        metadata: mergeExecutionMetadata({ liveSubmission: true }),
-      });
-      throw error instanceof Error ? error : new Error(errorMessage);
-    }
+  const circuitBreakerBlocker = await enforceLiveCircuitBreaker();
+  if (circuitBreakerBlocker) {
+    await persistExecutionLog(trade, {
+      status: 'failed',
+      errorMessage: circuitBreakerBlocker,
+      metadata: mergeExecutionMetadata({ blocked: true, reason: 'circuit_breaker_active' }),
+    });
+    throw new Error(circuitBreakerBlocker);
   }
 
-  const actualProfit = roundToCents(trade.expectedProfit);
-  const txHash = buildSyntheticTxHash('demo', trade.id);
-  const result: ExecuteTradeResult = {
-    success: true,
-    mode,
-    status: 'simulated',
-    actualProfit,
-    gasCost: trade.gasCost,
-    txHash,
-    message: 'Demo execution recorded against live market data.',
-  };
+  const blocker = getLiveExecutionBlocker({ network: routeNetwork }, account, contractAddress);
+  if (blocker) {
+    await persistExecutionLog(trade, {
+      status: 'failed',
+      errorMessage: blocker,
+      metadata: mergeExecutionMetadata({ blocked: true }),
+    });
+    throw new Error(blocker);
+  }
 
-  await persistExecutionLog(trade, mode, {
-    status: 'simulated',
-    actualProfit,
-    txHash,
-    metadata: mergeExecutionMetadata({
-      simulatedFromRealOpportunity: true,
-      maxSlippagePercent,
-    }),
-  });
+  const effectiveMaxSlippagePercent = Math.max(0.1, LIVE_MAX_SLIPPAGE_PERCENT - LIVE_SLIPPAGE_BUFFER_PERCENT);
+  if (maxSlippagePercent > effectiveMaxSlippagePercent) {
+    const riskBlocker = `Live trade blocked: max slippage is above buffered cap ${effectiveMaxSlippagePercent.toFixed(2)}% (base ${LIVE_MAX_SLIPPAGE_PERCENT.toFixed(2)}%, buffer ${LIVE_SLIPPAGE_BUFFER_PERCENT.toFixed(2)}%).`;
+    await persistExecutionLog(trade, {
+      status: 'failed',
+      errorMessage: riskBlocker,
+      metadata: mergeExecutionMetadata({
+        blocked: true,
+        reason: 'slippage_cap',
+        slippageCapPercent: LIVE_MAX_SLIPPAGE_PERCENT,
+        slippageBufferPercent: LIVE_SLIPPAGE_BUFFER_PERCENT,
+        effectiveMaxSlippagePercent,
+      }),
+    });
+    throw new Error(riskBlocker);
+  }
 
-  return result;
+  if (trade.loanAmount > LIVE_MAX_LOAN_USD) {
+    const riskBlocker = `Live trade blocked: loan amount exceeds $${Math.round(LIVE_MAX_LOAN_USD).toLocaleString()} safety cap. Increase only after stable live results.`;
+    await persistExecutionLog(trade, {
+      status: 'failed',
+      errorMessage: riskBlocker,
+      metadata: mergeExecutionMetadata({ blocked: true, reason: 'loan_cap' }),
+    });
+    throw new Error(riskBlocker);
+  }
+
+  if (trade.expectedProfit < LIVE_MIN_NET_PROFIT_USD) {
+    const riskBlocker = `Live trade blocked: expected net profit is below $${LIVE_MIN_NET_PROFIT_USD.toFixed(2)} minimum live threshold.`;
+    await persistExecutionLog(trade, {
+      status: 'failed',
+      errorMessage: riskBlocker,
+      metadata: mergeExecutionMetadata({ blocked: true, reason: 'profit_floor' }),
+    });
+    throw new Error(riskBlocker);
+  }
+
+  const bufferedExpectedNet = (trade.expectedProfit * (1 - LIVE_PROFIT_BUFFER_FRACTION))
+    - (trade.gasCost * LIVE_GAS_BUFFER_FRACTION);
+  if (bufferedExpectedNet < LIVE_MIN_BUFFERED_NET_USD) {
+    const riskBlocker = `Live trade blocked: buffered net profit $${bufferedExpectedNet.toFixed(2)} is below minimum $${LIVE_MIN_BUFFERED_NET_USD.toFixed(2)} (profit buffer ${(LIVE_PROFIT_BUFFER_FRACTION * 100).toFixed(0)}%, gas buffer ${(LIVE_GAS_BUFFER_FRACTION * 100).toFixed(0)}%).`;
+    await persistExecutionLog(trade, {
+      status: 'failed',
+      errorMessage: riskBlocker,
+      metadata: mergeExecutionMetadata({
+        blocked: true,
+        reason: 'buffered_net_floor',
+        bufferedExpectedNet,
+        minBufferedNetUsd: LIVE_MIN_BUFFERED_NET_USD,
+        profitBufferFraction: LIVE_PROFIT_BUFFER_FRACTION,
+        gasBufferFraction: LIVE_GAS_BUFFER_FRACTION,
+      }),
+    });
+    throw new Error(riskBlocker);
+  }
+
+  if (trade.gasCost > trade.expectedProfit * LIVE_MAX_GAS_TO_PROFIT_RATIO) {
+    const riskBlocker = `Live trade blocked: gas cost is too high relative to expected net profit (ratio cap ${LIVE_MAX_GAS_TO_PROFIT_RATIO}).`;
+    await persistExecutionLog(trade, {
+      status: 'failed',
+      errorMessage: riskBlocker,
+      metadata: mergeExecutionMetadata({ blocked: true, reason: 'gas_efficiency' }),
+    });
+    throw new Error(riskBlocker);
+  }
+
+  try {
+    const { data, error } = await supabase.functions.invoke('flashbots-executor', {
+      body: {
+        action: 'execute-arbitrage',
+        params: {
+          opportunity: {
+            tokenPair: trade.tokenPair,
+            buyDex: trade.buyDex,
+            sellDex: trade.sellDex,
+            network: routeNetwork,
+            loanAmount: trade.loanAmount,
+            expectedProfit: trade.expectedProfit,
+            executionPayload: trade.executionPayload ?? null,
+          },
+          walletAddress: account,
+          contractAddress,
+          maxSlippage: maxSlippagePercent,
+        },
+      },
+    });
+
+    if (error) throw error;
+
+    const actualProfit = roundToCents(Number(data?.actualProfit ?? trade.expectedProfit));
+    const txHashCandidate = typeof data?.txHash === 'string' && data.txHash.length > 0
+      ? data.txHash
+      : typeof data?.bundleHash === 'string' && data.bundleHash.length > 0
+        ? data.bundleHash
+        : null;
+    if (!txHashCandidate) {
+      throw new Error('flashbots-executor returned no txHash or bundleHash; refusing to record a live submission with a fabricated hash.');
+    }
+
+    const result: ExecuteTradeResult = {
+      success: true,
+      status: 'submitted',
+      actualProfit,
+      gasCost: trade.gasCost,
+      txHash: txHashCandidate,
+      bundleHash: typeof data?.bundleHash === 'string' ? data.bundleHash : undefined,
+      message: 'Live trade submitted to the execution backend.',
+    };
+
+    await persistExecutionLog(trade, {
+      status: 'submitted',
+      actualProfit,
+      txHash: result.txHash,
+      bundleHash: result.bundleHash,
+      rawResponse: data,
+      metadata: mergeExecutionMetadata({ liveSubmission: true }),
+    });
+
+    return result;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Live execution failed';
+    await persistExecutionLog(trade, {
+      status: 'failed',
+      errorMessage,
+      metadata: mergeExecutionMetadata({ liveSubmission: true }),
+    });
+    throw error instanceof Error ? error : new Error(errorMessage);
+  }
 };

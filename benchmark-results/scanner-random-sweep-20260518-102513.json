@@ -1,0 +1,4482 @@
+[
+  {
+    "p": {
+      "minSpreadPercent": 0.005,
+      "loanAmountUsd": 2000,
+      "perNetworkMinNetProfitUsd": -1,
+      "maxLiquidityUsagePercent": 40,
+      "minNetProfitUsd": -1,
+      "minLiquidityUsd": 5000,
+      "estimatedGasUsd": 4,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 300
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0.005,
+      "loanAmountUsd": 250,
+      "perNetworkMinNetProfitUsd": 0,
+      "maxLiquidityUsagePercent": 25,
+      "minNetProfitUsd": 0,
+      "minLiquidityUsd": 20000,
+      "estimatedGasUsd": 8,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 2500
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0.005,
+      "loanAmountUsd": 2000,
+      "perNetworkMinNetProfitUsd": 0,
+      "maxLiquidityUsagePercent": 60,
+      "minNetProfitUsd": 0,
+      "minLiquidityUsd": 5000,
+      "estimatedGasUsd": 4,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 1800
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0.01,
+      "loanAmountUsd": 400,
+      "perNetworkMinNetProfitUsd": -2,
+      "maxLiquidityUsagePercent": 5,
+      "minNetProfitUsd": -2,
+      "minLiquidityUsd": 10000,
+      "estimatedGasUsd": 3,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 800
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0.0001,
+      "loanAmountUsd": 2500,
+      "perNetworkMinNetProfitUsd": 2,
+      "maxLiquidityUsagePercent": 5,
+      "minNetProfitUsd": 2,
+      "minLiquidityUsd": 10000,
+      "estimatedGasUsd": 3,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 1200
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0,
+      "loanAmountUsd": 3000,
+      "perNetworkMinNetProfitUsd": 5,
+      "maxLiquidityUsagePercent": 60,
+      "minNetProfitUsd": 5,
+      "minLiquidityUsd": 20000,
+      "estimatedGasUsd": 3,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 3500
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0.0001,
+      "loanAmountUsd": 600,
+      "perNetworkMinNetProfitUsd": -2,
+      "maxLiquidityUsagePercent": 5,
+      "minNetProfitUsd": -2,
+      "minLiquidityUsd": 10000,
+      "estimatedGasUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 3500
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0.0001,
+      "loanAmountUsd": 1000,
+      "perNetworkMinNetProfitUsd": 5,
+      "maxLiquidityUsagePercent": 95,
+      "minNetProfitUsd": 5,
+      "minLiquidityUsd": 0,
+      "estimatedGasUsd": 8,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 1800
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0.01,
+      "loanAmountUsd": 2500,
+      "perNetworkMinNetProfitUsd": 3,
+      "maxLiquidityUsagePercent": 10,
+      "minNetProfitUsd": 3,
+      "minLiquidityUsd": 0,
+      "estimatedGasUsd": 3,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 2500
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0.01,
+      "loanAmountUsd": 2500,
+      "perNetworkMinNetProfitUsd": -1,
+      "maxLiquidityUsagePercent": 5,
+      "minNetProfitUsd": -1,
+      "minLiquidityUsd": 500,
+      "estimatedGasUsd": 1,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 2500
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0.0001,
+      "loanAmountUsd": 250,
+      "perNetworkMinNetProfitUsd": -1,
+      "maxLiquidityUsagePercent": 60,
+      "minNetProfitUsd": -1,
+      "minLiquidityUsd": 1000,
+      "estimatedGasUsd": 4,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 2500
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0.01,
+      "loanAmountUsd": 150,
+      "perNetworkMinNetProfitUsd": -1,
+      "maxLiquidityUsagePercent": 8,
+      "minNetProfitUsd": -1,
+      "minLiquidityUsd": 5000,
+      "estimatedGasUsd": 4,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 3500
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0.005,
+      "loanAmountUsd": 5000,
+      "perNetworkMinNetProfitUsd": -2,
+      "maxLiquidityUsagePercent": 8,
+      "minNetProfitUsd": -2,
+      "minLiquidityUsd": 1000,
+      "estimatedGasUsd": 3,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 500
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0.01,
+      "loanAmountUsd": 800,
+      "perNetworkMinNetProfitUsd": 1,
+      "maxLiquidityUsagePercent": 60,
+      "minNetProfitUsd": 1,
+      "minLiquidityUsd": 1000,
+      "estimatedGasUsd": 2,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 1800
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0.005,
+      "loanAmountUsd": 600,
+      "perNetworkMinNetProfitUsd": 5,
+      "maxLiquidityUsagePercent": 25,
+      "minNetProfitUsd": 5,
+      "minLiquidityUsd": 20000,
+      "estimatedGasUsd": 2,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 3500
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0.01,
+      "loanAmountUsd": 1000,
+      "perNetworkMinNetProfitUsd": 0,
+      "maxLiquidityUsagePercent": 15,
+      "minNetProfitUsd": 0,
+      "minLiquidityUsd": 5000,
+      "estimatedGasUsd": 8,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 1800
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0.0001,
+      "loanAmountUsd": 150,
+      "perNetworkMinNetProfitUsd": 2,
+      "maxLiquidityUsagePercent": 95,
+      "minNetProfitUsd": 2,
+      "minLiquidityUsd": 20000,
+      "estimatedGasUsd": 8,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 300
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0,
+      "loanAmountUsd": 400,
+      "perNetworkMinNetProfitUsd": 2,
+      "maxLiquidityUsagePercent": 25,
+      "minNetProfitUsd": 2,
+      "minLiquidityUsd": 20000,
+      "estimatedGasUsd": 3,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 3500
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0.005,
+      "loanAmountUsd": 5000,
+      "perNetworkMinNetProfitUsd": -2,
+      "maxLiquidityUsagePercent": 40,
+      "minNetProfitUsd": -2,
+      "minLiquidityUsd": 5000,
+      "estimatedGasUsd": 6,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 800
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0,
+      "loanAmountUsd": 150,
+      "perNetworkMinNetProfitUsd": -2,
+      "maxLiquidityUsagePercent": 40,
+      "minNetProfitUsd": -2,
+      "minLiquidityUsd": 20000,
+      "estimatedGasUsd": 8,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 3500
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0,
+      "loanAmountUsd": 1000,
+      "perNetworkMinNetProfitUsd": -2,
+      "maxLiquidityUsagePercent": 60,
+      "minNetProfitUsd": -2,
+      "minLiquidityUsd": 500,
+      "estimatedGasUsd": 6,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 2500
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0,
+      "loanAmountUsd": 150,
+      "perNetworkMinNetProfitUsd": 0,
+      "maxLiquidityUsagePercent": 8,
+      "minNetProfitUsd": 0,
+      "minLiquidityUsd": 500,
+      "estimatedGasUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 500
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0.001,
+      "loanAmountUsd": 5000,
+      "perNetworkMinNetProfitUsd": 2,
+      "maxLiquidityUsagePercent": 40,
+      "minNetProfitUsd": 2,
+      "minLiquidityUsd": 10000,
+      "estimatedGasUsd": 6,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 800
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0.001,
+      "loanAmountUsd": 3000,
+      "perNetworkMinNetProfitUsd": 3,
+      "maxLiquidityUsagePercent": 15,
+      "minNetProfitUsd": 3,
+      "minLiquidityUsd": 10000,
+      "estimatedGasUsd": 8,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 3500
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0.0001,
+      "loanAmountUsd": 3000,
+      "perNetworkMinNetProfitUsd": -2,
+      "maxLiquidityUsagePercent": 95,
+      "minNetProfitUsd": -2,
+      "minLiquidityUsd": 1000,
+      "estimatedGasUsd": 3,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 800
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0.005,
+      "loanAmountUsd": 1250,
+      "perNetworkMinNetProfitUsd": 5,
+      "maxLiquidityUsagePercent": 95,
+      "minNetProfitUsd": 5,
+      "minLiquidityUsd": 0,
+      "estimatedGasUsd": 1,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 3500
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0.005,
+      "loanAmountUsd": 2000,
+      "perNetworkMinNetProfitUsd": -1,
+      "maxLiquidityUsagePercent": 5,
+      "minNetProfitUsd": -1,
+      "minLiquidityUsd": 1000,
+      "estimatedGasUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 1800
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0.005,
+      "loanAmountUsd": 1250,
+      "perNetworkMinNetProfitUsd": 3,
+      "maxLiquidityUsagePercent": 95,
+      "minNetProfitUsd": 3,
+      "minLiquidityUsd": 10000,
+      "estimatedGasUsd": 1,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 500
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0,
+      "loanAmountUsd": 1500,
+      "perNetworkMinNetProfitUsd": 0,
+      "maxLiquidityUsagePercent": 15,
+      "minNetProfitUsd": 0,
+      "minLiquidityUsd": 500,
+      "estimatedGasUsd": 8,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 3500
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0,
+      "loanAmountUsd": 150,
+      "perNetworkMinNetProfitUsd": 0,
+      "maxLiquidityUsagePercent": 25,
+      "minNetProfitUsd": 0,
+      "minLiquidityUsd": 1000,
+      "estimatedGasUsd": 1,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 300
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0,
+      "loanAmountUsd": 1500,
+      "perNetworkMinNetProfitUsd": 2,
+      "maxLiquidityUsagePercent": 80,
+      "minNetProfitUsd": 2,
+      "minLiquidityUsd": 500,
+      "estimatedGasUsd": 6,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 1200
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0.01,
+      "loanAmountUsd": 2500,
+      "perNetworkMinNetProfitUsd": -2,
+      "maxLiquidityUsagePercent": 95,
+      "minNetProfitUsd": -2,
+      "minLiquidityUsd": 10000,
+      "estimatedGasUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 1800
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0,
+      "loanAmountUsd": 2500,
+      "perNetworkMinNetProfitUsd": 5,
+      "maxLiquidityUsagePercent": 40,
+      "minNetProfitUsd": 5,
+      "minLiquidityUsd": 20000,
+      "estimatedGasUsd": 6,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 500
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0.005,
+      "loanAmountUsd": 3000,
+      "perNetworkMinNetProfitUsd": 1,
+      "maxLiquidityUsagePercent": 60,
+      "minNetProfitUsd": 1,
+      "minLiquidityUsd": 20000,
+      "estimatedGasUsd": 4,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 2500
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0.01,
+      "loanAmountUsd": 250,
+      "perNetworkMinNetProfitUsd": 5,
+      "maxLiquidityUsagePercent": 10,
+      "minNetProfitUsd": 5,
+      "minLiquidityUsd": 20000,
+      "estimatedGasUsd": 6,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 500
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0,
+      "loanAmountUsd": 2500,
+      "perNetworkMinNetProfitUsd": 3,
+      "maxLiquidityUsagePercent": 15,
+      "minNetProfitUsd": 3,
+      "minLiquidityUsd": 1000,
+      "estimatedGasUsd": 6,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 1200
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0,
+      "loanAmountUsd": 1250,
+      "perNetworkMinNetProfitUsd": 5,
+      "maxLiquidityUsagePercent": 60,
+      "minNetProfitUsd": 5,
+      "minLiquidityUsd": 0,
+      "estimatedGasUsd": 6,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 1800
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0.0001,
+      "loanAmountUsd": 3000,
+      "perNetworkMinNetProfitUsd": -1,
+      "maxLiquidityUsagePercent": 95,
+      "minNetProfitUsd": -1,
+      "minLiquidityUsd": 500,
+      "estimatedGasUsd": 1,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 500
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0.01,
+      "loanAmountUsd": 1500,
+      "perNetworkMinNetProfitUsd": -2,
+      "maxLiquidityUsagePercent": 8,
+      "minNetProfitUsd": -2,
+      "minLiquidityUsd": 1000,
+      "estimatedGasUsd": 2,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 500
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minSpreadPercent": 0.001,
+      "loanAmountUsd": 2000,
+      "perNetworkMinNetProfitUsd": 5,
+      "maxLiquidityUsagePercent": 80,
+      "minNetProfitUsd": 5,
+      "minLiquidityUsd": 500,
+      "estimatedGasUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "maxSlippageBps": 500
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 4,
+      "loanAmountUsd": 150,
+      "minNetProfitUsd": -2,
+      "minSpreadPercent": 0.005,
+      "perNetworkMinNetProfitUsd": -2,
+      "maxLiquidityUsagePercent": 15,
+      "maxSlippageBps": 3500,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 4,
+      "loanAmountUsd": 1000,
+      "minNetProfitUsd": 1,
+      "minSpreadPercent": 0.0001,
+      "perNetworkMinNetProfitUsd": 1,
+      "maxLiquidityUsagePercent": 60,
+      "maxSlippageBps": 300,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 10000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 0,
+      "loanAmountUsd": 2500,
+      "minNetProfitUsd": 3,
+      "minSpreadPercent": 0.005,
+      "perNetworkMinNetProfitUsd": 3,
+      "maxLiquidityUsagePercent": 10,
+      "maxSlippageBps": 1800,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 2,
+      "loanAmountUsd": 150,
+      "minNetProfitUsd": 5,
+      "minSpreadPercent": 0,
+      "perNetworkMinNetProfitUsd": 5,
+      "maxLiquidityUsagePercent": 25,
+      "maxSlippageBps": 500,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 1000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 3,
+      "loanAmountUsd": 2000,
+      "minNetProfitUsd": 3,
+      "minSpreadPercent": 0.01,
+      "perNetworkMinNetProfitUsd": 3,
+      "maxLiquidityUsagePercent": 5,
+      "maxSlippageBps": 500,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 5000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 8,
+      "loanAmountUsd": 150,
+      "minNetProfitUsd": 2,
+      "minSpreadPercent": 0,
+      "perNetworkMinNetProfitUsd": 2,
+      "maxLiquidityUsagePercent": 80,
+      "maxSlippageBps": 300,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 1000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 4,
+      "loanAmountUsd": 2000,
+      "minNetProfitUsd": 1,
+      "minSpreadPercent": 0.0001,
+      "perNetworkMinNetProfitUsd": 1,
+      "maxLiquidityUsagePercent": 25,
+      "maxSlippageBps": 3500,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 20000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 8,
+      "loanAmountUsd": 1000,
+      "minNetProfitUsd": 0,
+      "minSpreadPercent": 0.01,
+      "perNetworkMinNetProfitUsd": 0,
+      "maxLiquidityUsagePercent": 95,
+      "maxSlippageBps": 3500,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 20000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 6,
+      "loanAmountUsd": 2500,
+      "minNetProfitUsd": -2,
+      "minSpreadPercent": 0.001,
+      "perNetworkMinNetProfitUsd": -2,
+      "maxLiquidityUsagePercent": 5,
+      "maxSlippageBps": 1200,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 8,
+      "loanAmountUsd": 1500,
+      "minNetProfitUsd": 5,
+      "minSpreadPercent": 0.001,
+      "perNetworkMinNetProfitUsd": 5,
+      "maxLiquidityUsagePercent": 25,
+      "maxSlippageBps": 800,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 1000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 4,
+      "loanAmountUsd": 150,
+      "minNetProfitUsd": -2,
+      "minSpreadPercent": 0.001,
+      "perNetworkMinNetProfitUsd": -2,
+      "maxLiquidityUsagePercent": 5,
+      "maxSlippageBps": 500,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 10000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 3,
+      "loanAmountUsd": 5000,
+      "minNetProfitUsd": 5,
+      "minSpreadPercent": 0.0001,
+      "perNetworkMinNetProfitUsd": 5,
+      "maxLiquidityUsagePercent": 8,
+      "maxSlippageBps": 300,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 1000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 8,
+      "loanAmountUsd": 2500,
+      "minNetProfitUsd": 2,
+      "minSpreadPercent": 0.001,
+      "perNetworkMinNetProfitUsd": 2,
+      "maxLiquidityUsagePercent": 95,
+      "maxSlippageBps": 2500,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 4,
+      "loanAmountUsd": 1000,
+      "minNetProfitUsd": 1,
+      "minSpreadPercent": 0.0001,
+      "perNetworkMinNetProfitUsd": 1,
+      "maxLiquidityUsagePercent": 25,
+      "maxSlippageBps": 800,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 20000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 8,
+      "loanAmountUsd": 400,
+      "minNetProfitUsd": 5,
+      "minSpreadPercent": 0,
+      "perNetworkMinNetProfitUsd": 5,
+      "maxLiquidityUsagePercent": 8,
+      "maxSlippageBps": 2500,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 5000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 3,
+      "loanAmountUsd": 150,
+      "minNetProfitUsd": 2,
+      "minSpreadPercent": 0.005,
+      "perNetworkMinNetProfitUsd": 2,
+      "maxLiquidityUsagePercent": 40,
+      "maxSlippageBps": 3500,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 2,
+      "loanAmountUsd": 400,
+      "minNetProfitUsd": 1,
+      "minSpreadPercent": 0.0001,
+      "perNetworkMinNetProfitUsd": 1,
+      "maxLiquidityUsagePercent": 25,
+      "maxSlippageBps": 2500,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 5000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 1,
+      "loanAmountUsd": 800,
+      "minNetProfitUsd": 0,
+      "minSpreadPercent": 0.01,
+      "perNetworkMinNetProfitUsd": 0,
+      "maxLiquidityUsagePercent": 25,
+      "maxSlippageBps": 800,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 10000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 4,
+      "loanAmountUsd": 3000,
+      "minNetProfitUsd": -1,
+      "minSpreadPercent": 0.001,
+      "perNetworkMinNetProfitUsd": -1,
+      "maxLiquidityUsagePercent": 40,
+      "maxSlippageBps": 1200,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 2,
+      "loanAmountUsd": 2500,
+      "minNetProfitUsd": 3,
+      "minSpreadPercent": 0,
+      "perNetworkMinNetProfitUsd": 3,
+      "maxLiquidityUsagePercent": 15,
+      "maxSlippageBps": 800,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 3,
+      "loanAmountUsd": 250,
+      "minNetProfitUsd": -2,
+      "minSpreadPercent": 0.0001,
+      "perNetworkMinNetProfitUsd": -2,
+      "maxLiquidityUsagePercent": 8,
+      "maxSlippageBps": 3500,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 1000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 8,
+      "loanAmountUsd": 2000,
+      "minNetProfitUsd": 3,
+      "minSpreadPercent": 0,
+      "perNetworkMinNetProfitUsd": 3,
+      "maxLiquidityUsagePercent": 80,
+      "maxSlippageBps": 2500,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 5000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 4,
+      "loanAmountUsd": 1500,
+      "minNetProfitUsd": 5,
+      "minSpreadPercent": 0.01,
+      "perNetworkMinNetProfitUsd": 5,
+      "maxLiquidityUsagePercent": 95,
+      "maxSlippageBps": 2500,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 1000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 8,
+      "loanAmountUsd": 1000,
+      "minNetProfitUsd": 1,
+      "minSpreadPercent": 0.0001,
+      "perNetworkMinNetProfitUsd": 1,
+      "maxLiquidityUsagePercent": 10,
+      "maxSlippageBps": 800,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 1000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 2,
+      "loanAmountUsd": 5000,
+      "minNetProfitUsd": -1,
+      "minSpreadPercent": 0,
+      "perNetworkMinNetProfitUsd": -1,
+      "maxLiquidityUsagePercent": 60,
+      "maxSlippageBps": 2500,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 10000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 3,
+      "loanAmountUsd": 1000,
+      "minNetProfitUsd": 1,
+      "minSpreadPercent": 0.005,
+      "perNetworkMinNetProfitUsd": 1,
+      "maxLiquidityUsagePercent": 5,
+      "maxSlippageBps": 1200,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 4,
+      "loanAmountUsd": 5000,
+      "minNetProfitUsd": 2,
+      "minSpreadPercent": 0.0001,
+      "perNetworkMinNetProfitUsd": 2,
+      "maxLiquidityUsagePercent": 60,
+      "maxSlippageBps": 1800,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 5000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 3,
+      "loanAmountUsd": 5000,
+      "minNetProfitUsd": -1,
+      "minSpreadPercent": 0.0001,
+      "perNetworkMinNetProfitUsd": -1,
+      "maxLiquidityUsagePercent": 15,
+      "maxSlippageBps": 3500,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 20000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 1,
+      "loanAmountUsd": 1000,
+      "minNetProfitUsd": 5,
+      "minSpreadPercent": 0,
+      "perNetworkMinNetProfitUsd": 5,
+      "maxLiquidityUsagePercent": 60,
+      "maxSlippageBps": 2500,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 20000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 8,
+      "loanAmountUsd": 1250,
+      "minNetProfitUsd": -2,
+      "minSpreadPercent": 0.01,
+      "perNetworkMinNetProfitUsd": -2,
+      "maxLiquidityUsagePercent": 8,
+      "maxSlippageBps": 2500,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 1000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 2,
+      "loanAmountUsd": 400,
+      "minNetProfitUsd": -2,
+      "minSpreadPercent": 0.005,
+      "perNetworkMinNetProfitUsd": -2,
+      "maxLiquidityUsagePercent": 60,
+      "maxSlippageBps": 2500,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 1,
+      "loanAmountUsd": 2000,
+      "minNetProfitUsd": 3,
+      "minSpreadPercent": 0,
+      "perNetworkMinNetProfitUsd": 3,
+      "maxLiquidityUsagePercent": 95,
+      "maxSlippageBps": 1200,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 5000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 3,
+      "loanAmountUsd": 2500,
+      "minNetProfitUsd": -1,
+      "minSpreadPercent": 0.01,
+      "perNetworkMinNetProfitUsd": -1,
+      "maxLiquidityUsagePercent": 60,
+      "maxSlippageBps": 1200,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 5000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 6,
+      "loanAmountUsd": 1250,
+      "minNetProfitUsd": 0,
+      "minSpreadPercent": 0,
+      "perNetworkMinNetProfitUsd": 0,
+      "maxLiquidityUsagePercent": 5,
+      "maxSlippageBps": 2500,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 1000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 6,
+      "loanAmountUsd": 400,
+      "minNetProfitUsd": 2,
+      "minSpreadPercent": 0,
+      "perNetworkMinNetProfitUsd": 2,
+      "maxLiquidityUsagePercent": 8,
+      "maxSlippageBps": 3500,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 1000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 8,
+      "loanAmountUsd": 1250,
+      "minNetProfitUsd": 2,
+      "minSpreadPercent": 0.0001,
+      "perNetworkMinNetProfitUsd": 2,
+      "maxLiquidityUsagePercent": 5,
+      "maxSlippageBps": 1800,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 500
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 6,
+      "loanAmountUsd": 250,
+      "minNetProfitUsd": 2,
+      "minSpreadPercent": 0.005,
+      "perNetworkMinNetProfitUsd": 2,
+      "maxLiquidityUsagePercent": 60,
+      "maxSlippageBps": 2500,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 20000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 0,
+      "loanAmountUsd": 1000,
+      "minNetProfitUsd": 0,
+      "minSpreadPercent": 0.0001,
+      "perNetworkMinNetProfitUsd": 0,
+      "maxLiquidityUsagePercent": 5,
+      "maxSlippageBps": 2500,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 10000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 6,
+      "loanAmountUsd": 1250,
+      "minNetProfitUsd": 0,
+      "minSpreadPercent": 0.01,
+      "perNetworkMinNetProfitUsd": 0,
+      "maxLiquidityUsagePercent": 5,
+      "maxSlippageBps": 1800,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 20000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 8,
+      "loanAmountUsd": 400,
+      "minNetProfitUsd": -2,
+      "minSpreadPercent": 0.0001,
+      "perNetworkMinNetProfitUsd": -2,
+      "maxLiquidityUsagePercent": 5,
+      "maxSlippageBps": 1800,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 10000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": 2,
+      "maxSlippageBps": 800,
+      "loanAmountUsd": 2000,
+      "minSpreadPercent": 0.01,
+      "maxLiquidityUsagePercent": 25,
+      "perNetworkMinNetProfitUsd": 2,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 500,
+      "estimatedGasUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": 0,
+      "maxSlippageBps": 300,
+      "loanAmountUsd": 5000,
+      "minSpreadPercent": 0.005,
+      "maxLiquidityUsagePercent": 40,
+      "perNetworkMinNetProfitUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 0,
+      "estimatedGasUsd": 2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": 2,
+      "maxSlippageBps": 3500,
+      "loanAmountUsd": 1500,
+      "minSpreadPercent": 0.01,
+      "maxLiquidityUsagePercent": 60,
+      "perNetworkMinNetProfitUsd": 2,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 500,
+      "estimatedGasUsd": 8
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": 1,
+      "maxSlippageBps": 1800,
+      "loanAmountUsd": 2000,
+      "minSpreadPercent": 0,
+      "maxLiquidityUsagePercent": 5,
+      "perNetworkMinNetProfitUsd": 1,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 1000,
+      "estimatedGasUsd": 1
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": -2,
+      "maxSlippageBps": 800,
+      "loanAmountUsd": 5000,
+      "minSpreadPercent": 0.005,
+      "maxLiquidityUsagePercent": 60,
+      "perNetworkMinNetProfitUsd": -2,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 1000,
+      "estimatedGasUsd": 1
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": 5,
+      "maxSlippageBps": 500,
+      "loanAmountUsd": 800,
+      "minSpreadPercent": 0.01,
+      "maxLiquidityUsagePercent": 40,
+      "perNetworkMinNetProfitUsd": 5,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 500,
+      "estimatedGasUsd": 3
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": 2,
+      "maxSlippageBps": 800,
+      "loanAmountUsd": 150,
+      "minSpreadPercent": 0.001,
+      "maxLiquidityUsagePercent": 95,
+      "perNetworkMinNetProfitUsd": 2,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 500,
+      "estimatedGasUsd": 4
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": 2,
+      "maxSlippageBps": 500,
+      "loanAmountUsd": 1500,
+      "minSpreadPercent": 0.0001,
+      "maxLiquidityUsagePercent": 60,
+      "perNetworkMinNetProfitUsd": 2,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 0,
+      "estimatedGasUsd": 2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": 1,
+      "maxSlippageBps": 1200,
+      "loanAmountUsd": 1000,
+      "minSpreadPercent": 0.0001,
+      "maxLiquidityUsagePercent": 60,
+      "perNetworkMinNetProfitUsd": 1,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 1000,
+      "estimatedGasUsd": 6
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": 1,
+      "maxSlippageBps": 500,
+      "loanAmountUsd": 1000,
+      "minSpreadPercent": 0,
+      "maxLiquidityUsagePercent": 95,
+      "perNetworkMinNetProfitUsd": 1,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 20000,
+      "estimatedGasUsd": 2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": 3,
+      "maxSlippageBps": 2500,
+      "loanAmountUsd": 600,
+      "minSpreadPercent": 0.001,
+      "maxLiquidityUsagePercent": 80,
+      "perNetworkMinNetProfitUsd": 3,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 10000,
+      "estimatedGasUsd": 3
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": 3,
+      "maxSlippageBps": 300,
+      "loanAmountUsd": 150,
+      "minSpreadPercent": 0,
+      "maxLiquidityUsagePercent": 40,
+      "perNetworkMinNetProfitUsd": 3,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 10000,
+      "estimatedGasUsd": 8
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": -1,
+      "maxSlippageBps": 300,
+      "loanAmountUsd": 2500,
+      "minSpreadPercent": 0.005,
+      "maxLiquidityUsagePercent": 80,
+      "perNetworkMinNetProfitUsd": -1,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 0,
+      "estimatedGasUsd": 2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": 2,
+      "maxSlippageBps": 2500,
+      "loanAmountUsd": 1250,
+      "minSpreadPercent": 0.005,
+      "maxLiquidityUsagePercent": 5,
+      "perNetworkMinNetProfitUsd": 2,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 10000,
+      "estimatedGasUsd": 2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": -1,
+      "maxSlippageBps": 800,
+      "loanAmountUsd": 5000,
+      "minSpreadPercent": 0.005,
+      "maxLiquidityUsagePercent": 5,
+      "perNetworkMinNetProfitUsd": -1,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 5000,
+      "estimatedGasUsd": 2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": -2,
+      "maxSlippageBps": 2500,
+      "loanAmountUsd": 3000,
+      "minSpreadPercent": 0,
+      "maxLiquidityUsagePercent": 5,
+      "perNetworkMinNetProfitUsd": -2,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 500,
+      "estimatedGasUsd": 8
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": -1,
+      "maxSlippageBps": 800,
+      "loanAmountUsd": 2500,
+      "minSpreadPercent": 0.0001,
+      "maxLiquidityUsagePercent": 80,
+      "perNetworkMinNetProfitUsd": -1,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 1000,
+      "estimatedGasUsd": 8
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": -1,
+      "maxSlippageBps": 2500,
+      "loanAmountUsd": 800,
+      "minSpreadPercent": 0.0001,
+      "maxLiquidityUsagePercent": 10,
+      "perNetworkMinNetProfitUsd": -1,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 1000,
+      "estimatedGasUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": 0,
+      "maxSlippageBps": 2500,
+      "loanAmountUsd": 2000,
+      "minSpreadPercent": 0.001,
+      "maxLiquidityUsagePercent": 8,
+      "perNetworkMinNetProfitUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 10000,
+      "estimatedGasUsd": 2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": -1,
+      "maxSlippageBps": 300,
+      "loanAmountUsd": 3000,
+      "minSpreadPercent": 0.001,
+      "maxLiquidityUsagePercent": 95,
+      "perNetworkMinNetProfitUsd": -1,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 20000,
+      "estimatedGasUsd": 1
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": 5,
+      "maxSlippageBps": 2500,
+      "loanAmountUsd": 1000,
+      "minSpreadPercent": 0.0001,
+      "maxLiquidityUsagePercent": 10,
+      "perNetworkMinNetProfitUsd": 5,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 5000,
+      "estimatedGasUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": 0,
+      "maxSlippageBps": 1200,
+      "loanAmountUsd": 400,
+      "minSpreadPercent": 0.0001,
+      "maxLiquidityUsagePercent": 40,
+      "perNetworkMinNetProfitUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 1000,
+      "estimatedGasUsd": 3
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": 2,
+      "maxSlippageBps": 300,
+      "loanAmountUsd": 2500,
+      "minSpreadPercent": 0.0001,
+      "maxLiquidityUsagePercent": 25,
+      "perNetworkMinNetProfitUsd": 2,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 1000,
+      "estimatedGasUsd": 3
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": 2,
+      "maxSlippageBps": 1200,
+      "loanAmountUsd": 3000,
+      "minSpreadPercent": 0,
+      "maxLiquidityUsagePercent": 80,
+      "perNetworkMinNetProfitUsd": 2,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 20000,
+      "estimatedGasUsd": 6
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": 3,
+      "maxSlippageBps": 1200,
+      "loanAmountUsd": 5000,
+      "minSpreadPercent": 0.005,
+      "maxLiquidityUsagePercent": 95,
+      "perNetworkMinNetProfitUsd": 3,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 500,
+      "estimatedGasUsd": 8
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": 2,
+      "maxSlippageBps": 300,
+      "loanAmountUsd": 400,
+      "minSpreadPercent": 0.0001,
+      "maxLiquidityUsagePercent": 15,
+      "perNetworkMinNetProfitUsd": 2,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 20000,
+      "estimatedGasUsd": 8
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": 0,
+      "maxSlippageBps": 3500,
+      "loanAmountUsd": 5000,
+      "minSpreadPercent": 0.001,
+      "maxLiquidityUsagePercent": 80,
+      "perNetworkMinNetProfitUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 0,
+      "estimatedGasUsd": 3
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": 3,
+      "maxSlippageBps": 300,
+      "loanAmountUsd": 600,
+      "minSpreadPercent": 0.0001,
+      "maxLiquidityUsagePercent": 80,
+      "perNetworkMinNetProfitUsd": 3,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 500,
+      "estimatedGasUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": 1,
+      "maxSlippageBps": 500,
+      "loanAmountUsd": 400,
+      "minSpreadPercent": 0.005,
+      "maxLiquidityUsagePercent": 10,
+      "perNetworkMinNetProfitUsd": 1,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 1000,
+      "estimatedGasUsd": 3
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": 1,
+      "maxSlippageBps": 2500,
+      "loanAmountUsd": 150,
+      "minSpreadPercent": 0.01,
+      "maxLiquidityUsagePercent": 8,
+      "perNetworkMinNetProfitUsd": 1,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 0,
+      "estimatedGasUsd": 2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": 0,
+      "maxSlippageBps": 300,
+      "loanAmountUsd": 2000,
+      "minSpreadPercent": 0.01,
+      "maxLiquidityUsagePercent": 5,
+      "perNetworkMinNetProfitUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 0,
+      "estimatedGasUsd": 6
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": 2,
+      "maxSlippageBps": 500,
+      "loanAmountUsd": 400,
+      "minSpreadPercent": 0.01,
+      "maxLiquidityUsagePercent": 95,
+      "perNetworkMinNetProfitUsd": 2,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 0,
+      "estimatedGasUsd": 2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": -2,
+      "maxSlippageBps": 1800,
+      "loanAmountUsd": 2000,
+      "minSpreadPercent": 0.0001,
+      "maxLiquidityUsagePercent": 25,
+      "perNetworkMinNetProfitUsd": -2,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 0,
+      "estimatedGasUsd": 3
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": 0,
+      "maxSlippageBps": 1200,
+      "loanAmountUsd": 1000,
+      "minSpreadPercent": 0.005,
+      "maxLiquidityUsagePercent": 10,
+      "perNetworkMinNetProfitUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 10000,
+      "estimatedGasUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": -1,
+      "maxSlippageBps": 2500,
+      "loanAmountUsd": 1250,
+      "minSpreadPercent": 0.001,
+      "maxLiquidityUsagePercent": 40,
+      "perNetworkMinNetProfitUsd": -1,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 20000,
+      "estimatedGasUsd": 8
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": 2,
+      "maxSlippageBps": 1200,
+      "loanAmountUsd": 2000,
+      "minSpreadPercent": 0.0001,
+      "maxLiquidityUsagePercent": 8,
+      "perNetworkMinNetProfitUsd": 2,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 10000,
+      "estimatedGasUsd": 6
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": -1,
+      "maxSlippageBps": 3500,
+      "loanAmountUsd": 5000,
+      "minSpreadPercent": 0.01,
+      "maxLiquidityUsagePercent": 8,
+      "perNetworkMinNetProfitUsd": -1,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 1000,
+      "estimatedGasUsd": 8
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": 3,
+      "maxSlippageBps": 500,
+      "loanAmountUsd": 600,
+      "minSpreadPercent": 0.005,
+      "maxLiquidityUsagePercent": 40,
+      "perNetworkMinNetProfitUsd": 3,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 1000,
+      "estimatedGasUsd": 2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": 2,
+      "maxSlippageBps": 2500,
+      "loanAmountUsd": 1250,
+      "minSpreadPercent": 0,
+      "maxLiquidityUsagePercent": 15,
+      "perNetworkMinNetProfitUsd": 2,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 0,
+      "estimatedGasUsd": 1
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "minNetProfitUsd": 0,
+      "maxSlippageBps": 800,
+      "loanAmountUsd": 150,
+      "minSpreadPercent": 0,
+      "maxLiquidityUsagePercent": 5,
+      "perNetworkMinNetProfitUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "minLiquidityUsd": 5000,
+      "estimatedGasUsd": 3
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 300,
+      "maxLiquidityUsagePercent": 8,
+      "loanAmountUsd": 400,
+      "minLiquidityUsd": 500,
+      "minNetProfitUsd": -1,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.01,
+      "perNetworkMinNetProfitUsd": -1,
+      "estimatedGasUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 300,
+      "maxLiquidityUsagePercent": 5,
+      "loanAmountUsd": 1000,
+      "minLiquidityUsd": 1000,
+      "minNetProfitUsd": 2,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.005,
+      "perNetworkMinNetProfitUsd": 2,
+      "estimatedGasUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 500,
+      "maxLiquidityUsagePercent": 25,
+      "loanAmountUsd": 600,
+      "minLiquidityUsd": 1000,
+      "minNetProfitUsd": -2,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0,
+      "perNetworkMinNetProfitUsd": -2,
+      "estimatedGasUsd": 3
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 800,
+      "maxLiquidityUsagePercent": 15,
+      "loanAmountUsd": 2500,
+      "minLiquidityUsd": 0,
+      "minNetProfitUsd": 3,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.001,
+      "perNetworkMinNetProfitUsd": 3,
+      "estimatedGasUsd": 6
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 3500,
+      "maxLiquidityUsagePercent": 8,
+      "loanAmountUsd": 2500,
+      "minLiquidityUsd": 5000,
+      "minNetProfitUsd": -2,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.001,
+      "perNetworkMinNetProfitUsd": -2,
+      "estimatedGasUsd": 8
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 1800,
+      "maxLiquidityUsagePercent": 25,
+      "loanAmountUsd": 5000,
+      "minLiquidityUsd": 10000,
+      "minNetProfitUsd": -2,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.01,
+      "perNetworkMinNetProfitUsd": -2,
+      "estimatedGasUsd": 8
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 2500,
+      "maxLiquidityUsagePercent": 40,
+      "loanAmountUsd": 150,
+      "minLiquidityUsd": 0,
+      "minNetProfitUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.001,
+      "perNetworkMinNetProfitUsd": 0,
+      "estimatedGasUsd": 2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 1800,
+      "maxLiquidityUsagePercent": 10,
+      "loanAmountUsd": 1000,
+      "minLiquidityUsd": 5000,
+      "minNetProfitUsd": 1,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.001,
+      "perNetworkMinNetProfitUsd": 1,
+      "estimatedGasUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 800,
+      "maxLiquidityUsagePercent": 25,
+      "loanAmountUsd": 250,
+      "minLiquidityUsd": 10000,
+      "minNetProfitUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.0001,
+      "perNetworkMinNetProfitUsd": 0,
+      "estimatedGasUsd": 4
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 3500,
+      "maxLiquidityUsagePercent": 5,
+      "loanAmountUsd": 2500,
+      "minLiquidityUsd": 500,
+      "minNetProfitUsd": -1,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.0001,
+      "perNetworkMinNetProfitUsd": -1,
+      "estimatedGasUsd": 4
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 500,
+      "maxLiquidityUsagePercent": 8,
+      "loanAmountUsd": 5000,
+      "minLiquidityUsd": 5000,
+      "minNetProfitUsd": 5,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.0001,
+      "perNetworkMinNetProfitUsd": 5,
+      "estimatedGasUsd": 3
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 2500,
+      "maxLiquidityUsagePercent": 15,
+      "loanAmountUsd": 2500,
+      "minLiquidityUsd": 10000,
+      "minNetProfitUsd": 1,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.001,
+      "perNetworkMinNetProfitUsd": 1,
+      "estimatedGasUsd": 3
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 800,
+      "maxLiquidityUsagePercent": 5,
+      "loanAmountUsd": 250,
+      "minLiquidityUsd": 0,
+      "minNetProfitUsd": -2,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.0001,
+      "perNetworkMinNetProfitUsd": -2,
+      "estimatedGasUsd": 3
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 800,
+      "maxLiquidityUsagePercent": 8,
+      "loanAmountUsd": 400,
+      "minLiquidityUsd": 500,
+      "minNetProfitUsd": -1,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.005,
+      "perNetworkMinNetProfitUsd": -1,
+      "estimatedGasUsd": 4
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 800,
+      "maxLiquidityUsagePercent": 10,
+      "loanAmountUsd": 1500,
+      "minLiquidityUsd": 20000,
+      "minNetProfitUsd": -2,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.0001,
+      "perNetworkMinNetProfitUsd": -2,
+      "estimatedGasUsd": 1
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 300,
+      "maxLiquidityUsagePercent": 60,
+      "loanAmountUsd": 600,
+      "minLiquidityUsd": 10000,
+      "minNetProfitUsd": -1,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.001,
+      "perNetworkMinNetProfitUsd": -1,
+      "estimatedGasUsd": 8
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 500,
+      "maxLiquidityUsagePercent": 60,
+      "loanAmountUsd": 1250,
+      "minLiquidityUsd": 500,
+      "minNetProfitUsd": -2,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.01,
+      "perNetworkMinNetProfitUsd": -2,
+      "estimatedGasUsd": 1
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 300,
+      "maxLiquidityUsagePercent": 25,
+      "loanAmountUsd": 5000,
+      "minLiquidityUsd": 0,
+      "minNetProfitUsd": 1,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.005,
+      "perNetworkMinNetProfitUsd": 1,
+      "estimatedGasUsd": 4
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 1800,
+      "maxLiquidityUsagePercent": 10,
+      "loanAmountUsd": 250,
+      "minLiquidityUsd": 10000,
+      "minNetProfitUsd": 2,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.0001,
+      "perNetworkMinNetProfitUsd": 2,
+      "estimatedGasUsd": 4
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 1200,
+      "maxLiquidityUsagePercent": 15,
+      "loanAmountUsd": 2000,
+      "minLiquidityUsd": 10000,
+      "minNetProfitUsd": -1,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.0001,
+      "perNetworkMinNetProfitUsd": -1,
+      "estimatedGasUsd": 8
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 1200,
+      "maxLiquidityUsagePercent": 10,
+      "loanAmountUsd": 1000,
+      "minLiquidityUsd": 20000,
+      "minNetProfitUsd": 2,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0,
+      "perNetworkMinNetProfitUsd": 2,
+      "estimatedGasUsd": 8
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 2500,
+      "maxLiquidityUsagePercent": 80,
+      "loanAmountUsd": 3000,
+      "minLiquidityUsd": 500,
+      "minNetProfitUsd": 2,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.01,
+      "perNetworkMinNetProfitUsd": 2,
+      "estimatedGasUsd": 3
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 500,
+      "maxLiquidityUsagePercent": 60,
+      "loanAmountUsd": 600,
+      "minLiquidityUsd": 10000,
+      "minNetProfitUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0,
+      "perNetworkMinNetProfitUsd": 0,
+      "estimatedGasUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 1800,
+      "maxLiquidityUsagePercent": 15,
+      "loanAmountUsd": 400,
+      "minLiquidityUsd": 5000,
+      "minNetProfitUsd": 5,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.001,
+      "perNetworkMinNetProfitUsd": 5,
+      "estimatedGasUsd": 1
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 800,
+      "maxLiquidityUsagePercent": 8,
+      "loanAmountUsd": 2500,
+      "minLiquidityUsd": 10000,
+      "minNetProfitUsd": 5,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0,
+      "perNetworkMinNetProfitUsd": 5,
+      "estimatedGasUsd": 2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 2500,
+      "maxLiquidityUsagePercent": 60,
+      "loanAmountUsd": 2500,
+      "minLiquidityUsd": 0,
+      "minNetProfitUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.001,
+      "perNetworkMinNetProfitUsd": 0,
+      "estimatedGasUsd": 6
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 500,
+      "maxLiquidityUsagePercent": 15,
+      "loanAmountUsd": 400,
+      "minLiquidityUsd": 500,
+      "minNetProfitUsd": 1,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.005,
+      "perNetworkMinNetProfitUsd": 1,
+      "estimatedGasUsd": 8
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 800,
+      "maxLiquidityUsagePercent": 10,
+      "loanAmountUsd": 800,
+      "minLiquidityUsd": 1000,
+      "minNetProfitUsd": 5,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.01,
+      "perNetworkMinNetProfitUsd": 5,
+      "estimatedGasUsd": 8
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 1800,
+      "maxLiquidityUsagePercent": 5,
+      "loanAmountUsd": 3000,
+      "minLiquidityUsd": 20000,
+      "minNetProfitUsd": 1,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.01,
+      "perNetworkMinNetProfitUsd": 1,
+      "estimatedGasUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 3500,
+      "maxLiquidityUsagePercent": 25,
+      "loanAmountUsd": 1250,
+      "minLiquidityUsd": 1000,
+      "minNetProfitUsd": -1,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.0001,
+      "perNetworkMinNetProfitUsd": -1,
+      "estimatedGasUsd": 2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 500,
+      "maxLiquidityUsagePercent": 60,
+      "loanAmountUsd": 400,
+      "minLiquidityUsd": 20000,
+      "minNetProfitUsd": 3,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.01,
+      "perNetworkMinNetProfitUsd": 3,
+      "estimatedGasUsd": 6
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 300,
+      "maxLiquidityUsagePercent": 80,
+      "loanAmountUsd": 2000,
+      "minLiquidityUsd": 10000,
+      "minNetProfitUsd": -1,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.001,
+      "perNetworkMinNetProfitUsd": -1,
+      "estimatedGasUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 3500,
+      "maxLiquidityUsagePercent": 10,
+      "loanAmountUsd": 5000,
+      "minLiquidityUsd": 10000,
+      "minNetProfitUsd": 5,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.0001,
+      "perNetworkMinNetProfitUsd": 5,
+      "estimatedGasUsd": 2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 500,
+      "maxLiquidityUsagePercent": 25,
+      "loanAmountUsd": 800,
+      "minLiquidityUsd": 0,
+      "minNetProfitUsd": -2,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.01,
+      "perNetworkMinNetProfitUsd": -2,
+      "estimatedGasUsd": 6
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 500,
+      "maxLiquidityUsagePercent": 95,
+      "loanAmountUsd": 3000,
+      "minLiquidityUsd": 500,
+      "minNetProfitUsd": 2,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.001,
+      "perNetworkMinNetProfitUsd": 2,
+      "estimatedGasUsd": 8
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 300,
+      "maxLiquidityUsagePercent": 8,
+      "loanAmountUsd": 400,
+      "minLiquidityUsd": 0,
+      "minNetProfitUsd": 5,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.01,
+      "perNetworkMinNetProfitUsd": 5,
+      "estimatedGasUsd": 1
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 1800,
+      "maxLiquidityUsagePercent": 80,
+      "loanAmountUsd": 1500,
+      "minLiquidityUsd": 10000,
+      "minNetProfitUsd": -2,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.0001,
+      "perNetworkMinNetProfitUsd": -2,
+      "estimatedGasUsd": 3
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 3500,
+      "maxLiquidityUsagePercent": 8,
+      "loanAmountUsd": 250,
+      "minLiquidityUsd": 10000,
+      "minNetProfitUsd": -1,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0,
+      "perNetworkMinNetProfitUsd": -1,
+      "estimatedGasUsd": 8
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 3500,
+      "maxLiquidityUsagePercent": 5,
+      "loanAmountUsd": 5000,
+      "minLiquidityUsd": 500,
+      "minNetProfitUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0,
+      "perNetworkMinNetProfitUsd": 0,
+      "estimatedGasUsd": 4
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxSlippageBps": 3500,
+      "maxLiquidityUsagePercent": 60,
+      "loanAmountUsd": 150,
+      "minLiquidityUsd": 5000,
+      "minNetProfitUsd": 3,
+      "networks": "ethereum arbitrum base polygon",
+      "minSpreadPercent": 0.005,
+      "perNetworkMinNetProfitUsd": 3,
+      "estimatedGasUsd": 4
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": -2,
+      "loanAmountUsd": 150,
+      "estimatedGasUsd": 8,
+      "minSpreadPercent": 0.005,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": -2,
+      "maxLiquidityUsagePercent": 5,
+      "maxSlippageBps": 300,
+      "minLiquidityUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": 0,
+      "loanAmountUsd": 250,
+      "estimatedGasUsd": 4,
+      "minSpreadPercent": 0.0001,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": 0,
+      "maxLiquidityUsagePercent": 10,
+      "maxSlippageBps": 800,
+      "minLiquidityUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": -2,
+      "loanAmountUsd": 250,
+      "estimatedGasUsd": 6,
+      "minSpreadPercent": 0.001,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": -2,
+      "maxLiquidityUsagePercent": 80,
+      "maxSlippageBps": 300,
+      "minLiquidityUsd": 500
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": 0,
+      "loanAmountUsd": 600,
+      "estimatedGasUsd": 2,
+      "minSpreadPercent": 0.001,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": 0,
+      "maxLiquidityUsagePercent": 60,
+      "maxSlippageBps": 500,
+      "minLiquidityUsd": 5000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": 3,
+      "loanAmountUsd": 1500,
+      "estimatedGasUsd": 8,
+      "minSpreadPercent": 0.005,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": 3,
+      "maxLiquidityUsagePercent": 10,
+      "maxSlippageBps": 3500,
+      "minLiquidityUsd": 10000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": 1,
+      "loanAmountUsd": 1250,
+      "estimatedGasUsd": 2,
+      "minSpreadPercent": 0.01,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": 1,
+      "maxLiquidityUsagePercent": 8,
+      "maxSlippageBps": 1200,
+      "minLiquidityUsd": 10000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": 5,
+      "loanAmountUsd": 2500,
+      "estimatedGasUsd": 8,
+      "minSpreadPercent": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": 5,
+      "maxLiquidityUsagePercent": 95,
+      "maxSlippageBps": 300,
+      "minLiquidityUsd": 500
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": 1,
+      "loanAmountUsd": 250,
+      "estimatedGasUsd": 8,
+      "minSpreadPercent": 0.0001,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": 1,
+      "maxLiquidityUsagePercent": 10,
+      "maxSlippageBps": 1200,
+      "minLiquidityUsd": 10000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": 1,
+      "loanAmountUsd": 400,
+      "estimatedGasUsd": 0,
+      "minSpreadPercent": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": 1,
+      "maxLiquidityUsagePercent": 95,
+      "maxSlippageBps": 3500,
+      "minLiquidityUsd": 1000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": 0,
+      "loanAmountUsd": 1500,
+      "estimatedGasUsd": 1,
+      "minSpreadPercent": 0.001,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": 0,
+      "maxLiquidityUsagePercent": 8,
+      "maxSlippageBps": 800,
+      "minLiquidityUsd": 500
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": 1,
+      "loanAmountUsd": 1000,
+      "estimatedGasUsd": 0,
+      "minSpreadPercent": 0.0001,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": 1,
+      "maxLiquidityUsagePercent": 80,
+      "maxSlippageBps": 2500,
+      "minLiquidityUsd": 20000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": 0,
+      "loanAmountUsd": 2500,
+      "estimatedGasUsd": 1,
+      "minSpreadPercent": 0.001,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": 0,
+      "maxLiquidityUsagePercent": 15,
+      "maxSlippageBps": 2500,
+      "minLiquidityUsd": 5000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": 1,
+      "loanAmountUsd": 2000,
+      "estimatedGasUsd": 4,
+      "minSpreadPercent": 0.0001,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": 1,
+      "maxLiquidityUsagePercent": 80,
+      "maxSlippageBps": 800,
+      "minLiquidityUsd": 10000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": 2,
+      "loanAmountUsd": 3000,
+      "estimatedGasUsd": 8,
+      "minSpreadPercent": 0.005,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": 2,
+      "maxLiquidityUsagePercent": 10,
+      "maxSlippageBps": 1200,
+      "minLiquidityUsd": 20000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": 5,
+      "loanAmountUsd": 400,
+      "estimatedGasUsd": 4,
+      "minSpreadPercent": 0.005,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": 5,
+      "maxLiquidityUsagePercent": 15,
+      "maxSlippageBps": 300,
+      "minLiquidityUsd": 10000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": 1,
+      "loanAmountUsd": 800,
+      "estimatedGasUsd": 0,
+      "minSpreadPercent": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": 1,
+      "maxLiquidityUsagePercent": 10,
+      "maxSlippageBps": 2500,
+      "minLiquidityUsd": 500
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": -2,
+      "loanAmountUsd": 600,
+      "estimatedGasUsd": 4,
+      "minSpreadPercent": 0.0001,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": -2,
+      "maxLiquidityUsagePercent": 10,
+      "maxSlippageBps": 800,
+      "minLiquidityUsd": 500
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": 3,
+      "loanAmountUsd": 1000,
+      "estimatedGasUsd": 1,
+      "minSpreadPercent": 0.0001,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": 3,
+      "maxLiquidityUsagePercent": 15,
+      "maxSlippageBps": 3500,
+      "minLiquidityUsd": 1000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": 5,
+      "loanAmountUsd": 2500,
+      "estimatedGasUsd": 0,
+      "minSpreadPercent": 0.001,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": 5,
+      "maxLiquidityUsagePercent": 8,
+      "maxSlippageBps": 2500,
+      "minLiquidityUsd": 500
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": 1,
+      "loanAmountUsd": 2000,
+      "estimatedGasUsd": 8,
+      "minSpreadPercent": 0.005,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": 1,
+      "maxLiquidityUsagePercent": 25,
+      "maxSlippageBps": 1200,
+      "minLiquidityUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": 5,
+      "loanAmountUsd": 3000,
+      "estimatedGasUsd": 6,
+      "minSpreadPercent": 0.001,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": 5,
+      "maxLiquidityUsagePercent": 80,
+      "maxSlippageBps": 1200,
+      "minLiquidityUsd": 1000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": 2,
+      "loanAmountUsd": 3000,
+      "estimatedGasUsd": 0,
+      "minSpreadPercent": 0.0001,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": 2,
+      "maxLiquidityUsagePercent": 5,
+      "maxSlippageBps": 2500,
+      "minLiquidityUsd": 20000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": 3,
+      "loanAmountUsd": 1500,
+      "estimatedGasUsd": 1,
+      "minSpreadPercent": 0.001,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": 3,
+      "maxLiquidityUsagePercent": 15,
+      "maxSlippageBps": 500,
+      "minLiquidityUsd": 1000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": 3,
+      "loanAmountUsd": 2000,
+      "estimatedGasUsd": 3,
+      "minSpreadPercent": 0.0001,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": 3,
+      "maxLiquidityUsagePercent": 80,
+      "maxSlippageBps": 800,
+      "minLiquidityUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": 1,
+      "loanAmountUsd": 2500,
+      "estimatedGasUsd": 2,
+      "minSpreadPercent": 0.005,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": 1,
+      "maxLiquidityUsagePercent": 10,
+      "maxSlippageBps": 3500,
+      "minLiquidityUsd": 1000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": -2,
+      "loanAmountUsd": 1000,
+      "estimatedGasUsd": 0,
+      "minSpreadPercent": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": -2,
+      "maxLiquidityUsagePercent": 15,
+      "maxSlippageBps": 3500,
+      "minLiquidityUsd": 10000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": 2,
+      "loanAmountUsd": 600,
+      "estimatedGasUsd": 2,
+      "minSpreadPercent": 0.001,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": 2,
+      "maxLiquidityUsagePercent": 60,
+      "maxSlippageBps": 1200,
+      "minLiquidityUsd": 1000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": 3,
+      "loanAmountUsd": 5000,
+      "estimatedGasUsd": 8,
+      "minSpreadPercent": 0.005,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": 3,
+      "maxLiquidityUsagePercent": 80,
+      "maxSlippageBps": 1800,
+      "minLiquidityUsd": 1000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": 3,
+      "loanAmountUsd": 2000,
+      "estimatedGasUsd": 3,
+      "minSpreadPercent": 0.0001,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": 3,
+      "maxLiquidityUsagePercent": 25,
+      "maxSlippageBps": 500,
+      "minLiquidityUsd": 500
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": 1,
+      "loanAmountUsd": 150,
+      "estimatedGasUsd": 8,
+      "minSpreadPercent": 0.01,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": 1,
+      "maxLiquidityUsagePercent": 5,
+      "maxSlippageBps": 1200,
+      "minLiquidityUsd": 20000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": -2,
+      "loanAmountUsd": 1500,
+      "estimatedGasUsd": 1,
+      "minSpreadPercent": 0.001,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": -2,
+      "maxLiquidityUsagePercent": 40,
+      "maxSlippageBps": 800,
+      "minLiquidityUsd": 5000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": 1,
+      "loanAmountUsd": 1250,
+      "estimatedGasUsd": 6,
+      "minSpreadPercent": 0.01,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": 1,
+      "maxLiquidityUsagePercent": 40,
+      "maxSlippageBps": 800,
+      "minLiquidityUsd": 5000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": -1,
+      "loanAmountUsd": 1500,
+      "estimatedGasUsd": 1,
+      "minSpreadPercent": 0.001,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": -1,
+      "maxLiquidityUsagePercent": 8,
+      "maxSlippageBps": 800,
+      "minLiquidityUsd": 10000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": 3,
+      "loanAmountUsd": 5000,
+      "estimatedGasUsd": 8,
+      "minSpreadPercent": 0.01,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": 3,
+      "maxLiquidityUsagePercent": 15,
+      "maxSlippageBps": 500,
+      "minLiquidityUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": -1,
+      "loanAmountUsd": 600,
+      "estimatedGasUsd": 8,
+      "minSpreadPercent": 0.01,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": -1,
+      "maxLiquidityUsagePercent": 5,
+      "maxSlippageBps": 3500,
+      "minLiquidityUsd": 10000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": 5,
+      "loanAmountUsd": 1000,
+      "estimatedGasUsd": 1,
+      "minSpreadPercent": 0.0001,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": 5,
+      "maxLiquidityUsagePercent": 15,
+      "maxSlippageBps": 300,
+      "minLiquidityUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": 3,
+      "loanAmountUsd": 600,
+      "estimatedGasUsd": 6,
+      "minSpreadPercent": 0.005,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": 3,
+      "maxLiquidityUsagePercent": 60,
+      "maxSlippageBps": 1800,
+      "minLiquidityUsd": 10000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": 3,
+      "loanAmountUsd": 1250,
+      "estimatedGasUsd": 3,
+      "minSpreadPercent": 0.0001,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": 3,
+      "maxLiquidityUsagePercent": 8,
+      "maxSlippageBps": 800,
+      "minLiquidityUsd": 5000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": 2,
+      "loanAmountUsd": 600,
+      "estimatedGasUsd": 0,
+      "minSpreadPercent": 0.005,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": 2,
+      "maxLiquidityUsagePercent": 95,
+      "maxSlippageBps": 1200,
+      "minLiquidityUsd": 10000
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "perNetworkMinNetProfitUsd": -1,
+      "loanAmountUsd": 2000,
+      "estimatedGasUsd": 0,
+      "minSpreadPercent": 0.005,
+      "networks": "ethereum arbitrum base polygon",
+      "minNetProfitUsd": -1,
+      "maxLiquidityUsagePercent": 40,
+      "maxSlippageBps": 3500,
+      "minLiquidityUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 2,
+      "perNetworkMinNetProfitUsd": -2,
+      "minSpreadPercent": 0,
+      "minLiquidityUsd": 1000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 5,
+      "maxSlippageBps": 1800,
+      "loanAmountUsd": 1500,
+      "minNetProfitUsd": -2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 0,
+      "perNetworkMinNetProfitUsd": 5,
+      "minSpreadPercent": 0.001,
+      "minLiquidityUsd": 1000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 40,
+      "maxSlippageBps": 2500,
+      "loanAmountUsd": 1500,
+      "minNetProfitUsd": 5
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 3,
+      "perNetworkMinNetProfitUsd": 2,
+      "minSpreadPercent": 0.005,
+      "minLiquidityUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 25,
+      "maxSlippageBps": 800,
+      "loanAmountUsd": 1250,
+      "minNetProfitUsd": 2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 8,
+      "perNetworkMinNetProfitUsd": 5,
+      "minSpreadPercent": 0.005,
+      "minLiquidityUsd": 1000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 10,
+      "maxSlippageBps": 800,
+      "loanAmountUsd": 2000,
+      "minNetProfitUsd": 5
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 3,
+      "perNetworkMinNetProfitUsd": 3,
+      "minSpreadPercent": 0.01,
+      "minLiquidityUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 80,
+      "maxSlippageBps": 1200,
+      "loanAmountUsd": 3000,
+      "minNetProfitUsd": 3
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 3,
+      "perNetworkMinNetProfitUsd": 1,
+      "minSpreadPercent": 0.001,
+      "minLiquidityUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 8,
+      "maxSlippageBps": 3500,
+      "loanAmountUsd": 2500,
+      "minNetProfitUsd": 1
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 6,
+      "perNetworkMinNetProfitUsd": -1,
+      "minSpreadPercent": 0.01,
+      "minLiquidityUsd": 1000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 5,
+      "maxSlippageBps": 1200,
+      "loanAmountUsd": 150,
+      "minNetProfitUsd": -1
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 6,
+      "perNetworkMinNetProfitUsd": 0,
+      "minSpreadPercent": 0.005,
+      "minLiquidityUsd": 1000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 25,
+      "maxSlippageBps": 3500,
+      "loanAmountUsd": 800,
+      "minNetProfitUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 1,
+      "perNetworkMinNetProfitUsd": 0,
+      "minSpreadPercent": 0.001,
+      "minLiquidityUsd": 1000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 25,
+      "maxSlippageBps": 1200,
+      "loanAmountUsd": 1000,
+      "minNetProfitUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 8,
+      "perNetworkMinNetProfitUsd": 3,
+      "minSpreadPercent": 0.005,
+      "minLiquidityUsd": 1000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 60,
+      "maxSlippageBps": 1200,
+      "loanAmountUsd": 150,
+      "minNetProfitUsd": 3
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 8,
+      "perNetworkMinNetProfitUsd": 3,
+      "minSpreadPercent": 0.0001,
+      "minLiquidityUsd": 20000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 60,
+      "maxSlippageBps": 1800,
+      "loanAmountUsd": 1250,
+      "minNetProfitUsd": 3
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 8,
+      "perNetworkMinNetProfitUsd": 2,
+      "minSpreadPercent": 0.0001,
+      "minLiquidityUsd": 10000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 15,
+      "maxSlippageBps": 1800,
+      "loanAmountUsd": 3000,
+      "minNetProfitUsd": 2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 8,
+      "perNetworkMinNetProfitUsd": 0,
+      "minSpreadPercent": 0.005,
+      "minLiquidityUsd": 500,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 40,
+      "maxSlippageBps": 1800,
+      "loanAmountUsd": 1250,
+      "minNetProfitUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 4,
+      "perNetworkMinNetProfitUsd": -2,
+      "minSpreadPercent": 0,
+      "minLiquidityUsd": 5000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 5,
+      "maxSlippageBps": 800,
+      "loanAmountUsd": 250,
+      "minNetProfitUsd": -2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 4,
+      "perNetworkMinNetProfitUsd": -2,
+      "minSpreadPercent": 0,
+      "minLiquidityUsd": 5000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 95,
+      "maxSlippageBps": 2500,
+      "loanAmountUsd": 800,
+      "minNetProfitUsd": -2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 0,
+      "perNetworkMinNetProfitUsd": 5,
+      "minSpreadPercent": 0.0001,
+      "minLiquidityUsd": 1000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 5,
+      "maxSlippageBps": 1800,
+      "loanAmountUsd": 800,
+      "minNetProfitUsd": 5
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 6,
+      "perNetworkMinNetProfitUsd": 3,
+      "minSpreadPercent": 0.0001,
+      "minLiquidityUsd": 10000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 15,
+      "maxSlippageBps": 500,
+      "loanAmountUsd": 2500,
+      "minNetProfitUsd": 3
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 0,
+      "perNetworkMinNetProfitUsd": 2,
+      "minSpreadPercent": 0.01,
+      "minLiquidityUsd": 1000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 40,
+      "maxSlippageBps": 3500,
+      "loanAmountUsd": 1500,
+      "minNetProfitUsd": 2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 1,
+      "perNetworkMinNetProfitUsd": 2,
+      "minSpreadPercent": 0.005,
+      "minLiquidityUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 10,
+      "maxSlippageBps": 2500,
+      "loanAmountUsd": 600,
+      "minNetProfitUsd": 2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 0,
+      "perNetworkMinNetProfitUsd": 1,
+      "minSpreadPercent": 0.01,
+      "minLiquidityUsd": 10000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 5,
+      "maxSlippageBps": 2500,
+      "loanAmountUsd": 600,
+      "minNetProfitUsd": 1
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 3,
+      "perNetworkMinNetProfitUsd": 0,
+      "minSpreadPercent": 0.0001,
+      "minLiquidityUsd": 10000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 95,
+      "maxSlippageBps": 300,
+      "loanAmountUsd": 2500,
+      "minNetProfitUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 6,
+      "perNetworkMinNetProfitUsd": 3,
+      "minSpreadPercent": 0.005,
+      "minLiquidityUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 5,
+      "maxSlippageBps": 300,
+      "loanAmountUsd": 1500,
+      "minNetProfitUsd": 3
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 8,
+      "perNetworkMinNetProfitUsd": -1,
+      "minSpreadPercent": 0.0001,
+      "minLiquidityUsd": 1000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 25,
+      "maxSlippageBps": 1200,
+      "loanAmountUsd": 400,
+      "minNetProfitUsd": -1
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 6,
+      "perNetworkMinNetProfitUsd": 5,
+      "minSpreadPercent": 0.01,
+      "minLiquidityUsd": 5000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 8,
+      "maxSlippageBps": 500,
+      "loanAmountUsd": 250,
+      "minNetProfitUsd": 5
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 8,
+      "perNetworkMinNetProfitUsd": -1,
+      "minSpreadPercent": 0.001,
+      "minLiquidityUsd": 10000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 60,
+      "maxSlippageBps": 1800,
+      "loanAmountUsd": 5000,
+      "minNetProfitUsd": -1
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 3,
+      "perNetworkMinNetProfitUsd": 0,
+      "minSpreadPercent": 0.005,
+      "minLiquidityUsd": 500,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 8,
+      "maxSlippageBps": 3500,
+      "loanAmountUsd": 5000,
+      "minNetProfitUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 1,
+      "perNetworkMinNetProfitUsd": 5,
+      "minSpreadPercent": 0,
+      "minLiquidityUsd": 20000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 40,
+      "maxSlippageBps": 300,
+      "loanAmountUsd": 5000,
+      "minNetProfitUsd": 5
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 0,
+      "perNetworkMinNetProfitUsd": -2,
+      "minSpreadPercent": 0,
+      "minLiquidityUsd": 5000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 8,
+      "maxSlippageBps": 1800,
+      "loanAmountUsd": 2500,
+      "minNetProfitUsd": -2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 4,
+      "perNetworkMinNetProfitUsd": -1,
+      "minSpreadPercent": 0.01,
+      "minLiquidityUsd": 20000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 40,
+      "maxSlippageBps": 1200,
+      "loanAmountUsd": 5000,
+      "minNetProfitUsd": -1
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 8,
+      "perNetworkMinNetProfitUsd": -1,
+      "minSpreadPercent": 0.001,
+      "minLiquidityUsd": 1000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 10,
+      "maxSlippageBps": 300,
+      "loanAmountUsd": 800,
+      "minNetProfitUsd": -1
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 4,
+      "perNetworkMinNetProfitUsd": 2,
+      "minSpreadPercent": 0,
+      "minLiquidityUsd": 1000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 60,
+      "maxSlippageBps": 3500,
+      "loanAmountUsd": 1500,
+      "minNetProfitUsd": 2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 2,
+      "perNetworkMinNetProfitUsd": 1,
+      "minSpreadPercent": 0,
+      "minLiquidityUsd": 500,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 25,
+      "maxSlippageBps": 300,
+      "loanAmountUsd": 250,
+      "minNetProfitUsd": 1
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 4,
+      "perNetworkMinNetProfitUsd": -2,
+      "minSpreadPercent": 0.001,
+      "minLiquidityUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 25,
+      "maxSlippageBps": 500,
+      "loanAmountUsd": 600,
+      "minNetProfitUsd": -2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 2,
+      "perNetworkMinNetProfitUsd": 3,
+      "minSpreadPercent": 0.0001,
+      "minLiquidityUsd": 1000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 60,
+      "maxSlippageBps": 3500,
+      "loanAmountUsd": 3000,
+      "minNetProfitUsd": 3
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 6,
+      "perNetworkMinNetProfitUsd": 5,
+      "minSpreadPercent": 0,
+      "minLiquidityUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 80,
+      "maxSlippageBps": 1200,
+      "loanAmountUsd": 600,
+      "minNetProfitUsd": 5
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 6,
+      "perNetworkMinNetProfitUsd": 0,
+      "minSpreadPercent": 0.0001,
+      "minLiquidityUsd": 1000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 80,
+      "maxSlippageBps": 1800,
+      "loanAmountUsd": 1000,
+      "minNetProfitUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 8,
+      "perNetworkMinNetProfitUsd": 1,
+      "minSpreadPercent": 0.0001,
+      "minLiquidityUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 8,
+      "maxSlippageBps": 3500,
+      "loanAmountUsd": 2500,
+      "minNetProfitUsd": 1
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 3,
+      "perNetworkMinNetProfitUsd": 5,
+      "minSpreadPercent": 0.001,
+      "minLiquidityUsd": 1000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 15,
+      "maxSlippageBps": 2500,
+      "loanAmountUsd": 1500,
+      "minNetProfitUsd": 5
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 6,
+      "perNetworkMinNetProfitUsd": 0,
+      "minSpreadPercent": 0.01,
+      "minLiquidityUsd": 10000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 5,
+      "maxSlippageBps": 3500,
+      "loanAmountUsd": 1500,
+      "minNetProfitUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "estimatedGasUsd": 6,
+      "perNetworkMinNetProfitUsd": 0,
+      "minSpreadPercent": 0.0001,
+      "minLiquidityUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 40,
+      "maxSlippageBps": 300,
+      "loanAmountUsd": 250,
+      "minNetProfitUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 150,
+      "minSpreadPercent": 0.0001,
+      "minLiquidityUsd": 20000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 15,
+      "estimatedGasUsd": 2,
+      "maxSlippageBps": 800,
+      "perNetworkMinNetProfitUsd": 0,
+      "minNetProfitUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 600,
+      "minSpreadPercent": 0.01,
+      "minLiquidityUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 8,
+      "estimatedGasUsd": 6,
+      "maxSlippageBps": 800,
+      "perNetworkMinNetProfitUsd": 3,
+      "minNetProfitUsd": 3
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 2000,
+      "minSpreadPercent": 0.0001,
+      "minLiquidityUsd": 1000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 15,
+      "estimatedGasUsd": 4,
+      "maxSlippageBps": 300,
+      "perNetworkMinNetProfitUsd": 0,
+      "minNetProfitUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 2000,
+      "minSpreadPercent": 0.0001,
+      "minLiquidityUsd": 500,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 40,
+      "estimatedGasUsd": 1,
+      "maxSlippageBps": 500,
+      "perNetworkMinNetProfitUsd": 1,
+      "minNetProfitUsd": 1
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 2000,
+      "minSpreadPercent": 0,
+      "minLiquidityUsd": 10000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 8,
+      "estimatedGasUsd": 0,
+      "maxSlippageBps": 500,
+      "perNetworkMinNetProfitUsd": -2,
+      "minNetProfitUsd": -2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 1250,
+      "minSpreadPercent": 0.001,
+      "minLiquidityUsd": 20000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 40,
+      "estimatedGasUsd": 6,
+      "maxSlippageBps": 500,
+      "perNetworkMinNetProfitUsd": -1,
+      "minNetProfitUsd": -1
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 1500,
+      "minSpreadPercent": 0.005,
+      "minLiquidityUsd": 500,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 95,
+      "estimatedGasUsd": 0,
+      "maxSlippageBps": 1800,
+      "perNetworkMinNetProfitUsd": -2,
+      "minNetProfitUsd": -2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 400,
+      "minSpreadPercent": 0,
+      "minLiquidityUsd": 20000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 8,
+      "estimatedGasUsd": 8,
+      "maxSlippageBps": 2500,
+      "perNetworkMinNetProfitUsd": -1,
+      "minNetProfitUsd": -1
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 1250,
+      "minSpreadPercent": 0,
+      "minLiquidityUsd": 20000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 95,
+      "estimatedGasUsd": 0,
+      "maxSlippageBps": 2500,
+      "perNetworkMinNetProfitUsd": -2,
+      "minNetProfitUsd": -2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 600,
+      "minSpreadPercent": 0.0001,
+      "minLiquidityUsd": 20000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 8,
+      "estimatedGasUsd": 8,
+      "maxSlippageBps": 1200,
+      "perNetworkMinNetProfitUsd": 5,
+      "minNetProfitUsd": 5
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 3000,
+      "minSpreadPercent": 0,
+      "minLiquidityUsd": 20000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 60,
+      "estimatedGasUsd": 3,
+      "maxSlippageBps": 3500,
+      "perNetworkMinNetProfitUsd": 5,
+      "minNetProfitUsd": 5
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 2000,
+      "minSpreadPercent": 0.01,
+      "minLiquidityUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 5,
+      "estimatedGasUsd": 3,
+      "maxSlippageBps": 2500,
+      "perNetworkMinNetProfitUsd": -2,
+      "minNetProfitUsd": -2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 800,
+      "minSpreadPercent": 0.005,
+      "minLiquidityUsd": 1000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 10,
+      "estimatedGasUsd": 8,
+      "maxSlippageBps": 800,
+      "perNetworkMinNetProfitUsd": -1,
+      "minNetProfitUsd": -1
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 800,
+      "minSpreadPercent": 0,
+      "minLiquidityUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 8,
+      "estimatedGasUsd": 1,
+      "maxSlippageBps": 1200,
+      "perNetworkMinNetProfitUsd": -2,
+      "minNetProfitUsd": -2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 250,
+      "minSpreadPercent": 0.001,
+      "minLiquidityUsd": 5000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 15,
+      "estimatedGasUsd": 6,
+      "maxSlippageBps": 1200,
+      "perNetworkMinNetProfitUsd": 5,
+      "minNetProfitUsd": 5
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 1250,
+      "minSpreadPercent": 0.001,
+      "minLiquidityUsd": 10000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 25,
+      "estimatedGasUsd": 2,
+      "maxSlippageBps": 1800,
+      "perNetworkMinNetProfitUsd": -2,
+      "minNetProfitUsd": -2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 1500,
+      "minSpreadPercent": 0.01,
+      "minLiquidityUsd": 20000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 10,
+      "estimatedGasUsd": 2,
+      "maxSlippageBps": 500,
+      "perNetworkMinNetProfitUsd": 3,
+      "minNetProfitUsd": 3
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 150,
+      "minSpreadPercent": 0.001,
+      "minLiquidityUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 60,
+      "estimatedGasUsd": 2,
+      "maxSlippageBps": 1800,
+      "perNetworkMinNetProfitUsd": 5,
+      "minNetProfitUsd": 5
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 250,
+      "minSpreadPercent": 0,
+      "minLiquidityUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 25,
+      "estimatedGasUsd": 2,
+      "maxSlippageBps": 800,
+      "perNetworkMinNetProfitUsd": 0,
+      "minNetProfitUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 3000,
+      "minSpreadPercent": 0.005,
+      "minLiquidityUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 95,
+      "estimatedGasUsd": 4,
+      "maxSlippageBps": 800,
+      "perNetworkMinNetProfitUsd": 0,
+      "minNetProfitUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 5000,
+      "minSpreadPercent": 0.001,
+      "minLiquidityUsd": 500,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 8,
+      "estimatedGasUsd": 1,
+      "maxSlippageBps": 3500,
+      "perNetworkMinNetProfitUsd": 1,
+      "minNetProfitUsd": 1
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 2500,
+      "minSpreadPercent": 0.005,
+      "minLiquidityUsd": 20000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 80,
+      "estimatedGasUsd": 3,
+      "maxSlippageBps": 300,
+      "perNetworkMinNetProfitUsd": -2,
+      "minNetProfitUsd": -2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 1500,
+      "minSpreadPercent": 0,
+      "minLiquidityUsd": 20000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 5,
+      "estimatedGasUsd": 6,
+      "maxSlippageBps": 2500,
+      "perNetworkMinNetProfitUsd": 1,
+      "minNetProfitUsd": 1
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 1000,
+      "minSpreadPercent": 0.01,
+      "minLiquidityUsd": 5000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 8,
+      "estimatedGasUsd": 8,
+      "maxSlippageBps": 500,
+      "perNetworkMinNetProfitUsd": 5,
+      "minNetProfitUsd": 5
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 1250,
+      "minSpreadPercent": 0.01,
+      "minLiquidityUsd": 5000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 5,
+      "estimatedGasUsd": 8,
+      "maxSlippageBps": 3500,
+      "perNetworkMinNetProfitUsd": 5,
+      "minNetProfitUsd": 5
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 400,
+      "minSpreadPercent": 0.0001,
+      "minLiquidityUsd": 1000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 5,
+      "estimatedGasUsd": 4,
+      "maxSlippageBps": 3500,
+      "perNetworkMinNetProfitUsd": 5,
+      "minNetProfitUsd": 5
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 600,
+      "minSpreadPercent": 0.005,
+      "minLiquidityUsd": 500,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 10,
+      "estimatedGasUsd": 1,
+      "maxSlippageBps": 300,
+      "perNetworkMinNetProfitUsd": -2,
+      "minNetProfitUsd": -2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 2000,
+      "minSpreadPercent": 0.01,
+      "minLiquidityUsd": 20000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 25,
+      "estimatedGasUsd": 8,
+      "maxSlippageBps": 300,
+      "perNetworkMinNetProfitUsd": -2,
+      "minNetProfitUsd": -2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 800,
+      "minSpreadPercent": 0.0001,
+      "minLiquidityUsd": 10000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 95,
+      "estimatedGasUsd": 2,
+      "maxSlippageBps": 800,
+      "perNetworkMinNetProfitUsd": -2,
+      "minNetProfitUsd": -2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 2500,
+      "minSpreadPercent": 0.0001,
+      "minLiquidityUsd": 5000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 95,
+      "estimatedGasUsd": 2,
+      "maxSlippageBps": 3500,
+      "perNetworkMinNetProfitUsd": 5,
+      "minNetProfitUsd": 5
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 1500,
+      "minSpreadPercent": 0.005,
+      "minLiquidityUsd": 5000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 60,
+      "estimatedGasUsd": 0,
+      "maxSlippageBps": 300,
+      "perNetworkMinNetProfitUsd": 5,
+      "minNetProfitUsd": 5
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 3000,
+      "minSpreadPercent": 0.0001,
+      "minLiquidityUsd": 20000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 40,
+      "estimatedGasUsd": 4,
+      "maxSlippageBps": 1200,
+      "perNetworkMinNetProfitUsd": -1,
+      "minNetProfitUsd": -1
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 600,
+      "minSpreadPercent": 0.001,
+      "minLiquidityUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 60,
+      "estimatedGasUsd": 6,
+      "maxSlippageBps": 800,
+      "perNetworkMinNetProfitUsd": 5,
+      "minNetProfitUsd": 5
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 400,
+      "minSpreadPercent": 0,
+      "minLiquidityUsd": 5000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 15,
+      "estimatedGasUsd": 1,
+      "maxSlippageBps": 3500,
+      "perNetworkMinNetProfitUsd": 5,
+      "minNetProfitUsd": 5
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 600,
+      "minSpreadPercent": 0,
+      "minLiquidityUsd": 5000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 60,
+      "estimatedGasUsd": 2,
+      "maxSlippageBps": 2500,
+      "perNetworkMinNetProfitUsd": 1,
+      "minNetProfitUsd": 1
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 150,
+      "minSpreadPercent": 0.0001,
+      "minLiquidityUsd": 0,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 95,
+      "estimatedGasUsd": 4,
+      "maxSlippageBps": 800,
+      "perNetworkMinNetProfitUsd": 3,
+      "minNetProfitUsd": 3
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 600,
+      "minSpreadPercent": 0.0001,
+      "minLiquidityUsd": 500,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 15,
+      "estimatedGasUsd": 2,
+      "maxSlippageBps": 3500,
+      "perNetworkMinNetProfitUsd": -1,
+      "minNetProfitUsd": -1
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 150,
+      "minSpreadPercent": 0.005,
+      "minLiquidityUsd": 5000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 8,
+      "estimatedGasUsd": 2,
+      "maxSlippageBps": 1200,
+      "perNetworkMinNetProfitUsd": 2,
+      "minNetProfitUsd": 2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 3000,
+      "minSpreadPercent": 0.01,
+      "minLiquidityUsd": 1000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 80,
+      "estimatedGasUsd": 3,
+      "maxSlippageBps": 500,
+      "perNetworkMinNetProfitUsd": 0,
+      "minNetProfitUsd": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "loanAmountUsd": 800,
+      "minSpreadPercent": 0.005,
+      "minLiquidityUsd": 1000,
+      "networks": "ethereum arbitrum base polygon",
+      "maxLiquidityUsagePercent": 95,
+      "estimatedGasUsd": 8,
+      "maxSlippageBps": 2500,
+      "perNetworkMinNetProfitUsd": -2,
+      "minNetProfitUsd": -2
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 40,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": -1,
+      "estimatedGasUsd": 1,
+      "loanAmountUsd": 600,
+      "minNetProfitUsd": -1,
+      "minLiquidityUsd": 500,
+      "maxSlippageBps": 1800,
+      "minSpreadPercent": 0.005
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 10,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": 2,
+      "estimatedGasUsd": 4,
+      "loanAmountUsd": 250,
+      "minNetProfitUsd": 2,
+      "minLiquidityUsd": 20000,
+      "maxSlippageBps": 1200,
+      "minSpreadPercent": 0.001
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 5,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": 3,
+      "estimatedGasUsd": 8,
+      "loanAmountUsd": 2000,
+      "minNetProfitUsd": 3,
+      "minLiquidityUsd": 20000,
+      "maxSlippageBps": 1800,
+      "minSpreadPercent": 0.0001
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 80,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": -2,
+      "estimatedGasUsd": 2,
+      "loanAmountUsd": 150,
+      "minNetProfitUsd": -2,
+      "minLiquidityUsd": 500,
+      "maxSlippageBps": 1800,
+      "minSpreadPercent": 0.005
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 80,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": 5,
+      "estimatedGasUsd": 2,
+      "loanAmountUsd": 150,
+      "minNetProfitUsd": 5,
+      "minLiquidityUsd": 0,
+      "maxSlippageBps": 2500,
+      "minSpreadPercent": 0.005
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 80,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": -2,
+      "estimatedGasUsd": 1,
+      "loanAmountUsd": 1000,
+      "minNetProfitUsd": -2,
+      "minLiquidityUsd": 10000,
+      "maxSlippageBps": 2500,
+      "minSpreadPercent": 0.0001
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 95,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": 5,
+      "estimatedGasUsd": 4,
+      "loanAmountUsd": 5000,
+      "minNetProfitUsd": 5,
+      "minLiquidityUsd": 10000,
+      "maxSlippageBps": 300,
+      "minSpreadPercent": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 40,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": -1,
+      "estimatedGasUsd": 8,
+      "loanAmountUsd": 1000,
+      "minNetProfitUsd": -1,
+      "minLiquidityUsd": 500,
+      "maxSlippageBps": 500,
+      "minSpreadPercent": 0.001
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 40,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": 5,
+      "estimatedGasUsd": 4,
+      "loanAmountUsd": 150,
+      "minNetProfitUsd": 5,
+      "minLiquidityUsd": 10000,
+      "maxSlippageBps": 300,
+      "minSpreadPercent": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 25,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": -2,
+      "estimatedGasUsd": 6,
+      "loanAmountUsd": 250,
+      "minNetProfitUsd": -2,
+      "minLiquidityUsd": 1000,
+      "maxSlippageBps": 500,
+      "minSpreadPercent": 0.005
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 10,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": -2,
+      "estimatedGasUsd": 8,
+      "loanAmountUsd": 150,
+      "minNetProfitUsd": -2,
+      "minLiquidityUsd": 1000,
+      "maxSlippageBps": 800,
+      "minSpreadPercent": 0.005
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 80,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": 5,
+      "estimatedGasUsd": 6,
+      "loanAmountUsd": 3000,
+      "minNetProfitUsd": 5,
+      "minLiquidityUsd": 1000,
+      "maxSlippageBps": 2500,
+      "minSpreadPercent": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 95,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": -1,
+      "estimatedGasUsd": 3,
+      "loanAmountUsd": 600,
+      "minNetProfitUsd": -1,
+      "minLiquidityUsd": 5000,
+      "maxSlippageBps": 1800,
+      "minSpreadPercent": 0.0001
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 10,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": 1,
+      "estimatedGasUsd": 3,
+      "loanAmountUsd": 3000,
+      "minNetProfitUsd": 1,
+      "minLiquidityUsd": 1000,
+      "maxSlippageBps": 800,
+      "minSpreadPercent": 0.001
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 15,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": 3,
+      "estimatedGasUsd": 8,
+      "loanAmountUsd": 2500,
+      "minNetProfitUsd": 3,
+      "minLiquidityUsd": 1000,
+      "maxSlippageBps": 3500,
+      "minSpreadPercent": 0.005
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 80,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": -2,
+      "estimatedGasUsd": 6,
+      "loanAmountUsd": 600,
+      "minNetProfitUsd": -2,
+      "minLiquidityUsd": 1000,
+      "maxSlippageBps": 1200,
+      "minSpreadPercent": 0.01
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 80,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": 5,
+      "estimatedGasUsd": 0,
+      "loanAmountUsd": 250,
+      "minNetProfitUsd": 5,
+      "minLiquidityUsd": 500,
+      "maxSlippageBps": 800,
+      "minSpreadPercent": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 80,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": 0,
+      "estimatedGasUsd": 4,
+      "loanAmountUsd": 2000,
+      "minNetProfitUsd": 0,
+      "minLiquidityUsd": 20000,
+      "maxSlippageBps": 500,
+      "minSpreadPercent": 0.01
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 10,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": 0,
+      "estimatedGasUsd": 0,
+      "loanAmountUsd": 2000,
+      "minNetProfitUsd": 0,
+      "minLiquidityUsd": 1000,
+      "maxSlippageBps": 800,
+      "minSpreadPercent": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 60,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": -1,
+      "estimatedGasUsd": 8,
+      "loanAmountUsd": 1500,
+      "minNetProfitUsd": -1,
+      "minLiquidityUsd": 1000,
+      "maxSlippageBps": 500,
+      "minSpreadPercent": 0.005
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 8,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": 3,
+      "estimatedGasUsd": 4,
+      "loanAmountUsd": 400,
+      "minNetProfitUsd": 3,
+      "minLiquidityUsd": 10000,
+      "maxSlippageBps": 1200,
+      "minSpreadPercent": 0.0001
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 10,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": 5,
+      "estimatedGasUsd": 1,
+      "loanAmountUsd": 3000,
+      "minNetProfitUsd": 5,
+      "minLiquidityUsd": 20000,
+      "maxSlippageBps": 2500,
+      "minSpreadPercent": 0.005
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 10,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": 0,
+      "estimatedGasUsd": 8,
+      "loanAmountUsd": 1500,
+      "minNetProfitUsd": 0,
+      "minLiquidityUsd": 1000,
+      "maxSlippageBps": 1800,
+      "minSpreadPercent": 0.0001
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 10,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": 1,
+      "estimatedGasUsd": 2,
+      "loanAmountUsd": 250,
+      "minNetProfitUsd": 1,
+      "minLiquidityUsd": 10000,
+      "maxSlippageBps": 2500,
+      "minSpreadPercent": 0.0001
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 60,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": 5,
+      "estimatedGasUsd": 0,
+      "loanAmountUsd": 600,
+      "minNetProfitUsd": 5,
+      "minLiquidityUsd": 5000,
+      "maxSlippageBps": 3500,
+      "minSpreadPercent": 0.005
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 40,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": -2,
+      "estimatedGasUsd": 4,
+      "loanAmountUsd": 1000,
+      "minNetProfitUsd": -2,
+      "minLiquidityUsd": 20000,
+      "maxSlippageBps": 1800,
+      "minSpreadPercent": 0.001
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 5,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": -2,
+      "estimatedGasUsd": 2,
+      "loanAmountUsd": 2000,
+      "minNetProfitUsd": -2,
+      "minLiquidityUsd": 500,
+      "maxSlippageBps": 300,
+      "minSpreadPercent": 0.0001
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 15,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": -1,
+      "estimatedGasUsd": 4,
+      "loanAmountUsd": 150,
+      "minNetProfitUsd": -1,
+      "minLiquidityUsd": 1000,
+      "maxSlippageBps": 1800,
+      "minSpreadPercent": 0.001
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 5,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": 0,
+      "estimatedGasUsd": 6,
+      "loanAmountUsd": 5000,
+      "minNetProfitUsd": 0,
+      "minLiquidityUsd": 0,
+      "maxSlippageBps": 3500,
+      "minSpreadPercent": 0.005
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 40,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": 1,
+      "estimatedGasUsd": 1,
+      "loanAmountUsd": 600,
+      "minNetProfitUsd": 1,
+      "minLiquidityUsd": 500,
+      "maxSlippageBps": 1800,
+      "minSpreadPercent": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 8,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": -1,
+      "estimatedGasUsd": 1,
+      "loanAmountUsd": 1250,
+      "minNetProfitUsd": -1,
+      "minLiquidityUsd": 0,
+      "maxSlippageBps": 1800,
+      "minSpreadPercent": 0.0001
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 8,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": 5,
+      "estimatedGasUsd": 8,
+      "loanAmountUsd": 5000,
+      "minNetProfitUsd": 5,
+      "minLiquidityUsd": 5000,
+      "maxSlippageBps": 2500,
+      "minSpreadPercent": 0.0001
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 95,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": 3,
+      "estimatedGasUsd": 3,
+      "loanAmountUsd": 1250,
+      "minNetProfitUsd": 3,
+      "minLiquidityUsd": 20000,
+      "maxSlippageBps": 1800,
+      "minSpreadPercent": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 15,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": 2,
+      "estimatedGasUsd": 4,
+      "loanAmountUsd": 150,
+      "minNetProfitUsd": 2,
+      "minLiquidityUsd": 1000,
+      "maxSlippageBps": 1800,
+      "minSpreadPercent": 0.01
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 10,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": 5,
+      "estimatedGasUsd": 8,
+      "loanAmountUsd": 2500,
+      "minNetProfitUsd": 5,
+      "minLiquidityUsd": 1000,
+      "maxSlippageBps": 1200,
+      "minSpreadPercent": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 15,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": 3,
+      "estimatedGasUsd": 1,
+      "loanAmountUsd": 250,
+      "minNetProfitUsd": 3,
+      "minLiquidityUsd": 20000,
+      "maxSlippageBps": 500,
+      "minSpreadPercent": 0
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 40,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": 0,
+      "estimatedGasUsd": 0,
+      "loanAmountUsd": 5000,
+      "minNetProfitUsd": 0,
+      "minLiquidityUsd": 500,
+      "maxSlippageBps": 500,
+      "minSpreadPercent": 0.005
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 40,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": -1,
+      "estimatedGasUsd": 8,
+      "loanAmountUsd": 1500,
+      "minNetProfitUsd": -1,
+      "minLiquidityUsd": 1000,
+      "maxSlippageBps": 1200,
+      "minSpreadPercent": 0.005
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 95,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": -2,
+      "estimatedGasUsd": 0,
+      "loanAmountUsd": 2000,
+      "minNetProfitUsd": -2,
+      "minLiquidityUsd": 0,
+      "maxSlippageBps": 1800,
+      "minSpreadPercent": 0.01
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  },
+  {
+    "p": {
+      "maxLiquidityUsagePercent": 25,
+      "networks": "ethereum arbitrum base polygon",
+      "perNetworkMinNetProfitUsd": 1,
+      "estimatedGasUsd": 4,
+      "loanAmountUsd": 2000,
+      "minNetProfitUsd": 1,
+      "minLiquidityUsd": 10000,
+      "maxSlippageBps": 3500,
+      "minSpreadPercent": 0.0001
+    },
+    "error": "Response status code does not indicate success: 400 (Bad Request)."
+  }
+]

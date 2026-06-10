@@ -1,0 +1,6431 @@
+[
+  {
+    "lane": "D-profitGas",
+    "config": [
+      1000,
+      500,
+      10,
+      -1,
+      1
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "500fdb95-4d94-47ab-9597-5c68933fc07a",
+      "scanDurationMs": 1459,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": -1,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": -1,
+          "arbitrum": -1,
+          "base": -1,
+          "polygon": -1
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 500,
+        "maxLiquidityUsageFraction": 0.1,
+        "maxResults": 25,
+        "loanAmountUsd": 1000,
+        "estimatedGasUsd": 1,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.17,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39691.45,
+            "attemptedLoanAmount": 1000,
+            "buyImpactBps": 6,
+            "sellImpactBps": 123
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V2",
+            "sellDex": "Uniswap V3",
+            "spread": 0.1,
+            "buyLiquidityUsd": 25786727.18,
+            "sellLiquidityUsd": 153579.15,
+            "attemptedLoanAmount": 1000,
+            "buyImpactBps": 1,
+            "sellImpactBps": 32
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 1459
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:21:58.127Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "db98c17f-8f98-46e2-873a-2ed5830afa5c",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "D-profitGas",
+    "config": [
+      1250,
+      500,
+      10,
+      -1,
+      2
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "c92db852-8412-4d2e-ae90-d8e04cb88f9c",
+      "scanDurationMs": 1112,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": -1,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": -1,
+          "arbitrum": -1,
+          "base": -1,
+          "polygon": -1
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 500,
+        "maxLiquidityUsageFraction": 0.1,
+        "maxResults": 25,
+        "loanAmountUsd": 1250,
+        "estimatedGasUsd": 2,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.17,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39691.45,
+            "attemptedLoanAmount": 1250,
+            "buyImpactBps": 8,
+            "sellImpactBps": 153
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V2",
+            "sellDex": "Uniswap V3",
+            "spread": 0.1,
+            "buyLiquidityUsd": 25786727.18,
+            "sellLiquidityUsd": 153579.15,
+            "attemptedLoanAmount": 1250,
+            "buyImpactBps": 1,
+            "sellImpactBps": 40
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 1112
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:00.198Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "db98c17f-8f98-46e2-873a-2ed5830afa5c",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "D-profitGas",
+    "config": [
+      1500,
+      500,
+      10,
+      0,
+      2
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "97a1c287-2b8f-4351-b06a-6402b50c9709",
+      "scanDurationMs": 1198,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 0,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 0,
+          "arbitrum": 0,
+          "base": 0,
+          "polygon": 0
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 500,
+        "maxLiquidityUsageFraction": 0.1,
+        "maxResults": 25,
+        "loanAmountUsd": 1500,
+        "estimatedGasUsd": 2,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.17,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39691.45,
+            "attemptedLoanAmount": 1500,
+            "buyImpactBps": 9,
+            "sellImpactBps": 183
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V2",
+            "sellDex": "Uniswap V3",
+            "spread": 0.1,
+            "buyLiquidityUsd": 25786727.18,
+            "sellLiquidityUsd": 153579.15,
+            "attemptedLoanAmount": 1500,
+            "buyImpactBps": 1,
+            "sellImpactBps": 48
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 1198
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:03.168Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "db98c17f-8f98-46e2-873a-2ed5830afa5c",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "D-profitGas",
+    "config": [
+      1750,
+      500,
+      10,
+      0,
+      3
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "b560a866-d4bc-44ee-9443-c0d8ecda3a01",
+      "scanDurationMs": 333,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 0,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 0,
+          "arbitrum": 0,
+          "base": 0,
+          "polygon": 0
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 500,
+        "maxLiquidityUsageFraction": 0.1,
+        "maxResults": 25,
+        "loanAmountUsd": 1750,
+        "estimatedGasUsd": 3,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.17,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39691.45,
+            "attemptedLoanAmount": 1750,
+            "buyImpactBps": 11,
+            "sellImpactBps": 213
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V2",
+            "sellDex": "Uniswap V3",
+            "spread": 0.1,
+            "buyLiquidityUsd": 25786727.18,
+            "sellLiquidityUsd": 153579.15,
+            "attemptedLoanAmount": 1750,
+            "buyImpactBps": 1,
+            "sellImpactBps": 56
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 333
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:05.213Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "db98c17f-8f98-46e2-873a-2ed5830afa5c",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "D-profitGas",
+    "config": [
+      2000,
+      500,
+      10,
+      1,
+      3
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "eb8d9526-bbb3-42b0-b514-164d1cd7dcef",
+      "scanDurationMs": 362,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 1,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 1,
+          "arbitrum": 1,
+          "base": 1,
+          "polygon": 1
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 500,
+        "maxLiquidityUsageFraction": 0.1,
+        "maxResults": 25,
+        "loanAmountUsd": 2000,
+        "estimatedGasUsd": 3,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.17,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39691.45,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 13,
+            "sellImpactBps": 242
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V2",
+            "sellDex": "Uniswap V3",
+            "spread": 0.1,
+            "buyLiquidityUsd": 25786727.18,
+            "sellLiquidityUsd": 153579.15,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 1,
+            "sellImpactBps": 64
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 362
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:07.021Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "db98c17f-8f98-46e2-873a-2ed5830afa5c",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "D-profitGas",
+    "config": [
+      2250,
+      500,
+      10,
+      2,
+      4
+    ],
+    "data": null,
+    "error": "The SSL connection could not be established, see inner exception.",
+    "PSComputerName": "localhost",
+    "RunspaceId": "db98c17f-8f98-46e2-873a-2ed5830afa5c",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "D-profitGas",
+    "config": [
+      2500,
+      500,
+      10,
+      3,
+      4
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "152f3002-bdac-4142-94e2-e78f76e24c0f",
+      "scanDurationMs": 757,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 3,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 3,
+          "arbitrum": 3,
+          "base": 3,
+          "polygon": 3
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 500,
+        "maxLiquidityUsageFraction": 0.1,
+        "maxResults": 25,
+        "loanAmountUsd": 2500,
+        "estimatedGasUsd": 4,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 2500,
+            "buyImpactBps": 16,
+            "sellImpactBps": 300
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 2500,
+            "buyImpactBps": 80,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 757
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:13.865Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "db98c17f-8f98-46e2-873a-2ed5830afa5c",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "D-profitGas",
+    "config": [
+      2750,
+      500,
+      10,
+      4,
+      5
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "dc919d0e-bb37-4e6f-8ab0-8bc501444637",
+      "scanDurationMs": 788,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 4,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 4,
+          "arbitrum": 4,
+          "base": 4,
+          "polygon": 4
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 500,
+        "maxLiquidityUsageFraction": 0.1,
+        "maxResults": 25,
+        "loanAmountUsd": 2750,
+        "estimatedGasUsd": 5,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 2750,
+            "buyImpactBps": 18,
+            "sellImpactBps": 329
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 2750,
+            "buyImpactBps": 88,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 788
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:15.282Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "db98c17f-8f98-46e2-873a-2ed5830afa5c",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "D-profitGas",
+    "config": [
+      3000,
+      500,
+      10,
+      5,
+      6
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "68526f4e-b40f-4477-9255-e9f5733b7e44",
+      "scanDurationMs": 321,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 5,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 5,
+          "arbitrum": 5,
+          "base": 5,
+          "polygon": 5
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 500,
+        "maxLiquidityUsageFraction": 0.1,
+        "maxResults": 25,
+        "loanAmountUsd": 3000,
+        "estimatedGasUsd": 6,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 3000,
+            "buyImpactBps": 19,
+            "sellImpactBps": 357
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 3000,
+            "buyImpactBps": 96,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 321
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:16.52Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "db98c17f-8f98-46e2-873a-2ed5830afa5c",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "D-profitGas",
+    "config": [
+      3500,
+      550,
+      12,
+      8,
+      8
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "b8478895-6f9a-4b1e-b5f0-6c0206e3b547",
+      "scanDurationMs": 291,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 8,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 8,
+          "arbitrum": 8,
+          "base": 8,
+          "polygon": 8
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 550,
+        "maxLiquidityUsageFraction": 0.12,
+        "maxResults": 25,
+        "loanAmountUsd": 3500,
+        "estimatedGasUsd": 8,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 3500,
+            "buyImpactBps": 23,
+            "sellImpactBps": 413
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 3500,
+            "buyImpactBps": 112,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 291
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:17.442Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "db98c17f-8f98-46e2-873a-2ed5830afa5c",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "C-liq",
+    "config": [
+      2000,
+      450,
+      4,
+      2,
+      3
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "02a77635-45df-4558-8666-17a12aeb15ef",
+      "scanDurationMs": 1165,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 2,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 2,
+          "arbitrum": 2,
+          "base": 2,
+          "polygon": 2
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 450,
+        "maxLiquidityUsageFraction": 0.04,
+        "maxResults": 25,
+        "loanAmountUsd": 2000,
+        "estimatedGasUsd": 3,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.17,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39691.45,
+            "attemptedLoanAmount": 1587.658,
+            "buyImpactBps": 10,
+            "sellImpactBps": 194
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V2",
+            "sellDex": "Uniswap V3",
+            "spread": 0.1,
+            "buyLiquidityUsd": 25786727.18,
+            "sellLiquidityUsd": 153579.15,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 1,
+            "sellImpactBps": 64
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 1165
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:21:58.577Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "ba6cdfc3-8323-4f70-b714-90064012cd42",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "C-liq",
+    "config": [
+      2000,
+      450,
+      6,
+      2,
+      3
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "234cefd7-a546-40e2-b2e0-267127500ff4",
+      "scanDurationMs": 645,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 2,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 2,
+          "arbitrum": 2,
+          "base": 2,
+          "polygon": 2
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 450,
+        "maxLiquidityUsageFraction": 0.06,
+        "maxResults": 25,
+        "loanAmountUsd": 2000,
+        "estimatedGasUsd": 3,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.17,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39691.45,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 13,
+            "sellImpactBps": 242
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V2",
+            "sellDex": "Uniswap V3",
+            "spread": 0.1,
+            "buyLiquidityUsd": 25786727.18,
+            "sellLiquidityUsd": 153579.15,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 1,
+            "sellImpactBps": 64
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 645
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:00.427Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "ba6cdfc3-8323-4f70-b714-90064012cd42",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "C-liq",
+    "config": [
+      2000,
+      450,
+      8,
+      3,
+      4
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "0a9681c2-5f43-4bbe-8c1f-41a0995440ce",
+      "scanDurationMs": 3727,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 3,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 3,
+          "arbitrum": 3,
+          "base": 3,
+          "polygon": 3
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 450,
+        "maxLiquidityUsageFraction": 0.08,
+        "maxResults": 25,
+        "loanAmountUsd": 2000,
+        "estimatedGasUsd": 4,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.17,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39691.45,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 13,
+            "sellImpactBps": 242
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V2",
+            "sellDex": "Uniswap V3",
+            "spread": 0.1,
+            "buyLiquidityUsd": 25786727.18,
+            "sellLiquidityUsd": 153579.15,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 1,
+            "sellImpactBps": 64
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 3727
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:05.467Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "ba6cdfc3-8323-4f70-b714-90064012cd42",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "C-liq",
+    "config": [
+      2000,
+      450,
+      10,
+      3,
+      4
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "d409fd6f-d60f-4c62-808d-241fba54f491",
+      "scanDurationMs": 445,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 3,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 3,
+          "arbitrum": 3,
+          "base": 3,
+          "polygon": 3
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 450,
+        "maxLiquidityUsageFraction": 0.1,
+        "maxResults": 25,
+        "loanAmountUsd": 2000,
+        "estimatedGasUsd": 4,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.17,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39691.45,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 13,
+            "sellImpactBps": 242
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V2",
+            "sellDex": "Uniswap V3",
+            "spread": 0.1,
+            "buyLiquidityUsd": 25786727.18,
+            "sellLiquidityUsd": 153579.15,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 1,
+            "sellImpactBps": 64
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 445
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:07.175Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "ba6cdfc3-8323-4f70-b714-90064012cd42",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "C-liq",
+    "config": [
+      2000,
+      450,
+      12,
+      4,
+      5
+    ],
+    "data": null,
+    "error": "The SSL connection could not be established, see inner exception.",
+    "PSComputerName": "localhost",
+    "RunspaceId": "ba6cdfc3-8323-4f70-b714-90064012cd42",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "C-liq",
+    "config": [
+      2000,
+      450,
+      15,
+      4,
+      5
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "28e5d38f-b9d5-4426-ac74-138388a5703e",
+      "scanDurationMs": 710,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 4,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 4,
+          "arbitrum": 4,
+          "base": 4,
+          "polygon": 4
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 450,
+        "maxLiquidityUsageFraction": 0.15,
+        "maxResults": 25,
+        "loanAmountUsd": 2000,
+        "estimatedGasUsd": 5,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 13,
+            "sellImpactBps": 242
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 64,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 710
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:13.205Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "ba6cdfc3-8323-4f70-b714-90064012cd42",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "C-liq",
+    "config": [
+      2000,
+      450,
+      18,
+      5,
+      5
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "d15b6d12-b7e8-4852-a51b-e29e5353365f",
+      "scanDurationMs": 608,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 5,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 5,
+          "arbitrum": 5,
+          "base": 5,
+          "polygon": 5
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 450,
+        "maxLiquidityUsageFraction": 0.18,
+        "maxResults": 25,
+        "loanAmountUsd": 2000,
+        "estimatedGasUsd": 5,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 13,
+            "sellImpactBps": 242
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 64,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 608
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:14.23Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "ba6cdfc3-8323-4f70-b714-90064012cd42",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "C-liq",
+    "config": [
+      2000,
+      450,
+      22,
+      6,
+      6
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "2909173d-8c78-43e5-aeca-f6d5ca64ee5f",
+      "scanDurationMs": 425,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 6,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 6,
+          "arbitrum": 6,
+          "base": 6,
+          "polygon": 6
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 450,
+        "maxLiquidityUsageFraction": 0.22,
+        "maxResults": 25,
+        "loanAmountUsd": 2000,
+        "estimatedGasUsd": 6,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 13,
+            "sellImpactBps": 242
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 64,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 425
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:15.077Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "ba6cdfc3-8323-4f70-b714-90064012cd42",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "C-liq",
+    "config": [
+      2000,
+      450,
+      28,
+      8,
+      6
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "28741a52-f327-44e7-a5d6-5bc1ef0995eb",
+      "scanDurationMs": 382,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 8,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 8,
+          "arbitrum": 8,
+          "base": 8,
+          "polygon": 8
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 450,
+        "maxLiquidityUsageFraction": 0.28,
+        "maxResults": 25,
+        "loanAmountUsd": 2000,
+        "estimatedGasUsd": 6,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 13,
+            "sellImpactBps": 242
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 64,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 382
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:15.905Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "ba6cdfc3-8323-4f70-b714-90064012cd42",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "C-liq",
+    "config": [
+      2000,
+      450,
+      35,
+      10,
+      8
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "4280443d-a022-40b0-a6ab-ec4fbce6b3f2",
+      "scanDurationMs": 384,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 10,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 10,
+          "arbitrum": 10,
+          "base": 10,
+          "polygon": 10
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 450,
+        "maxLiquidityUsageFraction": 0.35,
+        "maxResults": 25,
+        "loanAmountUsd": 2000,
+        "estimatedGasUsd": 8,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 13,
+            "sellImpactBps": 242
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 64,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 384
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:16.888Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "ba6cdfc3-8323-4f70-b714-90064012cd42",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "A-loan",
+    "config": [
+      500,
+      450,
+      8,
+      2,
+      3
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "8b09580f-412e-4268-96c3-ab536679fe49",
+      "scanDurationMs": 1101,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 2,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 2,
+          "arbitrum": 2,
+          "base": 2,
+          "polygon": 2
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 450,
+        "maxLiquidityUsageFraction": 0.08,
+        "maxResults": 25,
+        "loanAmountUsd": 500,
+        "estimatedGasUsd": 3,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.17,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39691.45,
+            "attemptedLoanAmount": 500,
+            "buyImpactBps": 3,
+            "sellImpactBps": 62
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V2",
+            "sellDex": "Uniswap V3",
+            "spread": 0.1,
+            "buyLiquidityUsd": 25786727.18,
+            "sellLiquidityUsd": 153579.15,
+            "attemptedLoanAmount": 500,
+            "buyImpactBps": 1,
+            "sellImpactBps": 16
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 1101
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:00.042Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "1b1d5d1c-dff9-4701-a9c5-e382b86f1992",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "A-loan",
+    "config": [
+      750,
+      450,
+      8,
+      2,
+      3
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "eeb4abc6-3e38-41a9-8715-eadfaee2b978",
+      "scanDurationMs": 3036,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 2,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 2,
+          "arbitrum": 2,
+          "base": 2,
+          "polygon": 2
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 450,
+        "maxLiquidityUsageFraction": 0.08,
+        "maxResults": 25,
+        "loanAmountUsd": 750,
+        "estimatedGasUsd": 3,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.17,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39691.45,
+            "attemptedLoanAmount": 750,
+            "buyImpactBps": 4,
+            "sellImpactBps": 93
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V2",
+            "sellDex": "Uniswap V3",
+            "spread": 0.1,
+            "buyLiquidityUsd": 25786727.18,
+            "sellLiquidityUsd": 153579.15,
+            "attemptedLoanAmount": 750,
+            "buyImpactBps": 1,
+            "sellImpactBps": 24
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 3036
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:05.468Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "1b1d5d1c-dff9-4701-a9c5-e382b86f1992",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "A-loan",
+    "config": [
+      1000,
+      450,
+      10,
+      3,
+      4
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "6039eca0-ecef-4ace-88c1-a14cc5439855",
+      "scanDurationMs": 735,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 3,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 3,
+          "arbitrum": 3,
+          "base": 3,
+          "polygon": 3
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 450,
+        "maxLiquidityUsageFraction": 0.1,
+        "maxResults": 25,
+        "loanAmountUsd": 1000,
+        "estimatedGasUsd": 4,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.17,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39691.45,
+            "attemptedLoanAmount": 1000,
+            "buyImpactBps": 6,
+            "sellImpactBps": 123
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V2",
+            "sellDex": "Uniswap V3",
+            "spread": 0.1,
+            "buyLiquidityUsd": 25786727.18,
+            "sellLiquidityUsd": 153579.15,
+            "attemptedLoanAmount": 1000,
+            "buyImpactBps": 1,
+            "sellImpactBps": 32
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 735
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:07.524Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "1b1d5d1c-dff9-4701-a9c5-e382b86f1992",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "A-loan",
+    "config": [
+      1250,
+      450,
+      10,
+      3,
+      4
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "e985def2-077e-4b08-ae02-40e24142717e",
+      "scanDurationMs": 338,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 3,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 3,
+          "arbitrum": 3,
+          "base": 3,
+          "polygon": 3
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 450,
+        "maxLiquidityUsageFraction": 0.1,
+        "maxResults": 25,
+        "loanAmountUsd": 1250,
+        "estimatedGasUsd": 4,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 1250,
+            "buyImpactBps": 8,
+            "sellImpactBps": 153
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 1250,
+            "buyImpactBps": 40,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 338
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:13.245Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "1b1d5d1c-dff9-4701-a9c5-e382b86f1992",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "A-loan",
+    "config": [
+      1500,
+      500,
+      10,
+      4,
+      4
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "cafc2074-c721-4d64-9f44-ba5f40ff79f0",
+      "scanDurationMs": 647,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 4,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 4,
+          "arbitrum": 4,
+          "base": 4,
+          "polygon": 4
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 500,
+        "maxLiquidityUsageFraction": 0.1,
+        "maxResults": 25,
+        "loanAmountUsd": 1500,
+        "estimatedGasUsd": 4,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 1500,
+            "buyImpactBps": 9,
+            "sellImpactBps": 183
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 1500,
+            "buyImpactBps": 48,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 647
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:14.686Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "1b1d5d1c-dff9-4701-a9c5-e382b86f1992",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "A-loan",
+    "config": [
+      1750,
+      500,
+      12,
+      4,
+      5
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "31c5cb50-3175-4130-a5be-b824c005b249",
+      "scanDurationMs": 277,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 4,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 4,
+          "arbitrum": 4,
+          "base": 4,
+          "polygon": 4
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 500,
+        "maxLiquidityUsageFraction": 0.12,
+        "maxResults": 25,
+        "loanAmountUsd": 1750,
+        "estimatedGasUsd": 5,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 1750,
+            "buyImpactBps": 11,
+            "sellImpactBps": 213
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 1750,
+            "buyImpactBps": 56,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 277
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:15.895Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "1b1d5d1c-dff9-4701-a9c5-e382b86f1992",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "A-loan",
+    "config": [
+      2000,
+      500,
+      12,
+      5,
+      5
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "883bbd8c-b0dd-4311-aff7-486deb3d95ec",
+      "scanDurationMs": 311,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 5,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 5,
+          "arbitrum": 5,
+          "base": 5,
+          "polygon": 5
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 500,
+        "maxLiquidityUsageFraction": 0.12,
+        "maxResults": 25,
+        "loanAmountUsd": 2000,
+        "estimatedGasUsd": 5,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 13,
+            "sellImpactBps": 242
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 64,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 311
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:16.974Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "1b1d5d1c-dff9-4701-a9c5-e382b86f1992",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "A-loan",
+    "config": [
+      2250,
+      500,
+      12,
+      6,
+      5
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "3cfcd579-d60d-4b1c-8544-ff32f5efe563",
+      "scanDurationMs": 317,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 6,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 6,
+          "arbitrum": 6,
+          "base": 6,
+          "polygon": 6
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 500,
+        "maxLiquidityUsageFraction": 0.12,
+        "maxResults": 25,
+        "loanAmountUsd": 2250,
+        "estimatedGasUsd": 5,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 2250,
+            "buyImpactBps": 14,
+            "sellImpactBps": 271
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 2250,
+            "buyImpactBps": 72,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 317
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:18.188Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "1b1d5d1c-dff9-4701-a9c5-e382b86f1992",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "A-loan",
+    "config": [
+      2500,
+      550,
+      12,
+      6,
+      6
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "fc2b2be6-e4ea-434e-9e1a-d4af2bada55c",
+      "scanDurationMs": 304,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 6,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 6,
+          "arbitrum": 6,
+          "base": 6,
+          "polygon": 6
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 550,
+        "maxLiquidityUsageFraction": 0.12,
+        "maxResults": 25,
+        "loanAmountUsd": 2500,
+        "estimatedGasUsd": 6,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 2500,
+            "buyImpactBps": 16,
+            "sellImpactBps": 300
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 2500,
+            "buyImpactBps": 80,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 304
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:18.898Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "1b1d5d1c-dff9-4701-a9c5-e382b86f1992",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "A-loan",
+    "config": [
+      3000,
+      600,
+      15,
+      8,
+      6
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "bc7091e0-e0d0-43c8-818a-5607b18b912c",
+      "scanDurationMs": 559,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 8,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 8,
+          "arbitrum": 8,
+          "base": 8,
+          "polygon": 8
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 600,
+        "maxLiquidityUsageFraction": 0.15,
+        "maxResults": 25,
+        "loanAmountUsd": 3000,
+        "estimatedGasUsd": 6,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 3000,
+            "buyImpactBps": 19,
+            "sellImpactBps": 357
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 3000,
+            "buyImpactBps": 96,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 559
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:20.554Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "1b1d5d1c-dff9-4701-a9c5-e382b86f1992",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "B-slip",
+    "config": [
+      2000,
+      250,
+      8,
+      2,
+      3
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "4cb801e2-b005-4807-912c-4451e6a5d1b0",
+      "scanDurationMs": 1080,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 2,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 2,
+          "arbitrum": 2,
+          "base": 2,
+          "polygon": 2
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 250,
+        "maxLiquidityUsageFraction": 0.08,
+        "maxResults": 25,
+        "loanAmountUsd": 2000,
+        "estimatedGasUsd": 3,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.17,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39691.45,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 13,
+            "sellImpactBps": 242
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V2",
+            "sellDex": "Uniswap V3",
+            "spread": 0.1,
+            "buyLiquidityUsd": 25786727.18,
+            "sellLiquidityUsd": 153579.15,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 1,
+            "sellImpactBps": 64
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 1080
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:00.167Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "96c166ab-90f4-4d41-aa37-c0b4e480dae9",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "B-slip",
+    "config": [
+      2000,
+      300,
+      8,
+      2,
+      3
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "be62e680-d138-45a1-b321-a7bfa87e6b56",
+      "scanDurationMs": 4596,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 2,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 2,
+          "arbitrum": 2,
+          "base": 2,
+          "polygon": 2
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 300,
+        "maxLiquidityUsageFraction": 0.08,
+        "maxResults": 25,
+        "loanAmountUsd": 2000,
+        "estimatedGasUsd": 3,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.17,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39691.45,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 13,
+            "sellImpactBps": 242
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V2",
+            "sellDex": "Uniswap V3",
+            "spread": 0.1,
+            "buyLiquidityUsd": 25786727.18,
+            "sellLiquidityUsd": 153579.15,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 1,
+            "sellImpactBps": 64
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 4596
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:07.377Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "96c166ab-90f4-4d41-aa37-c0b4e480dae9",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "B-slip",
+    "config": [
+      2000,
+      350,
+      8,
+      3,
+      4
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "05929300-ddf8-48b1-bd5e-9ce292acc295",
+      "scanDurationMs": 858,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 3,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 3,
+          "arbitrum": 3,
+          "base": 3,
+          "polygon": 3
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 350,
+        "maxLiquidityUsageFraction": 0.08,
+        "maxResults": 25,
+        "loanAmountUsd": 2000,
+        "estimatedGasUsd": 4,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 13,
+            "sellImpactBps": 242
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 64,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 858
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:12.774Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "96c166ab-90f4-4d41-aa37-c0b4e480dae9",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "B-slip",
+    "config": [
+      2000,
+      400,
+      8,
+      3,
+      4
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "552204a8-02c2-4fff-980e-e446ded91341",
+      "scanDurationMs": 288,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 3,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 3,
+          "arbitrum": 3,
+          "base": 3,
+          "polygon": 3
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 400,
+        "maxLiquidityUsageFraction": 0.08,
+        "maxResults": 25,
+        "loanAmountUsd": 2000,
+        "estimatedGasUsd": 4,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 13,
+            "sellImpactBps": 242
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 64,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 288
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:13.925Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "96c166ab-90f4-4d41-aa37-c0b4e480dae9",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "B-slip",
+    "config": [
+      2000,
+      450,
+      8,
+      4,
+      4
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "a99c74cb-0d78-4ceb-8d65-268ca97b22cc",
+      "scanDurationMs": 363,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 4,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 4,
+          "arbitrum": 4,
+          "base": 4,
+          "polygon": 4
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 450,
+        "maxLiquidityUsageFraction": 0.08,
+        "maxResults": 25,
+        "loanAmountUsd": 2000,
+        "estimatedGasUsd": 4,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 13,
+            "sellImpactBps": 242
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 64,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 363
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:15.024Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "96c166ab-90f4-4d41-aa37-c0b4e480dae9",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "B-slip",
+    "config": [
+      2000,
+      500,
+      8,
+      4,
+      5
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "9815dbd4-74dc-4610-8816-533bb8c5e780",
+      "scanDurationMs": 390,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 4,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 4,
+          "arbitrum": 4,
+          "base": 4,
+          "polygon": 4
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 500,
+        "maxLiquidityUsageFraction": 0.08,
+        "maxResults": 25,
+        "loanAmountUsd": 2000,
+        "estimatedGasUsd": 5,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 13,
+            "sellImpactBps": 242
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 64,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 390
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:16.237Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "96c166ab-90f4-4d41-aa37-c0b4e480dae9",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "B-slip",
+    "config": [
+      2000,
+      550,
+      8,
+      5,
+      5
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "c69716ec-78e2-4ec4-bc2a-99161086ec7a",
+      "scanDurationMs": 299,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 5,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 5,
+          "arbitrum": 5,
+          "base": 5,
+          "polygon": 5
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 550,
+        "maxLiquidityUsageFraction": 0.08,
+        "maxResults": 25,
+        "loanAmountUsd": 2000,
+        "estimatedGasUsd": 5,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 13,
+            "sellImpactBps": 242
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 64,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 299
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:17.363Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "96c166ab-90f4-4d41-aa37-c0b4e480dae9",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "B-slip",
+    "config": [
+      2000,
+      600,
+      8,
+      6,
+      6
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "572526fa-188b-4b03-aed8-5c7ca9d819b6",
+      "scanDurationMs": 291,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 6,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 6,
+          "arbitrum": 6,
+          "base": 6,
+          "polygon": 6
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 600,
+        "maxLiquidityUsageFraction": 0.08,
+        "maxResults": 25,
+        "loanAmountUsd": 2000,
+        "estimatedGasUsd": 6,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 13,
+            "sellImpactBps": 242
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 64,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 291
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:18.56Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "96c166ab-90f4-4d41-aa37-c0b4e480dae9",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "B-slip",
+    "config": [
+      2000,
+      650,
+      8,
+      8,
+      6
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "b5ef8d0b-fae0-47ec-853a-8bf641af6a3f",
+      "scanDurationMs": 386,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 8,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 8,
+          "arbitrum": 8,
+          "base": 8,
+          "polygon": 8
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 650,
+        "maxLiquidityUsageFraction": 0.08,
+        "maxResults": 25,
+        "loanAmountUsd": 2000,
+        "estimatedGasUsd": 6,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 13,
+            "sellImpactBps": 242
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 64,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 386
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:20.092Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "96c166ab-90f4-4d41-aa37-c0b4e480dae9",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "B-slip",
+    "config": [
+      2000,
+      700,
+      8,
+      10,
+      8
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "7c8f50df-896e-4983-ada1-ad553d330d6b",
+      "scanDurationMs": 416,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 10,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 10,
+          "arbitrum": 10,
+          "base": 10,
+          "polygon": 10
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 700,
+        "maxLiquidityUsageFraction": 0.08,
+        "maxResults": 25,
+        "loanAmountUsd": 2000,
+        "estimatedGasUsd": 8,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 13,
+            "sellImpactBps": 242
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 64,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 416
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:21.298Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "96c166ab-90f4-4d41-aa37-c0b4e480dae9",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "E-highloan",
+    "config": [
+      4000,
+      300,
+      8,
+      5,
+      6
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "7fe6a882-a396-427c-b4d6-3adddbe36508",
+      "scanDurationMs": 623,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 5,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 5,
+          "arbitrum": 5,
+          "base": 5,
+          "polygon": 5
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 300,
+        "maxLiquidityUsageFraction": 0.08,
+        "maxResults": 25,
+        "loanAmountUsd": 4000,
+        "estimatedGasUsd": 6,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 1,
+        "droppedByNetProfit": 1,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 1,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "slippage",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.17,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39691.45,
+            "attemptedLoanAmount": 3175.316,
+            "buyImpactBps": 21,
+            "sellImpactBps": 377
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V2",
+            "sellDex": "Uniswap V3",
+            "spread": 0.1,
+            "buyLiquidityUsd": 25786727.18,
+            "sellLiquidityUsd": 153579.15,
+            "attemptedLoanAmount": 4000,
+            "buyImpactBps": 1,
+            "sellImpactBps": 127
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 623
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:01.802Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "478cab27-64f7-4fa4-aca4-37a2ab948186",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "E-highloan",
+    "config": [
+      5000,
+      350,
+      10,
+      8,
+      7
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "61e97b2f-1813-4161-a7ea-47adc70e70f4",
+      "scanDurationMs": 420,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 8,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 8,
+          "arbitrum": 8,
+          "base": 8,
+          "polygon": 8
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 350,
+        "maxLiquidityUsageFraction": 0.1,
+        "maxResults": 25,
+        "loanAmountUsd": 5000,
+        "estimatedGasUsd": 7,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 1,
+        "droppedByNetProfit": 1,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 1,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "slippage",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.17,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39691.45,
+            "attemptedLoanAmount": 3969.145,
+            "buyImpactBps": 26,
+            "sellImpactBps": 465
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V2",
+            "sellDex": "Uniswap V3",
+            "spread": 0.1,
+            "buyLiquidityUsd": 25786727.18,
+            "sellLiquidityUsd": 153579.15,
+            "attemptedLoanAmount": 5000,
+            "buyImpactBps": 1,
+            "sellImpactBps": 158
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 420
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:04.405Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "478cab27-64f7-4fa4-aca4-37a2ab948186",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "E-highloan",
+    "config": [
+      6000,
+      400,
+      12,
+      10,
+      8
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "b835e593-7ac8-488d-8ec5-1b42e54f2c2f",
+      "scanDurationMs": 288,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 10,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 10,
+          "arbitrum": 10,
+          "base": 10,
+          "polygon": 10
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 400,
+        "maxLiquidityUsageFraction": 0.12,
+        "maxResults": 25,
+        "loanAmountUsd": 6000,
+        "estimatedGasUsd": 8,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 1,
+        "droppedByNetProfit": 1,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 1,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "slippage",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.17,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39691.45,
+            "attemptedLoanAmount": 4762.973999999999,
+            "buyImpactBps": 31,
+            "sellImpactBps": 550
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V2",
+            "sellDex": "Uniswap V3",
+            "spread": 0.1,
+            "buyLiquidityUsd": 25786727.18,
+            "sellLiquidityUsd": 153579.15,
+            "attemptedLoanAmount": 6000,
+            "buyImpactBps": 1,
+            "sellImpactBps": 189
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 288
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:07.018Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "478cab27-64f7-4fa4-aca4-37a2ab948186",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "E-highloan",
+    "config": [
+      7000,
+      450,
+      15,
+      12,
+      8
+    ],
+    "data": null,
+    "error": "The SSL connection could not be established, see inner exception.",
+    "PSComputerName": "localhost",
+    "RunspaceId": "478cab27-64f7-4fa4-aca4-37a2ab948186",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "E-highloan",
+    "config": [
+      8000,
+      500,
+      18,
+      15,
+      9
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "10046d5e-8390-4cb2-85df-4e5fae3c784e",
+      "scanDurationMs": 2141,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 15,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 15,
+          "arbitrum": 15,
+          "base": 15,
+          "polygon": 15
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 500,
+        "maxLiquidityUsageFraction": 0.18,
+        "maxResults": 25,
+        "loanAmountUsd": 8000,
+        "estimatedGasUsd": 9,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 1,
+        "droppedByNetProfit": 1,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 1,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "slippage",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 7148.1132,
+            "buyImpactBps": 47,
+            "sellImpactBps": 794
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 8000,
+            "buyImpactBps": 250,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 2141
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:15.225Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "478cab27-64f7-4fa4-aca4-37a2ab948186",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "E-highloan",
+    "config": [
+      9000,
+      550,
+      20,
+      18,
+      10
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "c9da87b9-f9d9-4e9d-b05f-511d08e1e3f3",
+      "scanDurationMs": 334,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 18,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 18,
+          "arbitrum": 18,
+          "base": 18,
+          "polygon": 18
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 550,
+        "maxLiquidityUsageFraction": 0.2,
+        "maxResults": 25,
+        "loanAmountUsd": 9000,
+        "estimatedGasUsd": 10,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 1,
+        "droppedByNetProfit": 1,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 1,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "slippage",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 7942.348,
+            "buyImpactBps": 52,
+            "sellImpactBps": 871
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 9000,
+            "buyImpactBps": 280,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 334
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:16.281Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "478cab27-64f7-4fa4-aca4-37a2ab948186",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "E-highloan",
+    "config": [
+      10000,
+      600,
+      22,
+      20,
+      11
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "ce644fa0-0980-4566-af8a-66e051f7aff1",
+      "scanDurationMs": 320,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 20,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 20,
+          "arbitrum": 20,
+          "base": 20,
+          "polygon": 20
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 600,
+        "maxLiquidityUsageFraction": 0.22,
+        "maxResults": 25,
+        "loanAmountUsd": 10000,
+        "estimatedGasUsd": 11,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 1,
+        "droppedByNetProfit": 1,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 1,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "slippage",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 8736.5828,
+            "buyImpactBps": 57,
+            "sellImpactBps": 946
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 10000,
+            "buyImpactBps": 310,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 320
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:17.393Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "478cab27-64f7-4fa4-aca4-37a2ab948186",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "E-highloan",
+    "config": [
+      12000,
+      650,
+      25,
+      24,
+      12
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "43e01a51-f691-4c58-9fb9-dd4cb67baa7f",
+      "scanDurationMs": 356,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 24,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 24,
+          "arbitrum": 24,
+          "base": 24,
+          "polygon": 24
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 650,
+        "maxLiquidityUsageFraction": 0.25,
+        "maxResults": 25,
+        "loanAmountUsd": 12000,
+        "estimatedGasUsd": 12,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 1,
+        "droppedByNetProfit": 1,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 1,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "slippage",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 9927.935,
+            "buyImpactBps": 65,
+            "sellImpactBps": 1055
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 12000,
+            "buyImpactBps": 369,
+            "sellImpactBps": 2
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 356
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:18.722Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "478cab27-64f7-4fa4-aca4-37a2ab948186",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "E-highloan",
+    "config": [
+      14000,
+      700,
+      28,
+      28,
+      13
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "e8856c4f-2ef8-47c0-9293-2e8d2cfecc1f",
+      "scanDurationMs": 350,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 28,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 28,
+          "arbitrum": 28,
+          "base": 28,
+          "polygon": 28
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 700,
+        "maxLiquidityUsageFraction": 0.28,
+        "maxResults": 25,
+        "loanAmountUsd": 14000,
+        "estimatedGasUsd": 13,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 1,
+        "droppedByNetProfit": 1,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 1,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "slippage",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 11119.2872,
+            "buyImpactBps": 73,
+            "sellImpactBps": 1161
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 14000,
+            "buyImpactBps": 426,
+            "sellImpactBps": 2
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 350
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:20.288Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "478cab27-64f7-4fa4-aca4-37a2ab948186",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "E-highloan",
+    "config": [
+      16000,
+      750,
+      30,
+      32,
+      14
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "c21e5ac8-49de-4017-b856-f3f0a5d00473",
+      "scanDurationMs": 1086,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 32,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 32,
+          "arbitrum": 32,
+          "base": 32,
+          "polygon": 32
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 750,
+        "maxLiquidityUsageFraction": 0.3,
+        "maxResults": 25,
+        "loanAmountUsd": 16000,
+        "estimatedGasUsd": 14,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 1,
+        "droppedByNetProfit": 1,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 1,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "slippage",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 11913.521999999999,
+            "buyImpactBps": 78,
+            "sellImpactBps": 1229
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 16000,
+            "buyImpactBps": 483,
+            "sellImpactBps": 3
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 1086
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:22.135Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "478cab27-64f7-4fa4-aca4-37a2ab948186",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "F-gradient",
+    "config": [
+      500,
+      250,
+      5,
+      -1,
+      1
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "9a3a2b8e-79f1-4a52-9569-7c7ed46b2a73",
+      "scanDurationMs": 698,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": -1,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": -1,
+          "arbitrum": -1,
+          "base": -1,
+          "polygon": -1
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 250,
+        "maxLiquidityUsageFraction": 0.05,
+        "maxResults": 25,
+        "loanAmountUsd": 500,
+        "estimatedGasUsd": 1,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.17,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39691.45,
+            "attemptedLoanAmount": 500,
+            "buyImpactBps": 3,
+            "sellImpactBps": 62
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V2",
+            "sellDex": "Uniswap V3",
+            "spread": 0.1,
+            "buyLiquidityUsd": 25786727.18,
+            "sellLiquidityUsd": 153579.15,
+            "attemptedLoanAmount": 500,
+            "buyImpactBps": 1,
+            "sellImpactBps": 16
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 698
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:07.014Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "6db39462-16b8-42d5-81f6-18f4c5854d34",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "F-gradient",
+    "config": [
+      750,
+      300,
+      6,
+      -1,
+      1
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "77e7092c-7d43-445a-80da-9dc8cb18fa86",
+      "scanDurationMs": 509,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": -1,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": -1,
+          "arbitrum": -1,
+          "base": -1,
+          "polygon": -1
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 300,
+        "maxLiquidityUsageFraction": 0.06,
+        "maxResults": 25,
+        "loanAmountUsd": 750,
+        "estimatedGasUsd": 1,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 750,
+            "buyImpactBps": 4,
+            "sellImpactBps": 93
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 750,
+            "buyImpactBps": 24,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 509
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:12.418Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "6db39462-16b8-42d5-81f6-18f4c5854d34",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "F-gradient",
+    "config": [
+      1000,
+      350,
+      7,
+      0,
+      2
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "c520da9f-e12b-4937-afa9-500b09b44159",
+      "scanDurationMs": 334,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 0,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 0,
+          "arbitrum": 0,
+          "base": 0,
+          "polygon": 0
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 350,
+        "maxLiquidityUsageFraction": 0.07,
+        "maxResults": 25,
+        "loanAmountUsd": 1000,
+        "estimatedGasUsd": 2,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 1000,
+            "buyImpactBps": 6,
+            "sellImpactBps": 123
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 1000,
+            "buyImpactBps": 32,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 334
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:13.546Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "6db39462-16b8-42d5-81f6-18f4c5854d34",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "F-gradient",
+    "config": [
+      1250,
+      400,
+      8,
+      0,
+      2
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "053e06ee-2ebb-49e8-9f31-e3bf2ab2397e",
+      "scanDurationMs": 328,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 0,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 0,
+          "arbitrum": 0,
+          "base": 0,
+          "polygon": 0
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 400,
+        "maxLiquidityUsageFraction": 0.08,
+        "maxResults": 25,
+        "loanAmountUsd": 1250,
+        "estimatedGasUsd": 2,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 1250,
+            "buyImpactBps": 8,
+            "sellImpactBps": 153
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 1250,
+            "buyImpactBps": 40,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 328
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:14.902Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "6db39462-16b8-42d5-81f6-18f4c5854d34",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "F-gradient",
+    "config": [
+      1500,
+      450,
+      9,
+      1,
+      3
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "565cf6ec-a06a-4e6d-993a-0d5f0e87a358",
+      "scanDurationMs": 1732,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 1,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 1,
+          "arbitrum": 1,
+          "base": 1,
+          "polygon": 1
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 450,
+        "maxLiquidityUsageFraction": 0.09,
+        "maxResults": 25,
+        "loanAmountUsd": 1500,
+        "estimatedGasUsd": 3,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 1500,
+            "buyImpactBps": 9,
+            "sellImpactBps": 183
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 1500,
+            "buyImpactBps": 48,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 1732
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:17.516Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "6db39462-16b8-42d5-81f6-18f4c5854d34",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "F-gradient",
+    "config": [
+      1750,
+      500,
+      10,
+      2,
+      3
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "e7325530-9011-430e-b11d-5de47e1a5400",
+      "scanDurationMs": 311,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 2,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 2,
+          "arbitrum": 2,
+          "base": 2,
+          "polygon": 2
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 500,
+        "maxLiquidityUsageFraction": 0.1,
+        "maxResults": 25,
+        "loanAmountUsd": 1750,
+        "estimatedGasUsd": 3,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 1750,
+            "buyImpactBps": 11,
+            "sellImpactBps": 213
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 1750,
+            "buyImpactBps": 56,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 311
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:18.627Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "6db39462-16b8-42d5-81f6-18f4c5854d34",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "F-gradient",
+    "config": [
+      2000,
+      550,
+      11,
+      3,
+      4
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "486695c0-5cb5-4118-a843-a9c4421e9492",
+      "scanDurationMs": 747,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 3,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 3,
+          "arbitrum": 3,
+          "base": 3,
+          "polygon": 3
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 550,
+        "maxLiquidityUsageFraction": 0.11,
+        "maxResults": 25,
+        "loanAmountUsd": 2000,
+        "estimatedGasUsd": 4,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 13,
+            "sellImpactBps": 242
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 2000,
+            "buyImpactBps": 64,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 747
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:20.762Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "6db39462-16b8-42d5-81f6-18f4c5854d34",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "F-gradient",
+    "config": [
+      2250,
+      600,
+      12,
+      4,
+      4
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "429e5f93-12af-441a-96d4-610bce229372",
+      "scanDurationMs": 642,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 4,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 4,
+          "arbitrum": 4,
+          "base": 4,
+          "polygon": 4
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 600,
+        "maxLiquidityUsageFraction": 0.12,
+        "maxResults": 25,
+        "loanAmountUsd": 2250,
+        "estimatedGasUsd": 4,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 2250,
+            "buyImpactBps": 14,
+            "sellImpactBps": 271
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 2250,
+            "buyImpactBps": 72,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 642
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:22.171Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "6db39462-16b8-42d5-81f6-18f4c5854d34",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "F-gradient",
+    "config": [
+      2500,
+      650,
+      13,
+      5,
+      5
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "e57b5a9d-39bc-460c-a550-feba7485c95c",
+      "scanDurationMs": 1436,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 5,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 5,
+          "arbitrum": 5,
+          "base": 5,
+          "polygon": 5
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 650,
+        "maxLiquidityUsageFraction": 0.13,
+        "maxResults": 25,
+        "loanAmountUsd": 2500,
+        "estimatedGasUsd": 5,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 2500,
+            "buyImpactBps": 16,
+            "sellImpactBps": 300
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 2500,
+            "buyImpactBps": 80,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 1436
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:24.435Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "6db39462-16b8-42d5-81f6-18f4c5854d34",
+    "PSShowComputerName": false
+  },
+  {
+    "lane": "F-gradient",
+    "config": [
+      3000,
+      700,
+      15,
+      6,
+      6
+    ],
+    "data": {
+      "success": true,
+      "scanRunId": "bc9fb18f-bfdf-45a4-9f22-e8227c8eaf81",
+      "scanDurationMs": 353,
+      "found": 0,
+      "watchlistCount": 0,
+      "config": {
+        "minSpreadPercent": 0.01,
+        "minLiquidityUsd": 20000,
+        "minNetProfitUsd": 6,
+        "minNetProfitUsdByNetwork": {
+          "ethereum": 6,
+          "arbitrum": 6,
+          "base": 6,
+          "polygon": 6
+        },
+        "adaptiveProfitPressureMultiplier": 0.35,
+        "maxSlippageBps": 700,
+        "maxLiquidityUsageFraction": 0.15,
+        "maxResults": 25,
+        "loanAmountUsd": 3000,
+        "estimatedGasUsd": 6,
+        "gasUnits": 350000,
+        "gasSafetyMultiplier": 1.15,
+        "gasPriceGweiByNetwork": {},
+        "nativeTokenUsdByNetwork": {}
+      },
+      "diagnostics": {
+        "poolCounts": {
+          "uniV3": 14,
+          "uniV2": 5,
+          "sushi": 0,
+          "balancer": 0,
+          "curve": 0
+        },
+        "pairKeys": 17,
+        "candidates": 2,
+        "droppedBySpread": 0,
+        "droppedByLiquidity": 0,
+        "droppedBySlippage": 0,
+        "droppedByNetProfit": 2,
+        "droppedByBadQuotes": 15,
+        "droppedBySameDex": 0,
+        "droppedByExecutionRisk": 0,
+        "sizeAdjusted": 0,
+        "executionFeasible": 0,
+        "profitQualified": 0,
+        "quoteValidated": 0,
+        "watchlistCount": 0,
+        "quoteSourceCounts": {
+          "subgraph": 0,
+          "dexscreener": 19,
+          "gecko": 0
+        },
+        "rejectionSamples": [
+          {
+            "tokenPair": "arbitrum:ARB/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.08,
+            "buyLiquidityUsd": 753130.82,
+            "sellLiquidityUsd": 39711.74,
+            "attemptedLoanAmount": 3000,
+            "buyImpactBps": 19,
+            "sellImpactBps": 357
+          },
+          {
+            "tokenPair": "base:AERO/USDC",
+            "reason": "netProfit",
+            "buyDex": "Uniswap V3",
+            "sellDex": "Uniswap V2",
+            "spread": 0.07,
+            "buyLiquidityUsd": 153579.15,
+            "sellLiquidityUsd": 25765705.18,
+            "attemptedLoanAmount": 3000,
+            "buyImpactBps": 96,
+            "sellImpactBps": 1
+          },
+          {
+            "tokenPair": "base:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "ethereum:LINK/USDC",
+            "reason": "badQuotes"
+          },
+          {
+            "tokenPair": "arbitrum:LINK/USDC",
+            "reason": "badQuotes"
+          }
+        ],
+        "scanDurationMs": 353
+      },
+      "opportunities": [],
+      "watchlist": [],
+      "timestamp": "2026-05-18T15:22:25.062Z"
+    },
+    "error": null,
+    "PSComputerName": "localhost",
+    "RunspaceId": "6db39462-16b8-42d5-81f6-18f4c5854d34",
+    "PSShowComputerName": false
+  }
+]

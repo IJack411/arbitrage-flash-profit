@@ -17,7 +17,7 @@ import {
 
 interface EmergencyStopButtonProps {
   isAutoPilotRunning: boolean;
-  executionMode: 'simulation' | 'live';
+  executionMode: 'live';
   onEmergencyStop: () => void;
   walletBalance?: number | null;
   pendingTransactions?: number;
@@ -27,7 +27,7 @@ interface EmergencyStopState {
   scanningStoppedAt: string | null;
   transactionsCancelled: number;
   circuitBreakerTripped: boolean;
-  switchedToSimulation: boolean;
+  executionLocked: boolean;
   telegramAlertSent: boolean;
 }
 
@@ -95,13 +95,12 @@ export const EmergencyStopButton: React.FC<EmergencyStopButtonProps> = ({
         console.error('Failed to trip circuit breaker:', circuitBreakerError);
       }
 
-      // Step 3: Switch to simulation mode and mark emergency stop active
-      console.log('[Emergency Stop] Step 3: Switching to simulation mode...');
+      // Step 3: Lock execution and mark emergency stop active
+      console.log('[Emergency Stop] Step 3: Locking execution...');
       const { error: configError } = await supabase
         .from('auto_trade_config')
         .upsert({
           user_id: 'default',
-          execution_mode: 'simulation',
           emergency_stop_active: true,
           emergency_stop_triggered_at: new Date().toISOString(),
           emergency_stop_reason: reason || 'Manual emergency stop triggered',
@@ -121,7 +120,7 @@ export const EmergencyStopButton: React.FC<EmergencyStopButtonProps> = ({
             emergencyStop: true,
             reason: reason || 'Manual emergency stop triggered',
             walletBalance: walletBalance,
-            wasLiveTrading: executionMode === 'live',
+            wasLiveTrading: true,
             wasAutoPilotRunning: isAutoPilotRunning,
           },
         });
@@ -142,13 +141,13 @@ export const EmergencyStopButton: React.FC<EmergencyStopButtonProps> = ({
           user_id: 'default',
           trigger_source: 'manual',
           was_auto_pilot_running: isAutoPilotRunning,
-          was_live_trading: executionMode === 'live',
+          was_live_trading: true,
           pending_transactions_count: pendingTransactions,
           wallet_balance_eth: walletBalance,
           scanning_stopped: true,
           transactions_cancelled: pendingTransactions,
           circuit_breaker_tripped: true,
-          switched_to_simulation: true,
+          switched_to_simulation: false,
           telegram_alert_sent: telegramSent,
           reason: reason || 'Manual emergency stop triggered',
         });
@@ -162,7 +161,7 @@ export const EmergencyStopButton: React.FC<EmergencyStopButtonProps> = ({
         scanningStoppedAt: new Date().toISOString(),
         transactionsCancelled: pendingTransactions,
         circuitBreakerTripped: true,
-        switchedToSimulation: true,
+        executionLocked: true,
         telegramAlertSent: telegramSent,
       });
 
@@ -248,7 +247,7 @@ export const EmergencyStopButton: React.FC<EmergencyStopButtonProps> = ({
                           </li>
                           <li className="flex items-center gap-2">
                             <Activity className="h-4 w-4 text-yellow-400" />
-                            Switch to simulation mode
+                            Lock execution (block all live trades)
                           </li>
                           <li className="flex items-center gap-2">
                             <MessageSquare className="h-4 w-4 text-blue-400" />
@@ -270,9 +269,9 @@ export const EmergencyStopButton: React.FC<EmergencyStopButtonProps> = ({
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className={`w-3 h-3 rounded-full ${executionMode === 'live' ? 'bg-red-500' : 'bg-green-500'}`} />
+                        <div className="w-3 h-3 rounded-full bg-red-500" />
                         <span className="text-gray-300 text-sm">
-                          Mode: {executionMode === 'live' ? 'LIVE' : 'Simulation'}
+                          Mode: LIVE
                         </span>
                       </div>
                       {walletBalance !== undefined && walletBalance !== null && (
@@ -392,7 +391,7 @@ export const EmergencyStopButton: React.FC<EmergencyStopButtonProps> = ({
                       <div className="flex items-center justify-between">
                         <span className="text-gray-300 text-sm flex items-center gap-2">
                           <Activity className="h-4 w-4" />
-                          Switched to Simulation
+                          Execution Locked
                         </span>
                         <CheckCircle className="h-5 w-5 text-green-400" />
                       </div>

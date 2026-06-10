@@ -1,0 +1,650 @@
+Probe target: https://ujhsrxinfcycjtulpvqk.supabase.co/functions/v1/scan-arbitrage-opportunities
+Probe networks: ethereum
+Resolved host: ujhsrxinfcycjtulpvqk.supabase.co -> 172.64.149.246
+profitabilityScorecard: quoteOverlap=weak slippageControl=ok netMargin=weak executionRisk=ok routeDiversity=present overlapGatePassRate=75.0%
+active=0 watch=2 pairKeys=8 cand=6 badQuotes=0 spreadDrop=0 liqDrop=1 slipDrop=3 netDrop=2 sameDexDrop=2 riskDrop=3
+quoteSources: subgraph=17 dexscreener=0 gecko=0
+sourcePolicy: mode=neutral useExternalRawFeed=false
+sourcePolicyNotes: External raw feed mode is disabled; current scanner behavior unchanged.
+quoteFilterStats: dexscreenerOutliersDropped=0
+networkTally (sample): {"ethereum":7}
+indexCache enabled=true requested=0 accepted=0 hits=0 misses=8 stale=0 saved=0 p90AgeMs=0
+sameDexSourceComposition: subgraphOnly=2 fallbackOnly=0 mixed=0
+sameDexReasons: insufficientQuotes=2 insufficientValidPrices=0 insufficientDexOverlap=0 noCrossDexPositiveSpread=0 missingBestPairEntries=0
+sameDexTopInsufficientQuotesPairs=ethereum:LINK/USDC, ethereum:WBTC/DAI
+badQuoteReasons: invalidPriceSet=0 nonPositiveOrInvalidCross=0 unreasonableSpread=0 unreasonableNearMissRoi=0
+badQuoteSourceComposition: subgraphOnly=0 fallbackOnly=0 mixed=0 subgraphDexscreener=0 subgraphGecko=0 dexscreenerOnly=0 geckoOnly=0 crossFallback=0 unknownRoute=0
+routeAlternativeInsights: inspectedPairs=6 samples=6
+routeAlternativeSamples= [
+  {
+    "tokenPair": "ethereum:WETH/USDC",
+    "selected": {
+      "buyDex": "Uniswap V2",
+      "sellDex": "Uniswap V3",
+      "buySource": "subgraph",
+      "sellSource": "subgraph",
+      "spreadBps": 62,
+      "minLiquidityUsd": 9359969.321248,
+      "score": 6360000
+    },
+    "alternate": {
+      "buyDex": "SushiSwap",
+      "sellDex": "Uniswap V3",
+      "buySource": "subgraph",
+      "sellSource": "subgraph",
+      "spreadBps": 56,
+      "minLiquidityUsd": 251253.251159,
+      "score": 5751256
+    },
+    "decisionTag": "selected_subgraph_anchored"
+  },
+  {
+    "tokenPair": "ethereum:WETH/USDT",
+    "selected": {
+      "buyDex": "Uniswap V2",
+      "sellDex": "Uniswap V3",
+      "buySource": "subgraph",
+      "sellSource": "subgraph",
+      "spreadBps": 64,
+      "minLiquidityUsd": 3233179.810897,
+      "score": 6560000
+    },
+    "alternate": {
+      "buyDex": "SushiSwap",
+      "sellDex": "Uniswap V3",
+      "buySource": "subgraph",
+      "sellSource": "subgraph",
+      "spreadBps": 57,
+      "minLiquidityUsd": 558378.914311,
+      "score": 5852791
+    },
+    "decisionTag": "selected_subgraph_anchored"
+  },
+  {
+    "tokenPair": "ethereum:WETH/DAI",
+    "selected": {
+      "buyDex": "Uniswap V3",
+      "sellDex": "SushiSwap",
+      "buySource": "subgraph",
+      "sellSource": "subgraph",
+      "spreadBps": 6,
+      "minLiquidityUsd": 201906.412497,
+      "score": 751009
+    },
+    "alternate": {
+      "buyDex": "Uniswap V2",
+      "sellDex": "SushiSwap",
+      "buySource": "subgraph",
+      "sellSource": "subgraph",
+      "spreadBps": 6,
+      "minLiquidityUsd": 201906.412497,
+      "score": 751009
+    },
+    "decisionTag": "selected_subgraph_anchored"
+  },
+  {
+    "tokenPair": "ethereum:WBTC/USDC",
+    "selected": {
+      "buyDex": "Uniswap V3",
+      "sellDex": "Uniswap V2",
+      "buySource": "subgraph",
+      "sellSource": "subgraph",
+      "spreadBps": 34,
+      "minLiquidityUsd": 93690.049905,
+      "score": 3550468
+    },
+    "decisionTag": "selected_subgraph_anchored"
+  },
+  {
+    "tokenPair": "ethereum:WBTC/USDT",
+    "selected": {
+      "buyDex": "SushiSwap",
+      "sellDex": "Uniswap V3",
+      "buySource": "subgraph",
+      "sellSource": "subgraph",
+      "spreadBps": 11,
+      "minLiquidityUsd": 1434.972722,
+      "score": 1250007
+    },
+    "decisionTag": "selected_subgraph_anchored"
+  },
+  {
+    "tokenPair": "ethereum:LINK/USDT",
+    "selected": {
+      "buyDex": "Uniswap V3",
+      "sellDex": "SushiSwap",
+      "buySource": "subgraph",
+      "sellSource": "subgraph",
+      "spreadBps": 36,
+      "minLiquidityUsd": 629.266632,
+      "score": 3750003
+    },
+    "decisionTag": "selected_subgraph_anchored"
+  }
+]
+policyDryRunSummary: enabled=true preferSubgraph.diff=0 preferSubgraph.mixedExtreme=0 preferSubgraph.subgraphAnchored=6 preferSubgraph.marginMedian=0 preferSubgraph.marginMin=0 preferSubgraph.marginDistinctMedian=0 preferSubgraph.marginDistinctMin=0 preferSubgraph.flipThresholdMedian=1 preferSubgraph.flipThresholdMin=1 preferSubgraph.topTies=1 preferExternalRaw.diff=0 preferExternalRaw.mixedExtreme=0 preferExternalRaw.subgraphAnchored=6 preferExternalRaw.marginMedian=0 preferExternalRaw.marginMin=0 preferExternalRaw.marginDistinctMedian=0 preferExternalRaw.marginDistinctMin=0 preferExternalRaw.flipThresholdMedian=1 preferExternalRaw.flipThresholdMin=1 preferExternalRaw.topTies=1
+policyDryRunSamples= [
+  {
+    "tokenPair": "ethereum:WETH/USDC",
+    "liveDecisionTag": "selected_subgraph_anchored",
+    "live": {
+      "buyDex": "Uniswap V2",
+      "sellDex": "Uniswap V3",
+      "buySource": "subgraph",
+      "sellSource": "subgraph",
+      "spreadBps": 62,
+      "score": 6360000
+    },
+    "preferSubgraph": {
+      "buyDex": "Uniswap V2",
+      "sellDex": "Uniswap V3",
+      "buySource": "subgraph",
+      "sellSource": "subgraph",
+      "spreadBps": 62,
+      "score": 6760000,
+      "marginToDistinctRouteScore": 608744,
+      "flipThresholdScore": 608745,
+      "challenger": {
+        "buyDex": "SushiSwap",
+        "sellDex": "Uniswap V3",
+        "buySource": "subgraph",
+        "sellSource": "subgraph",
+        "earlyGate": "pass",
+        "spreadPercent": 0.565679,
+        "decisionTag": "selected_subgraph_anchored"
+      }
+    },
+    "preferExternalRaw": {
+      "buyDex": "Uniswap V2",
+      "sellDex": "Uniswap V3",
+      "buySource": "subgraph",
+      "sellSource": "subgraph",
+      "spreadBps": 62,
+      "score": 6360000,
+      "marginToDistinctRouteScore": 608744,
+      "flipThresholdScore": 608745,
+      "challenger": {
+        "buyDex": "SushiSwap",
+        "sellDex": "Uniswap V3",
+        "buySource": "subgraph",
+        "sellSource": "subgraph",
+        "earlyGate": "pass",
+        "spreadPercent": 0.565679,
+        "decisionTag": "selected_subgraph_anchored"
+      }
+    }
+  },
+  {
+    "tokenPair": "ethereum:WETH/USDT",
+    "liveDecisionTag": "selected_subgraph_anchored",
+    "live": {
+      "buyDex": "Uniswap V2",
+      "sellDex": "Uniswap V3",
+      "buySource": "subgraph",
+      "sellSource": "subgraph",
+      "spreadBps": 64,
+      "score": 6560000
+    },
+    "preferSubgraph": {
+      "buyDex": "Uniswap V2",
+      "sellDex": "Uniswap V3",
+      "buySource": "subgraph",
+      "sellSource": "subgraph",
+      "spreadBps": 64,
+      "score": 6960000,
+      "marginToDistinctRouteScore": 707209,
+      "flipThresholdScore": 707210,
+      "challenger": {
+        "buyDex": "SushiSwap",
+        "sellDex": "Uniswap V3",
+        "buySource": "subgraph",
+        "sellSource": "subgraph",
+        "earlyGate": "pass",
+        "spreadPercent": 0.572358,
+        "decisionTag": "selected_subgraph_anchored"
+      }
+    },
+    "preferExternalRaw": {
+      "buyDex": "Uniswap V2",
+      "sellDex": "Uniswap V3",
+      "buySource": "subgraph",
+      "sellSource": "subgraph",
+      "spreadBps": 64,
+      "score": 6560000,
+      "marginToDistinctRouteScore": 707209,
+      "flipThresholdScore": 707210,
+      "challenger": {
+        "buyDex": "SushiSwap",
+        "sellDex": "Uniswap V3",
+        "buySource": "subgraph",
+        "sellSource": "subgraph",
+        "earlyGate": "pass",
+        "spreadPercent": 0.572358,
+        "decisionTag": "selected_subgraph_anchored"
+      }
+    }
+  },
+  {
+    "tokenPair": "ethereum:WETH/DAI",
+    "liveDecisionTag": "selected_subgraph_anchored",
+    "live": {
+      "buyDex": "Uniswap V3",
+      "sellDex": "SushiSwap",
+      "buySource": "subgraph",
+      "sellSource": "subgraph",
+      "spreadBps": 6,
+      "score": 751009
+    },
+    "preferSubgraph": {
+      "buyDex": "Uniswap V3",
+      "sellDex": "SushiSwap",
+      "buySource": "subgraph",
+      "sellSource": "subgraph",
+      "spreadBps": 6,
+      "score": 1151009,
+      "marginToDistinctRouteScore": 0,
+      "flipThresholdScore": 1,
+      "challenger": {
+        "buyDex": "Uniswap V2",
+        "sellDex": "SushiSwap",
+        "buySource": "subgraph",
+        "sellSource": "subgraph",
+        "earlyGate": "pass",
+        "spreadPercent": 0.063551,
+        "decisionTag": "selected_subgraph_anchored"
+      }
+    },
+    "preferExternalRaw": {
+      "buyDex": "Uniswap V3",
+      "sellDex": "SushiSwap",
+      "buySource": "subgraph",
+      "sellSource": "subgraph",
+      "spreadBps": 6,
+      "score": 751009,
+      "marginToDistinctRouteScore": 0,
+      "flipThresholdScore": 1,
+      "challenger": {
+        "buyDex": "Uniswap V2",
+        "sellDex": "SushiSwap",
+        "buySource": "subgraph",
+        "sellSource": "subgraph",
+        "earlyGate": "pass",
+        "spreadPercent": 0.063551,
+        "decisionTag": "selected_subgraph_anchored"
+      }
+    }
+  },
+  {
+    "tokenPair": "ethereum:WBTC/USDC",
+    "liveDecisionTag": "selected_subgraph_anchored",
+    "live": {
+      "buyDex": "Uniswap V3",
+      "sellDex": "Uniswap V2",
+      "buySource": "subgraph",
+      "sellSource": "subgraph",
+      "spreadBps": 34,
+      "score": 3550468
+    },
+    "preferSubgraph": {
+      "buyDex": "Uniswap V3",
+      "sellDex": "Uniswap V2",
+      "buySource": "subgraph",
+      "sellSource": "subgraph",
+      "spreadBps": 34,
+      "score": 3950468,
+      "marginToDistinctRouteScore": 0,
+      "flipThresholdScore": 1
+    },
+    "preferExternalRaw": {
+      "buyDex": "Uniswap V3",
+      "sellDex": "Uniswap V2",
+      "buySource": "subgraph",
+      "sellSource": "subgraph",
+      "spreadBps": 34,
+      "score": 3550468,
+      "marginToDistinctRouteScore": 0,
+      "flipThresholdScore": 1
+    }
+  },
+  {
+    "tokenPair": "ethereum:WBTC/USDT",
+    "liveDecisionTag": "selected_subgraph_anchored",
+    "live": {
+      "buyDex": "SushiSwap",
+      "sellDex": "Uniswap V3",
+      "buySource": "subgraph",
+      "sellSource": "subgraph",
+      "spreadBps": 11,
+      "score": 1250007
+    },
+    "preferSubgraph": {
+      "buyDex": "SushiSwap",
+      "sellDex": "Uniswap V3",
+      "buySource": "subgraph",
+      "sellSource": "subgraph",
+      "spreadBps": 11,
+      "score": 1650007,
+      "marginToDistinctRouteScore": 0,
+      "flipThresholdScore": 1
+    },
+    "preferExternalRaw": {
+      "buyDex": "SushiSwap",
+      "sellDex": "Uniswap V3",
+      "buySource": "subgraph",
+      "sellSource": "subgraph",
+      "spreadBps": 11,
+      "score": 1250007,
+      "marginToDistinctRouteScore": 0,
+      "flipThresholdScore": 1
+    }
+  },
+  {
+    "tokenPair": "ethereum:LINK/USDT",
+    "liveDecisionTag": "selected_subgraph_anchored",
+    "live": {
+      "buyDex": "Uniswap V3",
+      "sellDex": "SushiSwap",
+      "buySource": "subgraph",
+      "sellSource": "subgraph",
+      "spreadBps": 36,
+      "score": 3750003
+    },
+    "preferSubgraph": {
+      "buyDex": "Uniswap V3",
+      "sellDex": "SushiSwap",
+      "buySource": "subgraph",
+      "sellSource": "subgraph",
+      "spreadBps": 36,
+      "score": 4150003,
+      "marginToDistinctRouteScore": 0,
+      "flipThresholdScore": 1
+    },
+    "preferExternalRaw": {
+      "buyDex": "Uniswap V3",
+      "sellDex": "SushiSwap",
+      "buySource": "subgraph",
+      "sellSource": "subgraph",
+      "spreadBps": 36,
+      "score": 3750003,
+      "marginToDistinctRouteScore": 0,
+      "flipThresholdScore": 1
+    }
+  }
+]
+policyCalibrationHints.preferSubgraph= [
+  {
+    "tokenPair": "ethereum:WETH/DAI",
+    "liveDecisionTag": "selected_subgraph_anchored",
+    "flipThresholdScore": 1,
+    "marginToDistinctRouteScore": 0,
+    "challenger": {
+      "buyDex": "Uniswap V2",
+      "sellDex": "SushiSwap",
+      "buySource": "subgraph",
+      "sellSource": "subgraph",
+      "earlyGate": "pass",
+      "spreadPercent": 0.063551,
+      "decisionTag": "selected_subgraph_anchored"
+    }
+  },
+  {
+    "tokenPair": "ethereum:WBTC/USDC",
+    "liveDecisionTag": "selected_subgraph_anchored",
+    "flipThresholdScore": 1,
+    "marginToDistinctRouteScore": 0
+  },
+  {
+    "tokenPair": "ethereum:WBTC/USDT",
+    "liveDecisionTag": "selected_subgraph_anchored",
+    "flipThresholdScore": 1,
+    "marginToDistinctRouteScore": 0
+  },
+  {
+    "tokenPair": "ethereum:LINK/USDT",
+    "liveDecisionTag": "selected_subgraph_anchored",
+    "flipThresholdScore": 1,
+    "marginToDistinctRouteScore": 0
+  },
+  {
+    "tokenPair": "ethereum:WETH/USDC",
+    "liveDecisionTag": "selected_subgraph_anchored",
+    "flipThresholdScore": 608745,
+    "marginToDistinctRouteScore": 608744,
+    "challenger": {
+      "buyDex": "SushiSwap",
+      "sellDex": "Uniswap V3",
+      "buySource": "subgraph",
+      "sellSource": "subgraph",
+      "earlyGate": "pass",
+      "spreadPercent": 0.565679,
+      "decisionTag": "selected_subgraph_anchored"
+    }
+  },
+  {
+    "tokenPair": "ethereum:WETH/USDT",
+    "liveDecisionTag": "selected_subgraph_anchored",
+    "flipThresholdScore": 707210,
+    "marginToDistinctRouteScore": 707209,
+    "challenger": {
+      "buyDex": "SushiSwap",
+      "sellDex": "Uniswap V3",
+      "buySource": "subgraph",
+      "sellSource": "subgraph",
+      "earlyGate": "pass",
+      "spreadPercent": 0.572358,
+      "decisionTag": "selected_subgraph_anchored"
+    }
+  }
+]
+policyCalibrationHints.preferExternalRaw= [
+  {
+    "tokenPair": "ethereum:WETH/DAI",
+    "liveDecisionTag": "selected_subgraph_anchored",
+    "flipThresholdScore": 1,
+    "marginToDistinctRouteScore": 0,
+    "challenger": {
+      "buyDex": "Uniswap V2",
+      "sellDex": "SushiSwap",
+      "buySource": "subgraph",
+      "sellSource": "subgraph",
+      "earlyGate": "pass",
+      "spreadPercent": 0.063551,
+      "decisionTag": "selected_subgraph_anchored"
+    }
+  },
+  {
+    "tokenPair": "ethereum:WBTC/USDC",
+    "liveDecisionTag": "selected_subgraph_anchored",
+    "flipThresholdScore": 1,
+    "marginToDistinctRouteScore": 0
+  },
+  {
+    "tokenPair": "ethereum:WBTC/USDT",
+    "liveDecisionTag": "selected_subgraph_anchored",
+    "flipThresholdScore": 1,
+    "marginToDistinctRouteScore": 0
+  },
+  {
+    "tokenPair": "ethereum:LINK/USDT",
+    "liveDecisionTag": "selected_subgraph_anchored",
+    "flipThresholdScore": 1,
+    "marginToDistinctRouteScore": 0
+  },
+  {
+    "tokenPair": "ethereum:WETH/USDC",
+    "liveDecisionTag": "selected_subgraph_anchored",
+    "flipThresholdScore": 608745,
+    "marginToDistinctRouteScore": 608744,
+    "challenger": {
+      "buyDex": "SushiSwap",
+      "sellDex": "Uniswap V3",
+      "buySource": "subgraph",
+      "sellSource": "subgraph",
+      "earlyGate": "pass",
+      "spreadPercent": 0.565679,
+      "decisionTag": "selected_subgraph_anchored"
+    }
+  },
+  {
+    "tokenPair": "ethereum:WETH/USDT",
+    "liveDecisionTag": "selected_subgraph_anchored",
+    "flipThresholdScore": 707210,
+    "marginToDistinctRouteScore": 707209,
+    "challenger": {
+      "buyDex": "SushiSwap",
+      "sellDex": "Uniswap V3",
+      "buySource": "subgraph",
+      "sellSource": "subgraph",
+      "earlyGate": "pass",
+      "spreadPercent": 0.572358,
+      "decisionTag": "selected_subgraph_anchored"
+    }
+  }
+]
+rejectionSamples= [
+  {
+    "tokenPair": "ethereum:WETH/USDC",
+    "reason": "netProfit",
+    "buyDex": "Uniswap V2",
+    "sellDex": "Uniswap V3",
+    "spread": 0.62,
+    "buyLiquidityUsd": 18042835.818109,
+    "sellLiquidityUsd": 9359969.321248,
+    "attemptedLoanAmount": 1000,
+    "buyImpactBps": 31,
+    "sellImpactBps": 32
+  },
+  {
+    "tokenPair": "ethereum:WETH/USDT",
+    "reason": "netProfit",
+    "buyDex": "Uniswap V2",
+    "sellDex": "Uniswap V3",
+    "spread": 0.64,
+    "buyLiquidityUsd": 15119515.785581,
+    "sellLiquidityUsd": 3233179.810897,
+    "attemptedLoanAmount": 1000,
+    "buyImpactBps": 31,
+    "sellImpactBps": 36
+  },
+  {
+    "tokenPair": "ethereum:WETH/DAI",
+    "reason": "slippage",
+    "buyDex": "Uniswap V3",
+    "sellDex": "SushiSwap",
+    "spread": 0.06,
+    "buyLiquidityUsd": 44877962.82996,
+    "sellLiquidityUsd": 201906.412497,
+    "attemptedLoanAmount": 1000,
+    "buyImpactBps": 31,
+    "sellImpactBps": 127
+  },
+  {
+    "tokenPair": "ethereum:WBTC/USDC",
+    "reason": "slippage",
+    "buyDex": "Uniswap V3",
+    "sellDex": "Uniswap V2",
+    "spread": 0.34,
+    "buyLiquidityUsd": 787495.538969,
+    "sellLiquidityUsd": 93690.049905,
+    "attemptedLoanAmount": 1000,
+    "buyImpactBps": 55,
+    "sellImpactBps": 237
+  },
+  {
+    "tokenPair": "ethereum:WBTC/USDT",
+    "reason": "liquidity",
+    "buyDex": "SushiSwap",
+    "sellDex": "Uniswap V3",
+    "spread": 0.11,
+    "buyLiquidityUsd": 1434.972722,
+    "sellLiquidityUsd": 3708.483661
+  }
+]
+topWatch= [
+  {
+    "tokenPair": "ethereum:WETH/USDC",
+    "buyDex": "Uniswap V2",
+    "sellDex": "Uniswap V3",
+    "network": "ethereum",
+    "loanAmount": 1000,
+    "executableLoanAmount": 1000,
+    "grossProfit": -0.102417,
+    "netProfit": -26.462417,
+    "distanceToExecutableUsd": 52.989082999999994,
+    "gasCost": 25.76,
+    "confidenceScore": 54,
+    "confidenceTier": "low",
+    "spread": "0.6200",
+    "liquidity": "18042836",
+    "estimatedSlippageBps": 69,
+    "buyImpactBps": 31,
+    "sellImpactBps": 32,
+    "routePenaltyBps": 6,
+    "quoteSources": [
+      "subgraph",
+      "subgraph"
+    ],
+    "mathDiagnostics": {
+      "reservesUsd": {
+        "buy": 18042835.818109,
+        "sell": 9359969.321248
+      },
+      "expectedOutputUsd": 1006.2,
+      "actualOutputUsd": 999.897583,
+      "expectedGrossProfitUsd": 6.2,
+      "actualGrossProfitUsd": -0.102417,
+      "slippageFraction": 1.01651887,
+      "liquidityUsageFraction": 0.00010683,
+      "gasEstimateUsd": 25.76,
+      "passReason": "watchlist-non-positive-net"
+    },
+    "status": "watchlist",
+    "scanRunId": "a732f800-cc6d-4b90-8e6a-542d1cbc7729",
+    "candidateId": "ddb8d319-2d90-4739-a584-1883a166eec3",
+    "quoteTimestamp": "2026-06-01T23:26:53.278Z",
+    "dataSource": "multi-source"
+  },
+  {
+    "tokenPair": "ethereum:WETH/USDT",
+    "buyDex": "Uniswap V2",
+    "sellDex": "Uniswap V3",
+    "network": "ethereum",
+    "loanAmount": 1000,
+    "executableLoanAmount": 1000,
+    "grossProfit": -0.3145,
+    "netProfit": -26.6745,
+    "distanceToExecutableUsd": 53.201166,
+    "gasCost": 25.76,
+    "confidenceScore": 55,
+    "confidenceTier": "low",
+    "spread": "0.6400",
+    "liquidity": "15119516",
+    "estimatedSlippageBps": 73,
+    "buyImpactBps": 31,
+    "sellImpactBps": 36,
+    "routePenaltyBps": 6,
+    "quoteSources": [
+      "subgraph",
+      "subgraph"
+    ],
+    "mathDiagnostics": {
+      "reservesUsd": {
+        "buy": 15119515.785581,
+        "sell": 3233179.810897
+      },
+      "expectedOutputUsd": 1006.4,
+      "actualOutputUsd": 999.6855,
+      "expectedGrossProfitUsd": 6.4,
+      "actualGrossProfitUsd": -0.3145,
+      "slippageFraction": 1.04914062,
+      "liquidityUsageFraction": 0.00030929,
+      "gasEstimateUsd": 25.76,
+      "passReason": "watchlist-non-positive-net"
+    },
+    "status": "watchlist",
+    "scanRunId": "a732f800-cc6d-4b90-8e6a-542d1cbc7729",
+    "candidateId": "96bfff2c-4287-4069-9918-59f9f5bd61b3",
+    "quoteTimestamp": "2026-06-01T23:26:53.278Z",
+    "dataSource": "multi-source"
+  }
+]

@@ -1,5 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import dns from 'node:dns';
+import { getServers, setServers } from 'node:dns';
+import { Resolver } from 'node:dns/promises';
+import net from 'node:net';
 
 const ROOT = process.cwd();
 const ENV_PATH = path.join(ROOT, '.env');
@@ -39,6 +43,73 @@ function parseDotEnv(fileText) {
   }
 
   return result;
+}
+
+function configureDnsResolvers() {
+  const raw = String(process.env.SCANNER_DNS_SERVERS || '1.1.1.1,8.8.8.8').trim();
+  if (!raw) return;
+  const resolvers = raw.split(',').map((item) => item.trim()).filter(Boolean);
+  if (resolvers.length === 0) return;
+  try {
+    const current = getServers();
+    if (JSON.stringify(current) === JSON.stringify(resolvers)) return;
+    setServers(resolvers);
+    console.log(`DNS resolvers configured: ${resolvers.join(', ')}`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`DNS resolver configuration skipped: ${message}`);
+  }
+
+  if (!globalThis.__SCANNER_DNS_LOOKUP_PATCHED__) {
+    const resolver = new Resolver();
+    resolver.setServers(resolvers);
+    const originalLookup = dns.lookup.bind(dns);
+    dns.lookup = (hostname, options, callback) => {
+      let opts = options;
+      let cb = callback;
+      if (typeof opts === 'function') {
+        cb = opts;
+        opts = {};
+      }
+      if (typeof opts === 'number') {
+        opts = { family: opts };
+      }
+      opts = opts || {};
+      const family = opts.family === 6 ? 6 : opts.family === 4 ? 4 : 0;
+      const all = Boolean(opts.all);
+
+      if (net.isIP(hostname) || hostname === 'localhost' || String(hostname).endsWith('.local')) {
+        return originalLookup(hostname, opts, cb);
+      }
+
+      const done = (err, address, addrFamily) => {
+        if (all) {
+          if (err) return cb(err);
+          return cb(null, [{ address, family: addrFamily }]);
+        }
+        return cb(err, address, addrFamily);
+      };
+
+      if (family === 6) {
+        return resolver.resolve6(hostname)
+          .then((addresses) => done(null, addresses[0], 6))
+          .catch(() => originalLookup(hostname, opts, cb));
+      }
+      if (family === 4) {
+        return resolver.resolve4(hostname)
+          .then((addresses) => done(null, addresses[0], 4))
+          .catch(() => originalLookup(hostname, opts, cb));
+      }
+
+      return resolver.resolve4(hostname)
+        .then((addresses) => done(null, addresses[0], 4))
+        .catch(() => resolver.resolve6(hostname)
+          .then((addresses) => done(null, addresses[0], 6))
+          .catch(() => originalLookup(hostname, opts, cb)));
+    };
+    globalThis.__SCANNER_DNS_LOOKUP_PATCHED__ = true;
+    console.log('DNS lookup patch enabled for fetch requests');
+  }
 }
 
 function loadEnvFromFiles() {
@@ -117,6 +188,7 @@ function evaluateGate(name, pass, actual, target, details = '') {
 
 async function main() {
   const { rootEnv, supabaseEnv } = loadEnvFromFiles();
+  configureDnsResolvers();
 
   const supabaseUrl = envValue(rootEnv, supabaseEnv, 'VITE_SUPABASE_URL', '').replace(/\/$/, '');
   const apiKey = envValue(

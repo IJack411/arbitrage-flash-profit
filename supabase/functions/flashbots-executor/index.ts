@@ -259,7 +259,8 @@ Deno.serve(async (req) => {
       }
 
       const requestedNetwork = String(opportunity?.executionPayload?.network ?? opportunity?.network ?? 'ethereum').toLowerCase();
-      if (requestedNetwork !== 'ethereum') {
+      const SUPPORTED_EXEC_NETWORKS = new Set(['ethereum', 'base']);
+      if (!SUPPORTED_EXEC_NETWORKS.has(requestedNetwork)) {
         const failureReason = 'unsupported_network';
         await persistExecutionAttempt({
           id: executionAttemptId,
@@ -277,9 +278,16 @@ Deno.serve(async (req) => {
         throw new Error(`Unsupported network for execution: ${requestedNetwork}`);
       }
 
-      const provider = new ethers.JsonRpcProvider(Deno.env.get('ETHEREUM_RPC_URL') || 'https://rpc.ankr.com/eth');
+      const isBaseNetwork = requestedNetwork === 'base';
+      const rpcUrl = isBaseNetwork
+        ? (Deno.env.get('BASE_RPC_URL') || 'https://mainnet.base.org')
+        : (Deno.env.get('ETHEREUM_RPC_URL') || 'https://rpc.ankr.com/eth');
+      const provider = new ethers.JsonRpcProvider(rpcUrl);
       const authSigner = new ethers.Wallet(Deno.env.get('FLASHBOTS_RELAY_SIGNING_KEY') || ethers.Wallet.createRandom().privateKey);
-      const flashbotsProvider = await FlashbotsBundleProvider.create(provider, authSigner);
+      const flashbotsProvider = isBaseNetwork ? null : await FlashbotsBundleProvider.create(
+        new ethers.JsonRpcProvider(Deno.env.get('ETHEREUM_RPC_URL') || 'https://rpc.ankr.com/eth'),
+        authSigner
+      );
 
       const signer = new ethers.Wallet(Deno.env.get('PRIVATE_KEY') || ethers.Wallet.createRandom().privateKey, provider);
 
@@ -423,10 +431,108 @@ Deno.serve(async (req) => {
       const calldata = iface.encodeFunctionData('executeArbitrage', parsedPayload.args);
       const [asset, amount, routerA, routerB, tokenB, routerAisV3, routerBisV3, feeA, feeB, amountBMin] = parsedPayload.args;
 
+      // ── Base L2: direct RPC execution (no MEV bundles needed) ────────────────────
+      if (isBaseNetwork) {
+        const feeData = await provider.getFeeData();
+        const maxFeePerGas = feeData.maxFeePerGas ?? ethers.parseUnits('0.1', 'gwei');
+        const maxPriorityFeePerGas = feeData.maxPriorityFeePerGas ?? ethers.parseUnits('0.01', 'gwei');
+
+        let txResponse: ethers.TransactionResponse;
+        let txReceipt: ethers.TransactionReceipt | null = null;
+        let txHash: string | null = null;
+
+        try {
+          txResponse = await signer.sendTransaction({
+            to: contractAddress,
+            data: calldata,
+            gasLimit: 600000n,
+            maxFeePerGas,
+            maxPriorityFeePerGas,
+            chainId: 8453,
+          });
+          txHash = txResponse.hash;
+
+          await persistExecutionAttempt({
+            id: executionAttemptId,
+            candidate_id: resolvedCandidateId,
+            scan_run_id: resolvedScanRunId,
+            submitted_at: new Date(startedAt).toISOString(),
+            target_block: null,
+            bundle_hash: txHash,
+            included: null,
+            failure_reason: null,
+            realized_net_profit: null,
+            latency_ms: Date.now() - startedAt,
+            metadata: {
+              walletAddress: walletAddress || null,
+              action,
+              tokenPair: opportunity?.tokenPair ?? null,
+              network: requestedNetwork,
+              buyDex: opportunity?.buyDex ?? null,
+              sellDex: opportunity?.sellDex ?? null,
+              txHash,
+              executionPayload: { asset, amount: amount.toString(), routerA, routerB, tokenB, routerAisV3, routerBisV3, feeA, feeB, amountBMin: amountBMin.toString() },
+            },
+          });
+
+          txReceipt = await txResponse.wait(1);
+        } catch (execError) {
+          const errorMessage = execError instanceof Error ? execError.message : 'Base execution failed';
+          await persistExecutionAttempt({
+            id: executionAttemptId,
+            candidate_id: resolvedCandidateId,
+            scan_run_id: resolvedScanRunId,
+            submitted_at: new Date(startedAt).toISOString(),
+            target_block: null,
+            bundle_hash: null,
+            included: false,
+            failure_reason: 'tx_send_failed',
+            realized_net_profit: null,
+            latency_ms: Date.now() - startedAt,
+            metadata: { walletAddress: walletAddress || null, action, error: errorMessage, tokenPair: opportunity?.tokenPair ?? null },
+          });
+          throw new Error(errorMessage);
+        }
+
+        const included = txReceipt !== null && txReceipt.status === 1;
+        const inclusionStatus = included ? 'included' : (txReceipt ? 'reverted' : 'pending');
+
+        if (txHash) {
+          await updateExecutionAttemptByBundleHash(txHash, {
+            included,
+            failure_reason: included ? null : 'tx_reverted',
+            latency_ms: Date.now() - startedAt,
+            metadata: { inclusionStatus, txReceipt },
+          });
+        }
+
+        return new Response(
+          JSON.stringify({
+            success: included,
+            executionAttemptId,
+            scanRunId: resolvedScanRunId,
+            candidateId: resolvedCandidateId,
+            txHash,
+            included,
+            inclusionStatus,
+            message: included ? 'Base transaction confirmed' : 'Base transaction pending/reverted',
+            network: requestedNetwork,
+            asset,
+            amount: amount.toString(),
+            tokenB,
+            routerA,
+            routerB,
+            actualProfit: included ? opportunityNetProfit : 0,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+
+      // ── Ethereum: Flashbots bundle submission ─────────────────────────────────────
       const blockNumber = await provider.getBlockNumber();
       const targetBlock = blockNumber + 1;
 
-      const signedBundle = await flashbotsProvider.signBundle([
+      const signedBundle = await flashbotsProvider!.signBundle([
         {
           signer,
           transaction: {
@@ -444,7 +550,7 @@ Deno.serve(async (req) => {
       // Simulation with improved error handling (checks error AND firstRevert like Flashbots simple-arbitrage)
       let simulationResult: unknown = null;
       try {
-        simulationResult = await flashbotsProvider.simulate(signedBundle, targetBlock);
+        simulationResult = await flashbotsProvider!.simulate(signedBundle, targetBlock);
         const simResult = simulationResult as Record<string, unknown> | undefined;
         const hasError = simResult && 'error' in simResult;
         const hasFirstRevert = simResult && 'firstRevert' in simResult && simResult.firstRevert !== undefined;
@@ -487,16 +593,10 @@ Deno.serve(async (req) => {
       }
 
       // Multi-block targeting: submit to both targetBlock AND targetBlock+1
-      // Inspired by Flashbots simple-arbitrage for increased inclusion probability
-      const targetBlocks = [targetBlock, targetBlock + 1];
-      
-      // Submit to primary block first
-      const bundleSubmission = await flashbotsProvider.sendRawBundle(signedBundle, targetBlock);
+      const bundleSubmission = await flashbotsProvider!.sendRawBundle(signedBundle, targetBlock);
       
       // Also submit to next block for better inclusion chances (fire-and-forget)
-      flashbotsProvider.sendRawBundle(signedBundle, targetBlock + 1).catch(() => {
-        // Silently ignore secondary submission errors
-      });
+      flashbotsProvider!.sendRawBundle(signedBundle, targetBlock + 1).catch(() => {});
 
       if ('error' in bundleSubmission) {
         await persistExecutionAttempt({
@@ -635,6 +735,7 @@ Deno.serve(async (req) => {
           tokenB,
           routerA,
           routerB,
+          actualProfit: included ? opportunityNetProfit : 0,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );

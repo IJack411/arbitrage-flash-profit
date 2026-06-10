@@ -1,0 +1,5 @@
+Series probe target: https://ujhsrxinfcycjtulpvqk.supabase.co/functions/v1/scan-arbitrage-opportunities
+Series networks: ethereum
+Resolved host: ujhsrxinfcycjtulpvqk.supabase.co -> 172.64.149.246
+run 1/5: active=0 cand=7 overlap=77.8% badQuotes=6 spread=0 liq=0 slip=0 net=1 sameDex=2 risk=0
+run 2/5: active=0 cand=7 overlap=77.8% badQuotes=6 spread=0 liq=0 slip=0 net=1 sameDex=2 risk=0

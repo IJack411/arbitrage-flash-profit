@@ -12,11 +12,27 @@ const corsHeaders = {
 };
 
 // Priority pairs seeded into hot_pairs_queue so indexer-refresh-fast always has work.
-// WETH/* pairs removed — HFT bots close those spreads in <10ms. Using mid-cap volatile pairs instead.
+// WETH pairs included for Ethereum cross-DEX arb (LINK/WETH, WBTC/WETH exist on V2, V3, and SushiSwap).
+// With $50k loan and $26 ETH gas, break-even = 5.2 bps — achievable with WETH cross-DEX spreads.
 // Mirrors shared/networks-tokens.ts SEARCH_TERMS_BY_NETWORK.
 const PRIORITY_PAIRS_BY_NETWORK: Record<string, string[]> = {
-  ethereum: ['WBTC/USDC', 'WBTC/USDT', 'LINK/USDC', 'LINK/USDT', 'UNI/USDC', 'AAVE/USDC', 'CRV/USDC', 'SNX/USDC', 'LDO/USDC', 'MKR/USDC', 'COMP/USDC', 'RPL/USDC', 'DAI/USDC', 'USDC/USDT'],
-  arbitrum: ['ARB/USDC', 'GMX/USDC', 'MAGIC/USDC', 'LINK/USDC', 'RDNT/USDC', 'GRAIL/USDC', 'DPX/USDC', 'PENDLE/USDC', 'GNS/USDC', 'DAI/USDC', 'USDC/USDT'],
+  ethereum: [
+    // WETH pairs: exist on V2 + V3 + SushiSwap = real cross-DEX opportunities
+    'LINK/WETH', 'WBTC/WETH', 'AAVE/WETH', 'UNI/WETH', 'COMP/WETH',
+    // Stablecoin base pairs
+    'WBTC/USDC', 'WBTC/USDT', 'LINK/USDC', 'LINK/USDT',
+    'UNI/USDC', 'AAVE/USDC', 'CRV/USDC', 'SNX/USDC',
+    'LDO/USDC', 'MKR/USDC', 'COMP/USDC', 'RPL/USDC',
+    'DAI/USDC', 'USDC/USDT',
+  ],
+  arbitrum: [
+    // WETH pairs: exist on V3 + SushiSwap on Arbitrum = cross-DEX with cheap gas ($0.31/tx)
+    'WETH/USDC', 'WETH/USDT', 'MAGIC/WETH', 'ARB/WETH', 'GMX/WETH',
+    // Stablecoin pairs
+    'ARB/USDC', 'GMX/USDC', 'MAGIC/USDC', 'LINK/USDC',
+    'RDNT/USDC', 'PENDLE/USDC', 'GNS/USDC', 'WBTC/USDC',
+    'CRV/USDC', 'BAL/USDC', 'STG/USDC', 'DAI/USDC', 'USDC/USDT',
+  ],
   base:     ['LINK/USDC', 'AERO/USDC', 'DEGEN/USDC', 'BRETT/USDC', 'TOSHI/USDC', 'DACKIE/USDC', 'BALD/USDC', 'USDC/USDT'],
   polygon:  ['WMATIC/USDC', 'WMATIC/USDT', 'LINK/USDC', 'AAVE/USDC', 'GHST/USDC', 'CRV/USDC', 'SAND/USDC', 'QUICK/USDC', 'BAL/USDC', 'DAI/USDC', 'USDC/USDT'],
   bsc:      ['WBNB/USDT', 'WBNB/USDC', 'CAKE/USDT', 'XVS/USDT', 'ALPACA/USDT', 'MDX/USDT', 'BAKE/USDT', 'USDC/USDT'],

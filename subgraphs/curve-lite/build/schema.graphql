@@ -1,0 +1,7 @@
+type Pool @entity {
+  id: ID!
+  coins: [String!]!
+  balances: [BigDecimal!]!
+  cumulativeVolumeUSD: BigDecimal!
+  updatedAtBlock: BigInt!
+}

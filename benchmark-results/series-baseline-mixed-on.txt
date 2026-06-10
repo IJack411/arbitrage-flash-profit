@@ -1,0 +1,304 @@
+Series probe target: https://ujhsrxinfcycjtulpvqk.supabase.co/functions/v1/scan-arbitrage-opportunities
+Series networks: ethereum
+Resolved host: ujhsrxinfcycjtulpvqk.supabase.co -> 172.64.149.246
+run 1/5: active=0 cand=7 overlap=77.8% badQuotes=6 spread=0 liq=0 slip=0 net=1 sameDex=2 risk=0
+run 2/5: active=0 cand=7 overlap=77.8% badQuotes=6 spread=0 liq=0 slip=0 net=1 sameDex=2 risk=0
+run 3/5: active=0 cand=7 overlap=77.8% badQuotes=6 spread=0 liq=0 slip=0 net=1 sameDex=2 risk=0
+run 4/5: active=0 cand=7 overlap=77.8% badQuotes=6 spread=0 liq=0 slip=0 net=1 sameDex=2 risk=0
+run 5/5: active=0 cand=7 overlap=77.8% badQuotes=6 spread=0 liq=0 slip=0 net=1 sameDex=2 risk=0
+--- series summary ---
+{
+  "runs": 5,
+  "active": {
+    "p50": 0,
+    "p75": 0,
+    "mean": 0
+  },
+  "candidates": {
+    "p50": 7,
+    "p75": 7,
+    "mean": 7
+  },
+  "overlapGatePassRate": {
+    "p50": 77.77777777777779,
+    "p75": 77.77777777777779,
+    "mean": 77.78
+  },
+  "badQuotes": {
+    "p50": 6,
+    "p75": 6,
+    "mean": 6
+  },
+  "spreadDrop": {
+    "p50": 0,
+    "p75": 0,
+    "mean": 0
+  },
+  "liqDrop": {
+    "p50": 0,
+    "p75": 0,
+    "mean": 0
+  },
+  "slipDrop": {
+    "p50": 0,
+    "p75": 0,
+    "mean": 0
+  },
+  "netDrop": {
+    "p50": 1,
+    "p75": 1,
+    "mean": 1
+  },
+  "sameDexDrop": {
+    "p50": 2,
+    "p75": 2,
+    "mean": 2
+  },
+  "riskDrop": {
+    "p50": 0,
+    "p75": 0,
+    "mean": 0
+  },
+  "policyCalibrationHints": {
+    "preferSubgraph": [
+      {
+        "tokenPair": "ethereum:LINK/USDC",
+        "liveDecisionTag": "selected_mixed_extreme",
+        "seenRuns": 5,
+        "seenRatePercent": 100,
+        "thresholdMin": 1,
+        "thresholdP50": 1,
+        "thresholdMean": 1,
+        "marginP50": 0,
+        "marginMean": 0,
+        "challengerEarlyGate": null,
+        "challengerDecisionTag": null,
+        "challengerSpreadPercent": null
+      },
+      {
+        "tokenPair": "ethereum:WBTC/USDC",
+        "liveDecisionTag": "selected_mixed_extreme",
+        "seenRuns": 5,
+        "seenRatePercent": 100,
+        "thresholdMin": 1,
+        "thresholdP50": 1,
+        "thresholdMean": 1,
+        "marginP50": 0,
+        "marginMean": 0,
+        "challengerEarlyGate": null,
+        "challengerDecisionTag": null,
+        "challengerSpreadPercent": null
+      },
+      {
+        "tokenPair": "ethereum:WETH/USDC",
+        "liveDecisionTag": "selected_mixed_extreme",
+        "seenRuns": 5,
+        "seenRatePercent": 100,
+        "thresholdMin": 1,
+        "thresholdP50": 1,
+        "thresholdMean": 1,
+        "marginP50": 0,
+        "marginMean": 0,
+        "challengerEarlyGate": "badQuotes",
+        "challengerDecisionTag": "selected_mixed_extreme",
+        "challengerSpreadPercent": 399115909.530319
+      },
+      {
+        "tokenPair": "ethereum:WBTC/USDT",
+        "liveDecisionTag": "selected_mixed_extreme",
+        "seenRuns": 5,
+        "seenRatePercent": 100,
+        "thresholdMin": 12,
+        "thresholdP50": 12,
+        "thresholdMean": 12,
+        "marginP50": 11,
+        "marginMean": 11,
+        "challengerEarlyGate": "badQuotes",
+        "challengerDecisionTag": "selected_mixed_extreme",
+        "challengerSpreadPercent": 506379420014.50244
+      },
+      {
+        "tokenPair": "ethereum:LINK/USDT",
+        "liveDecisionTag": "selected_mixed_extreme",
+        "seenRuns": 5,
+        "seenRatePercent": 100,
+        "thresholdMin": 19,
+        "thresholdP50": 19,
+        "thresholdMean": 19,
+        "marginP50": 18,
+        "marginMean": 18,
+        "challengerEarlyGate": "badQuotes",
+        "challengerDecisionTag": "selected_mixed_extreme",
+        "challengerSpreadPercent": 8060.992135
+      },
+      {
+        "tokenPair": "ethereum:WETH/DAI",
+        "liveDecisionTag": "selected_mixed_extreme",
+        "seenRuns": 5,
+        "seenRatePercent": 100,
+        "thresholdMin": 5807,
+        "thresholdP50": 5807,
+        "thresholdMean": 5807,
+        "marginP50": 5806,
+        "marginMean": 5806,
+        "challengerEarlyGate": "badQuotes",
+        "challengerDecisionTag": "selected_mixed_extreme",
+        "challengerSpreadPercent": 398407557.367141
+      }
+    ],
+    "preferExternalRaw": [
+      {
+        "tokenPair": "ethereum:LINK/USDC",
+        "liveDecisionTag": "selected_mixed_extreme",
+        "seenRuns": 5,
+        "seenRatePercent": 100,
+        "thresholdMin": 1,
+        "thresholdP50": 1,
+        "thresholdMean": 1,
+        "marginP50": 0,
+        "marginMean": 0,
+        "challengerEarlyGate": null,
+        "challengerDecisionTag": null,
+        "challengerSpreadPercent": null
+      },
+      {
+        "tokenPair": "ethereum:WBTC/USDC",
+        "liveDecisionTag": "selected_mixed_extreme",
+        "seenRuns": 5,
+        "seenRatePercent": 100,
+        "thresholdMin": 1,
+        "thresholdP50": 1,
+        "thresholdMean": 1,
+        "marginP50": 0,
+        "marginMean": 0,
+        "challengerEarlyGate": null,
+        "challengerDecisionTag": null,
+        "challengerSpreadPercent": null
+      },
+      {
+        "tokenPair": "ethereum:WETH/USDC",
+        "liveDecisionTag": "selected_mixed_extreme",
+        "seenRuns": 5,
+        "seenRatePercent": 100,
+        "thresholdMin": 1,
+        "thresholdP50": 1,
+        "thresholdMean": 1,
+        "marginP50": 0,
+        "marginMean": 0,
+        "challengerEarlyGate": "badQuotes",
+        "challengerDecisionTag": "selected_mixed_extreme",
+        "challengerSpreadPercent": 399115909.530319
+      },
+      {
+        "tokenPair": "ethereum:WBTC/USDT",
+        "liveDecisionTag": "selected_mixed_extreme",
+        "seenRuns": 5,
+        "seenRatePercent": 100,
+        "thresholdMin": 12,
+        "thresholdP50": 12,
+        "thresholdMean": 12,
+        "marginP50": 11,
+        "marginMean": 11,
+        "challengerEarlyGate": "badQuotes",
+        "challengerDecisionTag": "selected_mixed_extreme",
+        "challengerSpreadPercent": 506379420014.50244
+      },
+      {
+        "tokenPair": "ethereum:LINK/USDT",
+        "liveDecisionTag": "selected_mixed_extreme",
+        "seenRuns": 5,
+        "seenRatePercent": 100,
+        "thresholdMin": 19,
+        "thresholdP50": 19,
+        "thresholdMean": 19,
+        "marginP50": 18,
+        "marginMean": 18,
+        "challengerEarlyGate": "badQuotes",
+        "challengerDecisionTag": "selected_mixed_extreme",
+        "challengerSpreadPercent": 8060.992135
+      },
+      {
+        "tokenPair": "ethereum:WETH/DAI",
+        "liveDecisionTag": "selected_mixed_extreme",
+        "seenRuns": 5,
+        "seenRatePercent": 100,
+        "thresholdMin": 5807,
+        "thresholdP50": 5807,
+        "thresholdMean": 5807,
+        "marginP50": 5806,
+        "marginMean": 5806,
+        "challengerEarlyGate": "badQuotes",
+        "challengerDecisionTag": "selected_mixed_extreme",
+        "challengerSpreadPercent": 398407557.367141
+      }
+    ]
+  },
+  "policyActionability": {
+    "preferSubgraph": {
+      "lowThresholdCutoff": 25,
+      "lowThresholdPairs": 5,
+      "actionablePairs": [],
+      "blockedByBadQuotes": [
+        {
+          "tokenPair": "ethereum:WETH/USDC",
+          "thresholdP50": 1,
+          "challengerSpreadPercent": 399115909.530319
+        },
+        {
+          "tokenPair": "ethereum:WBTC/USDT",
+          "thresholdP50": 12,
+          "challengerSpreadPercent": 506379420014.50244
+        },
+        {
+          "tokenPair": "ethereum:LINK/USDT",
+          "thresholdP50": 19,
+          "challengerSpreadPercent": 8060.992135
+        }
+      ],
+      "blockedBySpread": [],
+      "unknownChallenger": [
+        {
+          "tokenPair": "ethereum:LINK/USDC",
+          "thresholdP50": 1
+        },
+        {
+          "tokenPair": "ethereum:WBTC/USDC",
+          "thresholdP50": 1
+        }
+      ]
+    },
+    "preferExternalRaw": {
+      "lowThresholdCutoff": 25,
+      "lowThresholdPairs": 5,
+      "actionablePairs": [],
+      "blockedByBadQuotes": [
+        {
+          "tokenPair": "ethereum:WETH/USDC",
+          "thresholdP50": 1,
+          "challengerSpreadPercent": 399115909.530319
+        },
+        {
+          "tokenPair": "ethereum:WBTC/USDT",
+          "thresholdP50": 12,
+          "challengerSpreadPercent": 506379420014.50244
+        },
+        {
+          "tokenPair": "ethereum:LINK/USDT",
+          "thresholdP50": 19,
+          "challengerSpreadPercent": 8060.992135
+        }
+      ],
+      "blockedBySpread": [],
+      "unknownChallenger": [
+        {
+          "tokenPair": "ethereum:LINK/USDC",
+          "thresholdP50": 1
+        },
+        {
+          "tokenPair": "ethereum:WBTC/USDC",
+          "thresholdP50": 1
+        }
+      ]
+    }
+  }
+}

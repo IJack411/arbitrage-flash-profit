@@ -1,5 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import dns from 'node:dns';
+import { getServers, setServers } from 'node:dns';
+import { Resolver } from 'node:dns/promises';
+import net from 'node:net';
 
 const parseDotEnv = (fileText) => {
   const out = {};
@@ -41,6 +45,73 @@ const parseBoolean = (value, fallback) => {
   if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
   if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
   return fallback;
+};
+
+const configureDnsResolvers = () => {
+  const raw = String(process.env.SCANNER_DNS_SERVERS || '1.1.1.1,8.8.8.8').trim();
+  if (!raw) return;
+  const resolvers = raw.split(',').map((item) => item.trim()).filter(Boolean);
+  if (resolvers.length === 0) return;
+  try {
+    const current = getServers();
+    if (JSON.stringify(current) === JSON.stringify(resolvers)) return;
+    setServers(resolvers);
+    console.log(`DNS resolvers configured: ${resolvers.join(', ')}`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`DNS resolver configuration skipped: ${message}`);
+  }
+
+  if (!globalThis.__SCANNER_DNS_LOOKUP_PATCHED__) {
+    const resolver = new Resolver();
+    resolver.setServers(resolvers);
+    const originalLookup = dns.lookup.bind(dns);
+    dns.lookup = (hostname, options, callback) => {
+      let opts = options;
+      let cb = callback;
+      if (typeof opts === 'function') {
+        cb = opts;
+        opts = {};
+      }
+      if (typeof opts === 'number') {
+        opts = { family: opts };
+      }
+      opts = opts || {};
+      const family = opts.family === 6 ? 6 : opts.family === 4 ? 4 : 0;
+      const all = Boolean(opts.all);
+
+      if (net.isIP(hostname) || hostname === 'localhost' || String(hostname).endsWith('.local')) {
+        return originalLookup(hostname, opts, cb);
+      }
+
+      const done = (err, address, addrFamily) => {
+        if (all) {
+          if (err) return cb(err);
+          return cb(null, [{ address, family: addrFamily }]);
+        }
+        return cb(err, address, addrFamily);
+      };
+
+      if (family === 6) {
+        return resolver.resolve6(hostname)
+          .then((addresses) => done(null, addresses[0], 6))
+          .catch((err) => originalLookup(hostname, opts, cb));
+      }
+      if (family === 4) {
+        return resolver.resolve4(hostname)
+          .then((addresses) => done(null, addresses[0], 4))
+          .catch((err) => originalLookup(hostname, opts, cb));
+      }
+
+      return resolver.resolve4(hostname)
+        .then((addresses) => done(null, addresses[0], 4))
+        .catch(() => resolver.resolve6(hostname)
+          .then((addresses) => done(null, addresses[0], 6))
+          .catch(() => originalLookup(hostname, opts, cb)));
+    };
+    globalThis.__SCANNER_DNS_LOOKUP_PATCHED__ = true;
+    console.log('DNS lookup patch enabled for fetch requests');
+  }
 };
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -200,6 +271,7 @@ const evaluateProfile = async ({ endpoint, anonKey, profile, iterations, delayMs
 
 const run = async () => {
   loadEnvFallbacks();
+  configureDnsResolvers();
 
   const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
   const anonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
@@ -213,11 +285,11 @@ const run = async () => {
   const iterations = parseNumber(process.env.ALERT_SCOUT_ITERATIONS, 2);
   const delayMs = parseNumber(process.env.ALERT_SCOUT_DELAY_MS, 1200);
   const httpTimeoutMs = Math.max(2_500, parseNumber(process.env.ALERT_HTTP_TIMEOUT_MS, 20_000));
-  const networks = (process.env.ALERT_NETWORKS || 'ethereum').split(',').map((n) => n.trim()).filter(Boolean);
+  const networks = (process.env.ALERT_NETWORKS || 'ethereum,arbitrum,base,polygon').split(',').map((n) => n.trim()).filter(Boolean);
 
   const thresholds = {
     activeMin: parseNumber(process.env.ALERT_ACTIVE_MIN, 1),
-    topWatchNetMin: parseNumber(process.env.ALERT_TOP_WATCH_NET_MIN, -10),
+    topWatchNetMin: parseNumber(process.env.ALERT_TOP_WATCH_NET_MIN, -5),
     topWatchDistanceMax: parseNumber(process.env.ALERT_TOP_DISTANCE_MAX, 15),
     badQuotesMax: parseNumber(process.env.ALERT_BAD_QUOTES_MAX, 1),
   };
@@ -267,8 +339,27 @@ const run = async () => {
 
   const profileSet = String(process.env.ALERT_SCOUT_PROFILE_SET || 'expanded').trim().toLowerCase();
   const enableGeckoMixed = parseBoolean(process.env.ALERT_ENABLE_GECKO_MIXED, true);
+  const includeHighLoanProfiles = parseBoolean(process.env.ALERT_INCLUDE_HIGH_LOAN_PROFILES, true);
+  const highLoanAmounts = String(process.env.ALERT_HIGH_LOAN_AMOUNTS_USD || '3000,10000')
+    .split(',')
+    .map((item) => Number(item.trim()))
+    .filter((n) => Number.isFinite(n) && n >= 2000)
+    .slice(0, 4);
 
-  const profiles = profileSet === 'default'
+  const highLoanDiscovery = {
+    minNetProfitUsd: parseNumber(process.env.ALERT_HIGH_LOAN_MIN_NET_PROFIT_USD, 2),
+    perNetworkMinNetProfitUsd: {
+      ethereum: parseNumber(process.env.ALERT_HIGH_LOAN_MIN_NET_PROFIT_ETHEREUM_USD, 6),
+      arbitrum: parseNumber(process.env.ALERT_HIGH_LOAN_MIN_NET_PROFIT_ARBITRUM_USD, 3),
+      base: parseNumber(process.env.ALERT_HIGH_LOAN_MIN_NET_PROFIT_BASE_USD, 2),
+      polygon: parseNumber(process.env.ALERT_HIGH_LOAN_MIN_NET_PROFIT_POLYGON_USD, 2),
+    },
+    minSpreadPercent: parseNumber(process.env.ALERT_HIGH_LOAN_MIN_SPREAD_PERCENT, 0.015),
+    minLiquidityUsd: parseNumber(process.env.ALERT_HIGH_LOAN_MIN_LIQUIDITY_USD, 180000),
+    maxSlippageBps: parseNumber(process.env.ALERT_HIGH_LOAN_MAX_SLIPPAGE_BPS, 80),
+  };
+
+  let profiles = profileSet === 'default'
     ? [
       {
         id: 'subgraph-1000',
@@ -427,6 +518,31 @@ const run = async () => {
         enableGecko: enableGeckoMixed,
       },
     ];
+
+  if (includeHighLoanProfiles && highLoanAmounts.length > 0) {
+    const highLoanProfiles = [];
+    for (const loanAmountUsd of highLoanAmounts) {
+      highLoanProfiles.push(
+        {
+          id: `subgraph-${loanAmountUsd}-highloan-discovery`,
+          ...base,
+          ...highLoanDiscovery,
+          loanAmountUsd,
+          enableDexScreener: false,
+          enableGecko: false,
+        },
+        {
+          id: `mixed-${loanAmountUsd}-highloan-discovery`,
+          ...base,
+          ...highLoanDiscovery,
+          loanAmountUsd,
+          enableDexScreener: true,
+          enableGecko: enableGeckoMixed,
+        },
+      );
+    }
+    profiles = [...profiles, ...highLoanProfiles];
+  }
 
   const results = [];
   for (const profile of profiles) {

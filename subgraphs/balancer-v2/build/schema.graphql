@@ -1,0 +1,8 @@
+type Pool @entity {
+  id: ID!
+  tokensList: [String!]!
+  totalLiquidity: BigDecimal!
+  totalSwapVolume: BigDecimal!
+  createdAtBlock: BigInt!
+  updatedAtBlock: BigInt!
+}

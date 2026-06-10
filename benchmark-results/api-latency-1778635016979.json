@@ -1,0 +1,637 @@
+{
+  "benchmark_run": "2026-05-13T01:14:21.959Z",
+  "scanners": {
+    "1inch": {
+      "samples": [
+        {
+          "test_id": 1,
+          "success": true,
+          "latency": 771,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:14:22.732Z"
+        },
+        {
+          "test_id": 2,
+          "success": true,
+          "latency": 268,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:14:23.511Z"
+        },
+        {
+          "test_id": 3,
+          "success": true,
+          "latency": 262,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:14:24.276Z"
+        },
+        {
+          "test_id": 4,
+          "success": true,
+          "latency": 231,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:14:25.019Z"
+        },
+        {
+          "test_id": 5,
+          "success": true,
+          "latency": 289,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:14:25.821Z"
+        },
+        {
+          "test_id": 6,
+          "success": true,
+          "latency": 265,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:14:26.600Z"
+        },
+        {
+          "test_id": 7,
+          "success": true,
+          "latency": 253,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:14:27.364Z"
+        },
+        {
+          "test_id": 8,
+          "success": true,
+          "latency": 254,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:14:28.130Z"
+        },
+        {
+          "test_id": 9,
+          "success": true,
+          "latency": 235,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:14:28.868Z"
+        },
+        {
+          "test_id": 10,
+          "success": true,
+          "latency": 232,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:14:29.608Z"
+        },
+        {
+          "test_id": 11,
+          "success": true,
+          "latency": 3310,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:14:33.433Z"
+        },
+        {
+          "test_id": 12,
+          "success": true,
+          "latency": 232,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:14:34.180Z"
+        },
+        {
+          "test_id": 13,
+          "success": true,
+          "latency": 557,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:14:35.247Z"
+        },
+        {
+          "test_id": 14,
+          "success": false,
+          "latency": 1391,
+          "error": "fetch failed",
+          "timestamp": "2026-05-13T01:14:37.146Z"
+        },
+        {
+          "test_id": 15,
+          "success": false,
+          "latency": 1292,
+          "error": "fetch failed",
+          "timestamp": "2026-05-13T01:14:38.940Z"
+        },
+        {
+          "test_id": 16,
+          "success": false,
+          "latency": 1295,
+          "error": "fetch failed",
+          "timestamp": "2026-05-13T01:14:40.736Z"
+        },
+        {
+          "test_id": 17,
+          "success": false,
+          "latency": 1327,
+          "error": "fetch failed",
+          "timestamp": "2026-05-13T01:14:42.569Z"
+        },
+        {
+          "test_id": 18,
+          "success": false,
+          "latency": 1337,
+          "error": "fetch failed",
+          "timestamp": "2026-05-13T01:14:44.407Z"
+        },
+        {
+          "test_id": 19,
+          "success": false,
+          "latency": 1331,
+          "error": "fetch failed",
+          "timestamp": "2026-05-13T01:14:46.244Z"
+        },
+        {
+          "test_id": 20,
+          "success": false,
+          "latency": 1347,
+          "error": "fetch failed",
+          "timestamp": "2026-05-13T01:14:48.097Z"
+        }
+      ],
+      "summary": {
+        "total_samples": 20,
+        "successful_samples": 13,
+        "response_samples": 13,
+        "network_failures": 7,
+        "http_failures": 0,
+        "error_rate_percent": "35.00",
+        "mean_latency_ms": 551,
+        "p50_latency_ms": 262,
+        "p95_latency_ms": 3310,
+        "p99_latency_ms": 3310,
+        "min_latency_ms": 231,
+        "max_latency_ms": 3310
+      }
+    },
+    "CoW Swap": {
+      "samples": [
+        {
+          "test_id": 1,
+          "success": true,
+          "latency": 5503,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:14:54.108Z"
+        },
+        {
+          "test_id": 2,
+          "success": true,
+          "latency": 3434,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:14:58.053Z"
+        },
+        {
+          "test_id": 3,
+          "success": true,
+          "latency": 3370,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:15:01.930Z"
+        },
+        {
+          "test_id": 4,
+          "success": true,
+          "latency": 3421,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:15:05.853Z"
+        },
+        {
+          "test_id": 5,
+          "success": true,
+          "latency": 3720,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:15:10.089Z"
+        },
+        {
+          "test_id": 6,
+          "success": true,
+          "latency": 3489,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:15:14.085Z"
+        },
+        {
+          "test_id": 7,
+          "success": true,
+          "latency": 3693,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:15:18.291Z"
+        },
+        {
+          "test_id": 8,
+          "success": true,
+          "latency": 3274,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:15:22.078Z"
+        },
+        {
+          "test_id": 9,
+          "success": true,
+          "latency": 3365,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:15:25.952Z"
+        },
+        {
+          "test_id": 10,
+          "success": true,
+          "latency": 3336,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:15:29.791Z"
+        },
+        {
+          "test_id": 11,
+          "success": true,
+          "latency": 3157,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:15:33.459Z"
+        },
+        {
+          "test_id": 12,
+          "success": true,
+          "latency": 5463,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:15:39.422Z"
+        },
+        {
+          "test_id": 13,
+          "success": true,
+          "latency": 3446,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:15:43.374Z"
+        },
+        {
+          "test_id": 14,
+          "success": true,
+          "latency": 3419,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:15:47.298Z"
+        },
+        {
+          "test_id": 15,
+          "success": true,
+          "latency": 3050,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:15:50.859Z"
+        },
+        {
+          "test_id": 16,
+          "success": true,
+          "latency": 3414,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:15:54.780Z"
+        },
+        {
+          "test_id": 17,
+          "success": true,
+          "latency": 3050,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:15:58.336Z"
+        },
+        {
+          "test_id": 18,
+          "success": true,
+          "latency": 3052,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:01.899Z"
+        },
+        {
+          "test_id": 19,
+          "success": true,
+          "latency": 3421,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:05.824Z"
+        },
+        {
+          "test_id": 20,
+          "success": true,
+          "latency": 3052,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:09.392Z"
+        }
+      ],
+      "summary": {
+        "total_samples": 20,
+        "successful_samples": 20,
+        "response_samples": 20,
+        "network_failures": 0,
+        "http_failures": 0,
+        "error_rate_percent": "0.00",
+        "mean_latency_ms": 3556,
+        "p50_latency_ms": 3419,
+        "p95_latency_ms": 5503,
+        "p99_latency_ms": 5503,
+        "min_latency_ms": 3050,
+        "max_latency_ms": 5503
+      }
+    },
+    "Uniswap v3": {
+      "samples": [
+        {
+          "test_id": 1,
+          "success": true,
+          "latency": 176,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:10.072Z"
+        },
+        {
+          "test_id": 2,
+          "success": true,
+          "latency": 3054,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:13.633Z"
+        },
+        {
+          "test_id": 3,
+          "success": true,
+          "latency": 66,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:14.203Z"
+        },
+        {
+          "test_id": 4,
+          "success": true,
+          "latency": 66,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:14.781Z"
+        },
+        {
+          "test_id": 5,
+          "success": true,
+          "latency": 74,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:15.368Z"
+        },
+        {
+          "test_id": 6,
+          "success": true,
+          "latency": 69,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:15.941Z"
+        },
+        {
+          "test_id": 7,
+          "success": true,
+          "latency": 173,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:16.621Z"
+        },
+        {
+          "test_id": 8,
+          "success": true,
+          "latency": 87,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:17.222Z"
+        },
+        {
+          "test_id": 9,
+          "success": true,
+          "latency": 73,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:17.801Z"
+        },
+        {
+          "test_id": 10,
+          "success": true,
+          "latency": 71,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:18.375Z"
+        },
+        {
+          "test_id": 11,
+          "success": true,
+          "latency": 70,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:18.951Z"
+        },
+        {
+          "test_id": 12,
+          "success": true,
+          "latency": 65,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:19.523Z"
+        },
+        {
+          "test_id": 13,
+          "success": true,
+          "latency": 71,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:20.094Z"
+        },
+        {
+          "test_id": 14,
+          "success": true,
+          "latency": 71,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:20.673Z"
+        },
+        {
+          "test_id": 15,
+          "success": true,
+          "latency": 74,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:21.252Z"
+        },
+        {
+          "test_id": 16,
+          "success": true,
+          "latency": 69,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:21.823Z"
+        },
+        {
+          "test_id": 17,
+          "success": true,
+          "latency": 73,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:22.405Z"
+        },
+        {
+          "test_id": 18,
+          "success": true,
+          "latency": 64,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:22.972Z"
+        },
+        {
+          "test_id": 19,
+          "success": true,
+          "latency": 447,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:23.932Z"
+        },
+        {
+          "test_id": 20,
+          "success": true,
+          "latency": 71,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:24.511Z"
+        }
+      ],
+      "summary": {
+        "total_samples": 20,
+        "successful_samples": 20,
+        "response_samples": 20,
+        "network_failures": 0,
+        "http_failures": 0,
+        "error_rate_percent": "0.00",
+        "mean_latency_ms": 249,
+        "p50_latency_ms": 71,
+        "p95_latency_ms": 3054,
+        "p99_latency_ms": 3054,
+        "min_latency_ms": 64,
+        "max_latency_ms": 3054
+      }
+    },
+    "Osmosis": {
+      "samples": [
+        {
+          "test_id": 1,
+          "success": true,
+          "latency": 641,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:25.657Z"
+        },
+        {
+          "test_id": 2,
+          "success": true,
+          "latency": 572,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:26.742Z"
+        },
+        {
+          "test_id": 3,
+          "success": true,
+          "latency": 579,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:27.824Z"
+        },
+        {
+          "test_id": 4,
+          "success": true,
+          "latency": 669,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:28.999Z"
+        },
+        {
+          "test_id": 5,
+          "success": true,
+          "latency": 1067,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:30.577Z"
+        },
+        {
+          "test_id": 6,
+          "success": true,
+          "latency": 623,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:31.703Z"
+        },
+        {
+          "test_id": 7,
+          "success": true,
+          "latency": 615,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:32.829Z"
+        },
+        {
+          "test_id": 8,
+          "success": true,
+          "latency": 585,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:33.917Z"
+        },
+        {
+          "test_id": 9,
+          "success": true,
+          "latency": 753,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:35.173Z"
+        },
+        {
+          "test_id": 10,
+          "success": true,
+          "latency": 1762,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:37.448Z"
+        },
+        {
+          "test_id": 11,
+          "success": true,
+          "latency": 1584,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:39.539Z"
+        },
+        {
+          "test_id": 12,
+          "success": true,
+          "latency": 1766,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:41.821Z"
+        },
+        {
+          "test_id": 13,
+          "success": true,
+          "latency": 2011,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:44.347Z"
+        },
+        {
+          "test_id": 14,
+          "success": true,
+          "latency": 1554,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:46.409Z"
+        },
+        {
+          "test_id": 15,
+          "success": true,
+          "latency": 1225,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:48.139Z"
+        },
+        {
+          "test_id": 16,
+          "success": true,
+          "latency": 869,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:49.509Z"
+        },
+        {
+          "test_id": 17,
+          "success": true,
+          "latency": 1036,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:51.059Z"
+        },
+        {
+          "test_id": 18,
+          "success": true,
+          "latency": 982,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:52.547Z"
+        },
+        {
+          "test_id": 19,
+          "success": true,
+          "latency": 1370,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:54.427Z"
+        },
+        {
+          "test_id": 20,
+          "success": true,
+          "latency": 1546,
+          "statusCode": 200,
+          "timestamp": "2026-05-13T01:16:56.475Z"
+        }
+      ],
+      "summary": {
+        "total_samples": 20,
+        "successful_samples": 20,
+        "response_samples": 20,
+        "network_failures": 0,
+        "http_failures": 0,
+        "error_rate_percent": "0.00",
+        "mean_latency_ms": 1090,
+        "p50_latency_ms": 1036,
+        "p95_latency_ms": 2011,
+        "p99_latency_ms": 2011,
+        "min_latency_ms": 572,
+        "max_latency_ms": 2011
+      }
+    }
+  }
+}

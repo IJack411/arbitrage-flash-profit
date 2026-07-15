@@ -154,27 +154,27 @@ const parseNetworks = (value, fallback) => {
     .split(',')
     .map((part) => part.trim().toLowerCase())
     .filter(Boolean);
-  return parsed.length > 0 ? parsed : ['ethereum', 'arbitrum', 'base', 'polygon'];
+  return parsed.length > 0 ? parsed : ['ethereum', 'arbitrum', 'base'];
 };
 
-const probeNetworks = parseNetworks(process.env.PROBE_NETWORKS, 'ethereum,arbitrum,base,polygon');
+const probeNetworks = parseNetworks(process.env.PROBE_NETWORKS, 'ethereum,arbitrum,base');
 
 const payload = {
   networks: probeNetworks,
-  loanAmountUsd: parseNumber(process.env.PROBE_LOAN_AMOUNT_USD, 10000),
-  minNetProfitUsd: parseNumber(process.env.PROBE_MIN_NET_PROFIT_USD, 6),
+  loanAmountUsd: parseNumber(process.env.PROBE_LOAN_AMOUNT_USD, 12000),
+  minNetProfitUsd: parseNumber(process.env.PROBE_MIN_NET_PROFIT_USD, 10),
   perNetworkMinNetProfitUsd: {
-    ethereum: parseNumber(process.env.PROBE_MIN_NET_PROFIT_ETHEREUM_USD, 10),
-    arbitrum: parseNumber(process.env.PROBE_MIN_NET_PROFIT_ARBITRUM_USD, 5),
-    base: parseNumber(process.env.PROBE_MIN_NET_PROFIT_BASE_USD, 4),
-    polygon: parseNumber(process.env.PROBE_MIN_NET_PROFIT_POLYGON_USD, 4),
+    ethereum: parseNumber(process.env.PROBE_MIN_NET_PROFIT_ETHEREUM_USD, 18),
+    arbitrum: parseNumber(process.env.PROBE_MIN_NET_PROFIT_ARBITRUM_USD, 6),
+    base: parseNumber(process.env.PROBE_MIN_NET_PROFIT_BASE_USD, 5),
+    polygon: parseNumber(process.env.PROBE_MIN_NET_PROFIT_POLYGON_USD, 8),
   },
-  minLiquidityUsd: parseNumber(process.env.PROBE_MIN_LIQUIDITY_USD, 120000),
+  minLiquidityUsd: parseNumber(process.env.PROBE_MIN_LIQUIDITY_USD, 150000),
   minSpreadPercent: parseNumber(process.env.PROBE_MIN_SPREAD_PERCENT, 0.03),
   maxResults: parseNumber(process.env.PROBE_MAX_RESULTS, 40),
   maxSlippageBps: parseNumber(process.env.PROBE_MAX_SLIPPAGE_BPS, 65),
   maxLiquidityUsagePercent: parseNumber(process.env.PROBE_MAX_LIQUIDITY_USAGE_PERCENT, 25),
-  estimatedGasUsd: parseNumber(process.env.PROBE_ESTIMATED_GAS_USD, 12),
+  estimatedGasUsd: parseNumber(process.env.PROBE_ESTIMATED_GAS_USD, 18),
   // Enable all fallback quote sources so the probe reflects real live-scanner conditions
   enableDexScreener: process.env.PROBE_ENABLE_DEXSCREENER !== 'false',
   enableGecko: process.env.PROBE_ENABLE_GECKO !== 'false',

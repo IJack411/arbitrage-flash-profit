@@ -196,6 +196,7 @@ interface GeckoSearchPool {
         id?: string;
       };
     };
+
     base_token?: {
       data?: {
         id?: string;
@@ -575,13 +576,14 @@ interface ScanDiagnostics {
       routeCooldown: number;
       noExecutableSize: number;
       payloadBuildFailed: number;
+      realtimeQuoteVerification: number;
     };
     noExecutableByGate?: Record<NoExecutableReason, number>;
     samples: Array<{
       tokenPair: string;
       buyDex: Opportunity['buyDex'];
       sellDex: Opportunity['sellDex'];
-      cause: 'routeCooldown' | 'noExecutableSize' | 'payloadBuildFailed';
+      cause: 'routeCooldown' | 'noExecutableSize' | 'payloadBuildFailed' | 'realtimeQuoteVerification';
       detail?: string;
     }>;
   };
@@ -2133,9 +2135,9 @@ const buildScannerConfig = (body: Record<string, unknown>): ScannerConfig => {
       ...bodyNativeUsdByNetwork,
     },
     enableDexScreenerFallback: bodyEnableDexScreenerFallback
-      ?? parseBooleanEnv(Deno.env.get('SCANNER_ENABLE_DEXSCREENER'), false),
+      ?? parseBooleanEnv(Deno.env.get('SCANNER_ENABLE_DEXSCREENER'), true),
     enableGeckoFallback: bodyEnableGeckoFallback
-      ?? parseBooleanEnv(Deno.env.get('SCANNER_ENABLE_GECKO'), false),
+      ?? parseBooleanEnv(Deno.env.get('SCANNER_ENABLE_GECKO'), true),
     enableCycleShadow: bodyEnableCycleShadow
       ?? parseBooleanEnv(Deno.env.get('SCANNER_ENABLE_CYCLE_SHADOW'), true),
     sourcePolicyMode: bodySourcePolicyMode
@@ -2892,7 +2894,7 @@ const DEFAULT_NATIVE_TOKEN_USD_BY_NETWORK: Record<NetworkName, number> = {
 
 const DEFAULT_MIN_NET_EDGE_BPS_BY_NETWORK: Record<NetworkName, number> = {
   ethereum: 28,
-  polygon: 10,
+  polygon: 18,
   arbitrum: 10,
   base: 10,
   bsc: 12,
@@ -2900,7 +2902,7 @@ const DEFAULT_MIN_NET_EDGE_BPS_BY_NETWORK: Record<NetworkName, number> = {
 
 const DEFAULT_EXECUTION_RISK_BUFFER_USD_BY_NETWORK: Record<NetworkName, number> = {
   ethereum: 5,
-  polygon: 1.5,
+  polygon: 4,
   arbitrum: 1,
   base: 1,
   bsc: 1.5,
@@ -4774,6 +4776,7 @@ const findSpreads = (
         routeCooldown: 0,
         noExecutableSize: 0,
         payloadBuildFailed: 0,
+        realtimeQuoteVerification: 0,
       },
       noExecutableByGate: createNoExecutableReasonCounts(),
       samples: [],
@@ -5082,6 +5085,29 @@ const findSpreads = (
       earlyGate: spreadPercent < sourceAdjustedMinSpreadPercent ? 'spread' : 'pass',
       spreadPercent,
       decisionTag: sourceComboTag(routeCandidate.buySource, routeCandidate.sellSource, routeCandidate.spreadBps),
+    };
+  };
+
+  const findBestRealtimeQuoteForDex = (
+    targetDex: Opportunity['buyDex'],
+    selectedPrice: number,
+    pairQuotes: Array<{ dex: string; price: number; pool: Pool }>,
+  ): { dex: Opportunity['buyDex']; price: number; pool: Pool } | null => {
+    const matches = pairQuotes
+      .filter((quote) => normalizeSourceType(quote.pool.sourceType) !== 'subgraph')
+      .filter((quote) => canonicalizeDex(quote.dex) === targetDex)
+      .sort((left, right) => {
+        const liquidityDiff = parsePoolLiquidity(right.pool) - parsePoolLiquidity(left.pool);
+        if (liquidityDiff !== 0) return liquidityDiff;
+        return Math.abs(left.price - selectedPrice) - Math.abs(right.price - selectedPrice);
+      });
+
+    if (matches.length === 0) return null;
+    const best = matches[0];
+    return {
+      dex: targetDex,
+      price: best.price,
+      pool: best.pool,
     };
   };
 
@@ -6003,7 +6029,17 @@ const findSpreads = (
 
     diagnostics.profitQualified++;
     diagnostics.quoteValidated++;
-    if (executionCandidate.executableLoanAmount < config.loanAmountUsd) {
+    const finalOpportunityCandidate = hasFullRealtimeCoverage && realtimeVerificationCandidate
+      ? realtimeVerificationCandidate
+      : executionCandidate;
+    const finalQuoteSources = hasFullRealtimeCoverage
+      ? [
+        buyVerificationEntry!.pool.sourceType || 'subgraph',
+        sellVerificationEntry!.pool.sourceType || 'subgraph',
+      ]
+      : quoteSources;
+
+    if (finalOpportunityCandidate.executableLoanAmount < config.loanAmountUsd) {
       diagnostics.sizeAdjusted++;
     }
 
@@ -6011,11 +6047,11 @@ const findSpreads = (
       base: 58,
       spreadBps,
       spreadMultiplier: 90,
-      slippageBps: BigInt(executionCandidate.estimatedSlippageBps),
+      slippageBps: BigInt(finalOpportunityCandidate.estimatedSlippageBps),
       slippageDivisor: 5,
       minScore: 1,
       maxScore: 99,
-      netProfitUsd: executionCandidate.netProfit,
+      netProfitUsd: finalOpportunityCandidate.netProfit,
       minProfitUsd: config.minNetProfitUsd,
     });
     const confidenceTier: Opportunity['confidenceTier'] = confidenceScore >= 80
@@ -6029,6 +6065,133 @@ const findSpreads = (
       sellEntry.pool.sourceType || 'subgraph',
     ];
 
+    const selectedBuySource = normalizeSourceType(buyEntry.pool.sourceType);
+    const selectedSellSource = normalizeSourceType(sellEntry.pool.sourceType);
+    const buyVerificationEntry = selectedBuySource !== 'subgraph'
+      ? buyEntry
+      : findBestRealtimeQuoteForDex(buyEntry.dex, buyEntry.price, quotes);
+    const sellVerificationEntry = selectedSellSource !== 'subgraph'
+      ? sellEntry
+      : findBestRealtimeQuoteForDex(sellEntry.dex, sellEntry.price, quotes);
+    const hasFullRealtimeCoverage = Boolean(buyVerificationEntry && sellVerificationEntry);
+    const selectedHasRealtimeSource = selectedBuySource !== 'subgraph' || selectedSellSource !== 'subgraph';
+    const realtimeCoverageCount = Number(Boolean(buyVerificationEntry)) + Number(Boolean(sellVerificationEntry));
+    const requiresStrictRealtimeVerification = network === 'polygon' || !selectedHasRealtimeSource;
+    const strongPartialRealtimeSignal = (
+      !requiresStrictRealtimeVerification
+      && selectedHasRealtimeSource
+      && executionCandidate.netProfit >= Math.max(
+        effectiveRequiredNetExecutionLoan * 1.6,
+        effectiveRequiredNetExecutionLoan + Math.max(8, estimateGasUsdForNetwork(network, config)),
+      )
+      && liquidityUsd >= (config.minLiquidityUsd * (network === 'ethereum' ? 1.5 : 1.25))
+      && spread >= (sourceAdjustedMinSpreadPercent + (network === 'ethereum' ? 0.15 : 0.08))
+    );
+    const realtimeVerification = hasFullRealtimeCoverage
+      ? evaluateExecutionCandidate(
+        buyVerificationEntry!.price,
+        sellVerificationEntry!.price,
+        buyVerificationEntry!.pool,
+        sellVerificationEntry!.pool,
+        buyEntry.dex,
+        sellEntry.dex,
+        network,
+        config,
+      )
+      : { candidate: null, noExecutableReasons: undefined };
+    const realtimeVerificationCandidate = realtimeVerification.candidate;
+    const realtimeVerificationPassed = (
+      (hasFullRealtimeCoverage
+        && !!realtimeVerificationCandidate
+        && realtimeVerificationCandidate.netProfit >= effectiveRequiredNetExecutionLoan)
+      || strongPartialRealtimeSignal
+    );
+
+    if (!realtimeVerificationPassed) {
+      diagnostics.droppedByExecutionRisk++;
+      diagnostics.executionRiskDetails!.reasons.realtimeQuoteVerification += 1;
+      if (diagnostics.executionRiskDetails!.samples.length < 8) {
+        diagnostics.executionRiskDetails!.samples.push({
+          tokenPair: key,
+          buyDex: buyEntry.dex,
+          sellDex: sellEntry.dex,
+          cause: 'realtimeQuoteVerification',
+          detail: hasFullRealtimeCoverage
+            ? (
+              realtimeVerificationCandidate
+                ? `live-net-below-threshold:${realtimeVerificationCandidate.netProfit.toFixed(2)}`
+                : 'live-route-not-executable'
+            )
+            : `live-coverage-${realtimeCoverageCount}-of-2`,
+        });
+      }
+      pushRejectionSample(diagnostics, {
+        tokenPair: key,
+        reason: 'executionRisk',
+        buyDex: buyEntry.dex,
+        sellDex: sellEntry.dex,
+        spread,
+      });
+
+      const verificationCandidate = realtimeVerificationCandidate || executionCandidate;
+      const verificationQuoteSources = hasFullRealtimeCoverage
+        ? [
+          buyVerificationEntry!.pool.sourceType || 'subgraph',
+          sellVerificationEntry!.pool.sourceType || 'subgraph',
+        ]
+        : quoteSources;
+      const verificationDistanceFloor = network === 'polygon'
+        ? Math.max(30, effectiveRequiredNetExecutionLoan, config.minNetProfitUsd * 2)
+        : Math.max(20, effectiveRequiredNetExecutionLoan, config.minNetProfitUsd * 1.5);
+
+      diagnostics.watchlistCount++;
+      watchlist.push({
+        tokenPair: key,
+        buyDex: buyEntry.dex,
+        sellDex: sellEntry.dex,
+        network,
+        loanAmount: config.loanAmountUsd,
+        executableLoanAmount: verificationCandidate.executableLoanAmount,
+        grossProfit: verificationCandidate.grossProfit,
+        netProfit: verificationCandidate.netProfit,
+        distanceToExecutableUsd: Math.max(
+          Math.max(0, effectiveRequiredNetExecutionLoan - verificationCandidate.netProfit),
+          verificationDistanceFloor,
+        ),
+        gasCost: verificationCandidate.gasCost,
+        confidenceScore: confidenceScoreDeterministic({
+          base: 32,
+          spreadBps,
+          spreadMultiplier: 55,
+          slippageBps: BigInt(verificationCandidate.estimatedSlippageBps),
+          slippageDivisor: 6,
+          minScore: 1,
+          maxScore: 72,
+        }),
+        confidenceTier: strongPartialRealtimeSignal ? 'medium' : 'low',
+        spread: spread.toFixed(4),
+        liquidity: liquidityUsd.toFixed(0),
+        estimatedSlippageBps: verificationCandidate.estimatedSlippageBps,
+        buyImpactBps: verificationCandidate.buyImpactBps,
+        sellImpactBps: verificationCandidate.sellImpactBps,
+        routePenaltyBps: verificationCandidate.routePenaltyBps,
+        quoteSources: verificationQuoteSources,
+        status: 'watchlist',
+        mathDiagnostics: buildMathDiagnostics({
+          loanAmountUsd: verificationCandidate.executableLoanAmount,
+          spreadBps,
+          grossProfitUsd: verificationCandidate.grossProfit,
+          buyLiquidityUsd,
+          sellLiquidityUsd,
+          gasCostUsd: verificationCandidate.gasCost,
+          passReason: strongPartialRealtimeSignal
+            ? 'watchlist-awaiting-full-live-verification'
+            : 'watchlist-live-verification-blocked',
+        }),
+      });
+      continue;
+    }
+
     const { payload: executionPayload, error: executionPayloadError } = buildExecutionPayload(
       buyEntry.pool,
       sellEntry.pool,
@@ -6036,13 +6199,13 @@ const findSpreads = (
       sellEntry.dex,
       key,
       network,
-      executionCandidate.executableLoanAmount,
-      executionCandidate.grossProfit,
-      executionCandidate.netProfit,
-      executionCandidate.gasCost,
-      executionCandidate.estimatedSlippageBps,
+      finalOpportunityCandidate.executableLoanAmount,
+      finalOpportunityCandidate.grossProfit,
+      finalOpportunityCandidate.netProfit,
+      finalOpportunityCandidate.gasCost,
+      finalOpportunityCandidate.estimatedSlippageBps,
       confidenceScore,
-      buyEntry.price,
+      hasFullRealtimeCoverage && buyVerificationEntry ? buyVerificationEntry.price : buyEntry.price,
       // For TOKEN/WETH pairs the loan is WETH; pass wethUsdPrice so the amount is correctly scaled.
       key.endsWith('/WETH') ? wethUsdPrice : 1,
     );
@@ -6137,29 +6300,31 @@ const findSpreads = (
       sellDex: sellEntry.dex,
       network,
       loanAmount: config.loanAmountUsd,
-      executableLoanAmount: executionCandidate.executableLoanAmount,
-      grossProfit: executionCandidate.grossProfit,
-      netProfit: executionCandidate.netProfit,
-      distanceToExecutableUsd: Math.max(0, minNetProfitUsd - executionCandidate.netProfit),
-      gasCost: executionCandidate.gasCost,
+      executableLoanAmount: finalOpportunityCandidate.executableLoanAmount,
+      grossProfit: finalOpportunityCandidate.grossProfit,
+      netProfit: finalOpportunityCandidate.netProfit,
+      distanceToExecutableUsd: Math.max(0, minNetProfitUsd - finalOpportunityCandidate.netProfit),
+      gasCost: finalOpportunityCandidate.gasCost,
       confidenceScore,
       confidenceTier,
       spread: spread.toFixed(4),
       liquidity: liquidityUsd.toFixed(0),
-      estimatedSlippageBps: executionCandidate.estimatedSlippageBps,
-      buyImpactBps: executionCandidate.buyImpactBps,
-      sellImpactBps: executionCandidate.sellImpactBps,
-      routePenaltyBps: executionCandidate.routePenaltyBps,
-      quoteSources,
+      estimatedSlippageBps: finalOpportunityCandidate.estimatedSlippageBps,
+      buyImpactBps: finalOpportunityCandidate.buyImpactBps,
+      sellImpactBps: finalOpportunityCandidate.sellImpactBps,
+      routePenaltyBps: finalOpportunityCandidate.routePenaltyBps,
+      quoteSources: finalQuoteSources,
       status: 'active',
       mathDiagnostics: buildMathDiagnostics({
-        loanAmountUsd: executionCandidate.executableLoanAmount,
+        loanAmountUsd: finalOpportunityCandidate.executableLoanAmount,
         spreadBps,
-        grossProfitUsd: executionCandidate.grossProfit,
+        grossProfitUsd: finalOpportunityCandidate.grossProfit,
         buyLiquidityUsd,
         sellLiquidityUsd,
-        gasCostUsd: executionCandidate.gasCost,
-        passReason: 'active-profit-qualified',
+        gasCostUsd: finalOpportunityCandidate.gasCost,
+        passReason: hasFullRealtimeCoverage
+          ? 'active-profit-qualified-live-verified'
+          : 'active-profit-qualified',
       }),
       executionPayload: executionPayload || undefined,
     });
@@ -6383,11 +6548,11 @@ const runScan = async (config: ScannerConfig, networks: string[]) => {
     return [];
   };
 
-  let hardenedUniV3Pools = hardenDexPoolSet('uniV3', uniV3Pools);
-  let hardenedUniV2Pools = hardenDexPoolSet('uniV2', uniV2Pools);
-  let hardenedSushiPools = hardenDexPoolSet('sushi', sushiPools);
-  let hardenedBalancerPools = hardenDexPoolSet('balancer', balancerPools);
-  let hardenedCurvePools = hardenDexPoolSet('curve', curvePools);
+  const hardenedUniV3Pools = hardenDexPoolSet('uniV3', uniV3Pools);
+  const hardenedUniV2Pools = hardenDexPoolSet('uniV2', uniV2Pools);
+  const hardenedSushiPools = hardenDexPoolSet('sushi', sushiPools);
+  const hardenedBalancerPools = hardenDexPoolSet('balancer', balancerPools);
+  const hardenedCurvePools = hardenDexPoolSet('curve', curvePools);
 
   // Enrich chronic overlap pairs with targeted subgraph pulls before fallback merging.
   mergeFallbackPools(hardenedUniV3Pools, hardenDexPoolSet('uniV3', prioritySubgraph.uniV3Pools));

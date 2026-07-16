@@ -1,0 +1,72 @@
+version: "3.9"
+
+services:
+  # ── MEV Scanner ──────────────────────────────────────────────────────────────
+  mev-scanner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mev-scanner
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "9090:9090"    # Prometheus metrics
+    environment:
+      RUST_LOG: info
+      LOG_JSON: "true"
+      SCANNER_SHADOW_MODE: "true"    # Override to false for live execution
+    networks:
+      - scanner-net
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/metrics"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ── Prometheus ───────────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: prometheus
+    restart: unless-stopped
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9191:9090"    # Prometheus UI at http://localhost:9191
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=7d"
+      - "--web.enable-lifecycle"
+    networks:
+      - scanner-net
+
+  # ── Grafana ───────────────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: grafana
+    restart: unless-stopped
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3001:3000"    # Grafana UI at http://localhost:3001
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    networks:
+      - scanner-net
+    depends_on:
+      - prometheus
+
+volumes:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  scanner-net:
+    driver: bridge

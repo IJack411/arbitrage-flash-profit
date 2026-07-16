@@ -1,0 +1,11 @@
+# Environment files — never commit secrets
+.env
+.env.local
+
+# Cargo build artifacts
+target/
+
+# IDE
+.idea/
+.vscode/
+*.swp

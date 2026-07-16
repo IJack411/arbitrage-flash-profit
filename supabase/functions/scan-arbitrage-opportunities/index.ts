@@ -5,6 +5,19 @@ declare const Deno: {
   serve(handler: (req: Request) => Response | Promise<Response>): void;
 };
 
+import {
+  CANONICAL_OPPORTUNITY_VERSION,
+  buildRouteKey,
+  createDeterministicCandidateId,
+  deriveAmountBMinFromQuote,
+  evaluateReadinessGateDecision,
+  evaluateSourceQualityPenalty,
+  OPPORTUNITY_REASON_CODES,
+  shouldPromoteOpportunity,
+  type CanonicalExecutionPayload,
+  type OpportunityReasonCode,
+} from '../_shared/opportunity-contract.ts';
+
 export {};
 
 const corsHeaders = {
@@ -174,7 +187,8 @@ interface Opportunity {
     gasEstimateUsd: number;
     passReason: string;
   };
-  executionPayload?: Record<string, unknown>;
+  reasonCode: OpportunityReasonCode;
+  executionPayload?: CanonicalExecutionPayload;
 }
 
 interface DexScreenerPair {
@@ -894,6 +908,52 @@ const loadExecutionFeedbackByRoute = async (): Promise<Map<string, RouteExecutio
     }
   } catch {
     // Best-effort enrichment.
+  }
+
+  return map;
+};
+
+const loadRecentRoutePersistenceByKey = async (): Promise<Map<string, number>> => {
+  const map = new Map<string, number>();
+  if (!canAccessSupabaseRest()) return map;
+
+  const lookbackMinutes = Math.max(1, Math.min(120, Math.round(parseNumberEnv(Deno.env.get('SCANNER_PERSISTENCE_LOOKBACK_MINUTES'), 15))));
+  const lookbackIso = new Date(Date.now() - (lookbackMinutes * 60 * 1000)).toISOString();
+  const limit = Math.max(20, Math.min(500, Math.round(parseNumberEnv(Deno.env.get('SCANNER_PERSISTENCE_LOOKBACK_ROWS'), 250))));
+
+  try {
+    const query = new URLSearchParams({
+      select: 'network,token_pair,buy_dex,sell_dex,status',
+      quote_timestamp: `gte.${lookbackIso}`,
+      order: 'quote_timestamp.desc',
+      limit: String(limit),
+    });
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/scanner_candidates?${query.toString()}`,
+      {
+        headers: {
+          apikey: SUPABASE_REST_KEY,
+          Authorization: 'Bearer ' + SUPABASE_REST_KEY,
+          Accept: 'application/json',
+        },
+      },
+    );
+    if (!res.ok) return map;
+
+    const rows = await res.json() as Array<Record<string, unknown>>;
+    for (const row of rows || []) {
+      const network = String(row.network || '').trim();
+      const tokenPair = String(row.token_pair || '').trim();
+      const buyDex = String(row.buy_dex || '').trim();
+      const sellDex = String(row.sell_dex || '').trim();
+      const status = String(row.status || '').trim().toLowerCase();
+      if (!network || !tokenPair || !buyDex || !sellDex) continue;
+      if (status !== 'active' && status !== 'watchlist') continue;
+      const routeKey = buildRouteKey(network, tokenPair, buyDex, sellDex);
+      map.set(routeKey, (map.get(routeKey) || 0) + 1);
+    }
+  } catch {
+    // Best-effort persistence enrichment.
   }
 
   return map;
@@ -1952,6 +2012,7 @@ const buildCycleShadowWatchlist = (
       sellImpactBps: 0,
       routePenaltyBps: Math.max(0, Math.round(100 - Math.min(100, cycle.grossReturnBps + (cycle.minLiquidityUsd / 100000)))),
       status: 'watchlist',
+      reasonCode: OPPORTUNITY_REASON_CODES.watchlistNetProfitBelowThreshold,
       quoteSources: ['subgraph'],
       mathDiagnostics: {
         reservesUsd: { buy: cycle.minLiquidityUsd, sell: cycle.minLiquidityUsd },
@@ -2289,19 +2350,21 @@ const evaluateScannerReadinessGates = async () => {
 
   const minHealthySources = Math.max(1, Math.round(parseNumberEnv(Deno.env.get('SCANNER_MIN_GRAPH_SOURCES_HEALTHY'), 3)));
   const maxFallbackSources = Math.max(0, Math.round(parseNumberEnv(Deno.env.get('SCANNER_MAX_GRAPH_FALLBACK_SOURCES'), 2)));
-
-  const pass = hasGraphKey && healthySources >= minHealthySources && fallbackSources <= maxFallbackSources;
+  const readinessDecision = evaluateReadinessGateDecision({
+    hasGraphKey,
+    healthySources,
+    minHealthySources,
+    fallbackSources,
+    maxFallbackSources,
+  });
 
   return {
-    pass,
+    pass: readinessDecision.pass,
     hasGraphKey,
     healthySources,
     totalSources: graphConnectivity.length,
     fallbackSources,
-    thresholds: {
-      minHealthySources,
-      maxFallbackSources,
-    },
+    thresholds: readinessDecision.thresholds,
     graphConnectivity,
   };
 };
@@ -3551,9 +3614,14 @@ const buildExecutionPayload = (
   estimatedSlippageBps: number,
   confidenceScore: number,
   buyPrice: number,
+  quoteTimestamp: string,
+  sourceQualityBps: number,
+  quoteSources: Array<'subgraph' | 'dexscreener' | 'gecko'>,
+  persistenceCount: number,
+  minRequiredPersistence: number,
   quoteUsdPrice = 1, // 1 for stables (USDC/USDT); wethUsdPrice for WETH pairs
 ): {
-  payload: Record<string, unknown> | null;
+  payload: CanonicalExecutionPayload | null;
   error?: string;
 } => {
   // Extract token addresses from pool objects
@@ -3600,8 +3668,18 @@ const buildExecutionPayload = (
   // For stable pairs quoteUsdPrice=1 so no change.
   const safeQuoteUsdPrice = quoteUsdPrice > 0 ? quoteUsdPrice : 1;
   const assetAmount = formatTokenUnits(executableLoanAmount / safeQuoteUsdPrice, assetDecimals);
-  const amountBMin = calculateAmountBMin(executableLoanAmount, buyPrice, estimatedSlippageBps, tokenBDecimals);
-  if (assetAmount <= 0n || amountBMin <= 0n) {
+  const expectedBuyTokenAmount = formatTokenUnits(
+    executableLoanAmount / Math.max(buyPrice * safeQuoteUsdPrice, Number.EPSILON),
+    tokenBDecimals,
+  );
+  const amountBMin = deriveAmountBMinFromQuote({
+    loanAmountUsd: executableLoanAmount,
+    quoteTokenUsdPrice: safeQuoteUsdPrice,
+    buyPrice,
+    estimatedSlippageBps,
+    tokenBDecimals,
+  });
+  if (assetAmount <= 0n || expectedBuyTokenAmount <= 0n || amountBMin <= 0n) {
     return { payload: null, error: 'Invalid amount conversion for execution payload' };
   }
 
@@ -3624,6 +3702,9 @@ const buildExecutionPayload = (
   // Calculate amountBMin with slippage protection
   // This is the minimum amount of tokenB expected from the first swap
   // Use a conservative 2% additional slippage buffer for safety
+  const routeKey = buildRouteKey(network, tokenPair, buyDex, sellDex);
+  const fallbackOnly = quoteSources.length > 0 && quoteSources.every((source) => source !== 'subgraph');
+  const uniqueSources = Array.from(new Set(quoteSources));
   return {
     payload: {
       asset,
@@ -3645,8 +3726,27 @@ const buildExecutionPayload = (
       predictedNetProfit: netProfit,
       estimatedGasCost: gasCost,
       estimatedSlippageBps,
-      scanTimestamp: new Date().toISOString(),
+      scanTimestamp: quoteTimestamp,
       confidenceScore,
+      quote: {
+        version: CANONICAL_OPPORTUNITY_VERSION,
+        routeKey,
+        quoteTimestamp,
+        quoteTokenUsdPrice: safeQuoteUsdPrice,
+        buyPrice,
+        expectedBuyTokenAmount: expectedBuyTokenAmount.toString(),
+        amountBMin: amountBMin.toString(),
+        tokenBDecimals,
+        slippageBps: estimatedSlippageBps,
+        sourceQualityBps,
+        persistenceCount,
+        minRequiredPersistence,
+        sourceFlags: {
+          hasSubgraph: quoteSources.includes('subgraph'),
+          fallbackOnly,
+          sameFallbackSource: fallbackOnly && uniqueSources.length === 1,
+        },
+      },
     },
   };
 };
@@ -4439,6 +4539,7 @@ const findSpreads = (
   config: ScannerConfig,
   routeMemoryByKey: Map<string, RouteMemoryRecord>,
   executionFeedbackByRoute: Map<string, RouteExecutionFeedbackRecord>,
+  routePersistenceByKey: Map<string, number>,
   dynamicPriorityTermsByNetwork?: PriorityTermsByNetwork,
 ): { opportunities: Opportunity[]; watchlist: Opportunity[]; diagnostics: ScanDiagnostics } => {
   const normalizeSymbol = (symbol: string): string => normalizeTokenSymbol(symbol);
@@ -4487,6 +4588,17 @@ const findSpreads = (
     const rawSlippagePenalty = mulDiv(slippageBps, SCALE, 6n);
     const slippagePenalty = rawSlippagePenalty > (26n * SCALE) ? (26n * SCALE) : rawSlippagePenalty;
 
+    const quoteParity = opportunity.executionPayload?.quote;
+    const sourceQualityPenalty = quoteParity
+      ? BigInt(evaluateSourceQualityPenalty({
+        sourceQualityBps: Number(quoteParity.sourceQualityBps || 0),
+        fallbackOnly: Boolean(quoteParity.sourceFlags?.fallbackOnly),
+        sameFallbackSource: Boolean(quoteParity.sourceFlags?.sameFallbackSource),
+        persistenceCount: Number(quoteParity.persistenceCount || 0),
+        minRequiredPersistence: Number(quoteParity.minRequiredPersistence || 0),
+      })) * SCALE
+      : 0n;
+
     const watchlistPenalty = opportunity.status === 'watchlist'
       ? (() => {
         const ratioBps = networkMinNetFixed > 0n
@@ -4497,7 +4609,7 @@ const findSpreads = (
       })()
       : 0n;
 
-    const total = profitComponent + confidenceComponent + liquidityComponent + sourceComponent - slippagePenalty - watchlistPenalty;
+    const total = profitComponent + confidenceComponent + liquidityComponent + sourceComponent - slippagePenalty - watchlistPenalty - sourceQualityPenalty;
     return Number(total) / Number(SCALE);
   };
 
@@ -5803,6 +5915,7 @@ const findSpreads = (
               passReason: 'watchlist-non-positive-net',
             }),
             status: 'watchlist',
+            reasonCode: OPPORTUNITY_REASON_CODES.watchlistNetProfitBelowThreshold,
           });
           pushRejectionSample(diagnostics, {
             tokenPair: key,
@@ -5950,6 +6063,7 @@ const findSpreads = (
             passReason: 'watchlist-non-positive-net',
           }),
           status: 'watchlist',
+          reasonCode: OPPORTUNITY_REASON_CODES.watchlistNetProfitBelowThreshold,
         });
         pushRejectionSample(diagnostics, {
           tokenPair: key,
@@ -6029,37 +6143,6 @@ const findSpreads = (
 
     diagnostics.profitQualified++;
     diagnostics.quoteValidated++;
-    const finalOpportunityCandidate = hasFullRealtimeCoverage && realtimeVerificationCandidate
-      ? realtimeVerificationCandidate
-      : executionCandidate;
-    const finalQuoteSources = hasFullRealtimeCoverage
-      ? [
-        buyVerificationEntry!.pool.sourceType || 'subgraph',
-        sellVerificationEntry!.pool.sourceType || 'subgraph',
-      ]
-      : quoteSources;
-
-    if (finalOpportunityCandidate.executableLoanAmount < config.loanAmountUsd) {
-      diagnostics.sizeAdjusted++;
-    }
-
-    const confidenceScore = confidenceScoreDeterministic({
-      base: 58,
-      spreadBps,
-      spreadMultiplier: 90,
-      slippageBps: BigInt(finalOpportunityCandidate.estimatedSlippageBps),
-      slippageDivisor: 5,
-      minScore: 1,
-      maxScore: 99,
-      netProfitUsd: finalOpportunityCandidate.netProfit,
-      minProfitUsd: config.minNetProfitUsd,
-    });
-    const confidenceTier: Opportunity['confidenceTier'] = confidenceScore >= 80
-      ? 'high'
-      : confidenceScore >= 60
-        ? 'medium'
-        : 'low';
-
     const quoteSources = [
       buyEntry.pool.sourceType || 'subgraph',
       sellEntry.pool.sourceType || 'subgraph',
@@ -6177,6 +6260,9 @@ const findSpreads = (
         routePenaltyBps: verificationCandidate.routePenaltyBps,
         quoteSources: verificationQuoteSources,
         status: 'watchlist',
+        reasonCode: strongPartialRealtimeSignal
+          ? OPPORTUNITY_REASON_CODES.watchlistPartialRealtimeSignal
+          : OPPORTUNITY_REASON_CODES.watchlistRealtimeVerificationBlocked,
         mathDiagnostics: buildMathDiagnostics({
           loanAmountUsd: verificationCandidate.executableLoanAmount,
           spreadBps,
@@ -6187,6 +6273,88 @@ const findSpreads = (
           passReason: strongPartialRealtimeSignal
             ? 'watchlist-awaiting-full-live-verification'
             : 'watchlist-live-verification-blocked',
+        }),
+      });
+      continue;
+    }
+
+    const finalOpportunityCandidate = hasFullRealtimeCoverage && realtimeVerificationCandidate
+      ? realtimeVerificationCandidate
+      : executionCandidate;
+    const finalQuoteSources = hasFullRealtimeCoverage
+      ? [
+        buyVerificationEntry!.pool.sourceType || 'subgraph',
+        sellVerificationEntry!.pool.sourceType || 'subgraph',
+      ]
+      : quoteSources;
+    const routeCandidateKey = buildRouteKey(network, key, buyEntry.dex, sellEntry.dex);
+    const finalSourceQualityBps = Math.round(
+      finalQuoteSources.reduce((sum, source) => sum + Number(sourceReliabilityBps[source] ?? 0n), 0)
+        / Math.max(1, finalQuoteSources.length),
+    );
+    const fallbackOnlyRoute = finalQuoteSources.length > 0 && finalQuoteSources.every((source) => source !== 'subgraph');
+    const minRequiredPersistence = Math.max(
+      1,
+      Math.round(parseNumberEnv(
+        Deno.env.get('SCANNER_ACTIVE_MIN_PERSISTENCE_OBSERVATIONS'),
+        fallbackOnlyRoute ? 3 : 2,
+      )),
+    );
+    const persistenceCount = (routePersistenceByKey.get(routeCandidateKey) || 0) + 1;
+
+    if (finalOpportunityCandidate.executableLoanAmount < config.loanAmountUsd) {
+      diagnostics.sizeAdjusted++;
+    }
+
+    const confidenceScore = confidenceScoreDeterministic({
+      base: 58,
+      spreadBps,
+      spreadMultiplier: 90,
+      slippageBps: BigInt(finalOpportunityCandidate.estimatedSlippageBps),
+      slippageDivisor: 5,
+      minScore: 1,
+      maxScore: 99,
+      netProfitUsd: finalOpportunityCandidate.netProfit,
+      minProfitUsd: config.minNetProfitUsd,
+    });
+    const confidenceTier: Opportunity['confidenceTier'] = confidenceScore >= 80
+      ? 'high'
+      : confidenceScore >= 60
+        ? 'medium'
+        : 'low';
+
+    if (!shouldPromoteOpportunity({ persistenceCount, minRequiredPersistence })) {
+      diagnostics.watchlistCount++;
+      watchlist.push({
+        tokenPair: key,
+        buyDex: buyEntry.dex,
+        sellDex: sellEntry.dex,
+        network,
+        loanAmount: config.loanAmountUsd,
+        executableLoanAmount: finalOpportunityCandidate.executableLoanAmount,
+        grossProfit: finalOpportunityCandidate.grossProfit,
+        netProfit: finalOpportunityCandidate.netProfit,
+        distanceToExecutableUsd: Math.max(0, effectiveRequiredNetExecutionLoan - finalOpportunityCandidate.netProfit),
+        gasCost: finalOpportunityCandidate.gasCost,
+        confidenceScore: Math.max(1, confidenceScore - 10),
+        confidenceTier: 'low',
+        spread: spread.toFixed(4),
+        liquidity: liquidityUsd.toFixed(0),
+        estimatedSlippageBps: finalOpportunityCandidate.estimatedSlippageBps,
+        buyImpactBps: finalOpportunityCandidate.buyImpactBps,
+        sellImpactBps: finalOpportunityCandidate.sellImpactBps,
+        routePenaltyBps: finalOpportunityCandidate.routePenaltyBps,
+        quoteSources: finalQuoteSources,
+        status: 'watchlist',
+        reasonCode: OPPORTUNITY_REASON_CODES.watchlistPersistencePending,
+        mathDiagnostics: buildMathDiagnostics({
+          loanAmountUsd: finalOpportunityCandidate.executableLoanAmount,
+          spreadBps,
+          grossProfitUsd: finalOpportunityCandidate.grossProfit,
+          buyLiquidityUsd,
+          sellLiquidityUsd,
+          gasCostUsd: finalOpportunityCandidate.gasCost,
+          passReason: 'watchlist-persistence-pending',
         }),
       });
       continue;
@@ -6206,6 +6374,11 @@ const findSpreads = (
       finalOpportunityCandidate.estimatedSlippageBps,
       confidenceScore,
       hasFullRealtimeCoverage && buyVerificationEntry ? buyVerificationEntry.price : buyEntry.price,
+      new Date().toISOString(),
+      finalSourceQualityBps,
+      finalQuoteSources,
+      persistenceCount,
+      minRequiredPersistence,
       // For TOKEN/WETH pairs the loan is WETH; pass wethUsdPrice so the amount is correctly scaled.
       key.endsWith('/WETH') ? wethUsdPrice : 1,
     );
@@ -6290,6 +6463,7 @@ const findSpreads = (
           passReason: 'watchlist-execution-payload-risk',
         }),
         status: 'watchlist',
+        reasonCode: OPPORTUNITY_REASON_CODES.watchlistPayloadRisk,
       });
       continue;
     }
@@ -6315,6 +6489,7 @@ const findSpreads = (
       routePenaltyBps: finalOpportunityCandidate.routePenaltyBps,
       quoteSources: finalQuoteSources,
       status: 'active',
+      reasonCode: OPPORTUNITY_REASON_CODES.activeExecutionReady,
       mathDiagnostics: buildMathDiagnostics({
         loanAmountUsd: finalOpportunityCandidate.executableLoanAmount,
         spreadBps,
@@ -6432,6 +6607,7 @@ const runScan = async (config: ScannerConfig, networks: string[]) => {
     routeMemoryByKey,
     sourceReliability,
     executionFeedbackByRoute,
+    routePersistenceByKey,
   ] = await Promise.all([
     Promise.allSettled([
       fetchSubgraphWithFallback(UNI_V3_SUBGRAPH, UNI_V3_SUBGRAPH_PUBLIC, topPairsQuery(200)),
@@ -6454,6 +6630,7 @@ const runScan = async (config: ScannerConfig, networks: string[]) => {
     loadRouteMemoryByKey(),
     loadSourceReliabilityBps(),
     loadExecutionFeedbackByRoute(),
+    loadRecentRoutePersistenceByKey(),
   ]);
 
   const [uniV3Result, uniV2Result, sushiResult, balancerResult, curveResult] = subgraphResults;
@@ -6631,6 +6808,7 @@ const runScan = async (config: ScannerConfig, networks: string[]) => {
     config,
     routeMemoryByKey,
     executionFeedbackByRoute,
+    routePersistenceByKey,
     dynamicPriority.termsByNetwork,
   );
   scanResult.diagnostics.fallbackPoolCounts = {
@@ -6654,6 +6832,8 @@ const runScan = async (config: ScannerConfig, networks: string[]) => {
     envDisabledDexes: Array.from(envDisabledDexesRaw),
     activeDisabledDexes: Array.from(disabledDexBuckets),
     droppedPoolCounts,
+    activeMinPersistenceObservations: Math.max(1, Math.round(parseNumberEnv(Deno.env.get('SCANNER_ACTIVE_MIN_PERSISTENCE_OBSERVATIONS'), 2))),
+    persistenceRoutesObserved: routePersistenceByKey.size,
     sourceReliabilityBps: {
       subgraph: Number(sourceReliability.subgraph),
       dexscreener: Number(sourceReliability.dexscreener),
@@ -6773,15 +6953,19 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
     scanMode = (body as { scheduledRun?: boolean }).scheduledRun ? 'scheduled' : 'manual';
+    const triggerReason = typeof (body as { triggerReason?: unknown }).triggerReason === 'string'
+      ? String((body as { triggerReason: string }).triggerReason)
+      : typeof (body as { triggeredBy?: unknown }).triggeredBy === 'string'
+        ? String((body as { triggeredBy: string }).triggeredBy)
+        : scanMode;
     const test = Boolean(body.test);
     const enforceReadinessGates = parseBooleanEnv(
       Deno.env.get('SCANNER_ENFORCE_READINESS_GATES'),
       false,
     );
+    const readinessGates = await evaluateScannerReadinessGates();
 
     if (test) {
-      const readinessGates = await evaluateScannerReadinessGates();
-
       return new Response(
         JSON.stringify({
           success: true,
@@ -6812,6 +6996,8 @@ Deno.serve(async (req) => {
           diagnostics: {
             gateFailed: true,
             readinessGates,
+            triggerReason,
+            reasonCode: OPPORTUNITY_REASON_CODES.readinessGatesFailed,
             scanDurationMs: durationMs,
           },
         }]);
@@ -6821,6 +7007,7 @@ Deno.serve(async (req) => {
             success: false,
             scanRunId,
             error: 'Scanner readiness gates failed',
+            reasonCode: OPPORTUNITY_REASON_CODES.readinessGatesFailed,
             readinessGates,
             timestamp: new Date().toISOString(),
           }),
@@ -6841,19 +7028,26 @@ Deno.serve(async (req) => {
     if (diagnostics.rejectionSamples && diagnostics.rejectionSamples.length > 0) {
       console.log('[SCAN-DEBUG] Rejection samples:', JSON.stringify(diagnostics.rejectionSamples, null, 2));
     }
-    const quoteTimestamp = new Date().toISOString();
     const trackedOpportunities: TelemetryOpportunity[] = opportunities.map((opportunity) => ({
       ...opportunity,
       scanRunId,
-      candidateId: crypto.randomUUID(),
-      quoteTimestamp,
+      candidateId: createDeterministicCandidateId(
+        scanRunId,
+        buildRouteKey(opportunity.network, opportunity.tokenPair, opportunity.buyDex, opportunity.sellDex),
+        opportunity.status,
+      ),
+      quoteTimestamp: opportunity.executionPayload?.quote?.quoteTimestamp || new Date().toISOString(),
       dataSource: 'multi-source',
     }));
     const trackedWatchlist: TelemetryOpportunity[] = watchlist.map((opportunity) => ({
       ...opportunity,
       scanRunId,
-      candidateId: crypto.randomUUID(),
-      quoteTimestamp,
+      candidateId: createDeterministicCandidateId(
+        scanRunId,
+        buildRouteKey(opportunity.network, opportunity.tokenPair, opportunity.buyDex, opportunity.sellDex),
+        opportunity.status,
+      ),
+      quoteTimestamp: opportunity.executionPayload?.quote?.quoteTimestamp || new Date().toISOString(),
       dataSource: 'multi-source',
     }));
     const scanDurationMs = Date.now() - scanStartedAt;
@@ -6872,6 +7066,8 @@ Deno.serve(async (req) => {
         ...summarizeRejections(diagnostics),
         networks,
         config,
+        readinessGates,
+        triggerReason,
         scanDurationMs,
       },
     }]);
@@ -6904,9 +7100,13 @@ Deno.serve(async (req) => {
         found: opportunities.length,
         watchlistCount: trackedWatchlist.length,
         config,
+        readinessGates,
+        triggerReason,
         diagnostics: {
           ...diagnostics,
           ...rejectionSummary,
+          readinessGates,
+          triggerReason,
           scanDurationMs,
         },
         opportunities: trackedOpportunities,

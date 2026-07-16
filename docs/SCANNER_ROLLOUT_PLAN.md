@@ -238,6 +238,33 @@ Priority P0:
 
 1. Add `scanRunId` and `candidateId` to scanner response and logs
 2. Add execution attempt logging with failure reason taxonomy
+
+## Current Feature Flags / Safeguards
+
+- `SCANNER_ENFORCE_READINESS_GATES`
+- `SCANNER_MIN_GRAPH_SOURCES_HEALTHY`
+- `SCANNER_MAX_GRAPH_FALLBACK_SOURCES`
+- `SCANNER_ACTIVE_MIN_PERSISTENCE_OBSERVATIONS`
+- `EXEC_MAX_QUOTE_AGE_MS`
+- `EXEC_MIN_NET_PROFIT_USD`
+- `EXEC_MIN_CONFIDENCE_SCORE`
+- `EXEC_MAX_GAS_TO_NET_RATIO`
+
+## Staging Validation Checklist
+
+1. Run `npm run test:math` and `npx playwright test tests/scanner-opportunity-contract.spec.ts`
+2. Probe scanner with `node scripts/probe-scanner.mjs`
+3. Confirm `readinessGates` is present in scanner responses and `scanner_runs.diagnostics`
+4. Confirm active candidates include deterministic `candidateId`, `scanRunId`, `quoteTimestamp`, and `reasonCode`
+5. Confirm executor rejects stale/parity-broken payloads before bundle submission
+6. Confirm scheduler logs `triggerReason` and `sourceFailureCounts`
+
+## Rollback Summary
+
+- Relax parity age by increasing `EXEC_MAX_QUOTE_AGE_MS`
+- Reduce persistence gating by setting `SCANNER_ACTIVE_MIN_PERSISTENCE_OBSERVATIONS=1`
+- Disable readiness enforcement only for verified upstream outages
+- Keep simulation rejection enabled; do not bypass it during rollback
 3. Replace executor minOut calculation with quote-derived token output
 4. Add pre-submit simulation gate
 

@@ -6,6 +6,18 @@ import { getServers, setServers } from 'node:dns';
 import { Resolver } from 'node:dns/promises';
 import net from 'node:net';
 
+const ALERT_REASON_CODES = {
+  alert: 'scanner_alert',
+  precheck: 'scanner_precheck',
+  precheckStreak: 'scanner_precheck_streak',
+  warm: 'scanner_warm',
+  connectivity: 'scanner_connectivity',
+  dataHeartbeat: 'scanner_data_heartbeat',
+  noAlert: 'scanner_no_alert',
+};
+
+const buildAlertMetadata = (reasonCode, detail = {}) => ({ reasonCode, ...detail });
+
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const parseScoutSummary = (text) => {
@@ -329,13 +341,13 @@ async function main() {
   const stopOnAlert = boolFromEnv('OPPORTUNITY_WATCH_STOP_ON_ALERT', true);
   const strictNoAlertExit = boolFromEnv('OPPORTUNITY_WATCH_STRICT_NO_ALERT_EXIT', false);
   const notifyOnAlert = boolFromEnv('OPPORTUNITY_WATCH_NOTIFY_ON_ALERT', true);
-  const notifyOnWarm = boolFromEnv('OPPORTUNITY_WATCH_NOTIFY_ON_WARM', true);
+  const notifyOnWarm = boolFromEnv('OPPORTUNITY_WATCH_NOTIFY_ON_WARM', false);
   const notifyOnPrecheck = boolFromEnv('OPPORTUNITY_WATCH_NOTIFY_ON_PRECHECK', true);
   const notifyOnNoAlert = boolFromEnv('OPPORTUNITY_WATCH_NOTIFY_ON_NO_ALERT', false);
   const stopOnPrecheck = boolFromEnv('OPPORTUNITY_WATCH_STOP_ON_PRECHECK', false);
   const stopOnWarm = boolFromEnv('OPPORTUNITY_WATCH_STOP_ON_WARM', false);
   const strictPrecheckExit = boolFromEnv('OPPORTUNITY_WATCH_STRICT_PRECHECK_EXIT', false);
-  const precheckStreakMin = Math.max(1, Math.round(numberFromEnv('OPPORTUNITY_WATCH_PRECHECK_STREAK_MIN', 2)));
+  const precheckStreakMin = Math.max(1, Math.round(numberFromEnv('OPPORTUNITY_WATCH_PRECHECK_STREAK_MIN', 3)));
   const precheckCooldownMs = Math.max(0, Math.round(numberFromEnv('OPPORTUNITY_WATCH_PRECHECK_NOTIFY_COOLDOWN_MS', 10 * 60 * 1000)));
   const heartbeatStreakMin = Math.max(1, Math.round(numberFromEnv('OPPORTUNITY_WATCH_HEARTBEAT_STREAK_MIN', 6)));
   const notifyOnHeartbeat = boolFromEnv('OPPORTUNITY_WATCH_NOTIFY_ON_HEARTBEAT', true);
@@ -388,6 +400,7 @@ async function main() {
       const alertPayload = {
         timestamp: new Date().toISOString(),
         result: 'ALERT',
+        ...buildAlertMetadata(ALERT_REASON_CODES.alert),
         checkIndex: i,
         maxChecks,
         scoutSummary,
@@ -401,6 +414,7 @@ async function main() {
           '*Scanner Opportunity ALERT*',
           `project=arbitrage-flash-profit-2`,
           `timestamp=${new Date().toISOString()}`,
+          `reason_code=${ALERT_REASON_CODES.alert}`,
           '',
           '```',
           takeTail(scoutOutput, 18),
@@ -421,6 +435,7 @@ async function main() {
       precheckAlerts += 1;
       const precheckEscalated = precheckStreak >= precheckStreakMin;
       const precheckLabel = precheckEscalated ? 'PRECHECK_STREAK_ALERT' : 'PRECHECK_ALERT';
+      const precheckReasonCode = precheckEscalated ? ALERT_REASON_CODES.precheckStreak : ALERT_REASON_CODES.precheck;
       console.log(`Opportunity check ${i} result=${precheckLabel} precheckStreak=${precheckStreak}`);
       if (notifyOnPrecheck) {
         const nowMs = Date.now();
@@ -440,6 +455,7 @@ async function main() {
             precheckEscalated ? '*Scanner Opportunity PRECHECK_STREAK_ALERT*' : '*Scanner Opportunity PRECHECK_ALERT*',
             `project=arbitrage-flash-profit-2`,
             `timestamp=${new Date().toISOString()}`,
+            `reason_code=${precheckReasonCode}`,
             `precheck_streak=${precheckStreak}`,
             `profile=${scoutSummary?.bestProfile?.profile || 'unknown'}`,
             `top_watch_net=${scoutSummary?.bestProfile?.bestSeen?.topWatchNet ?? 'n/a'}`,
@@ -468,6 +484,7 @@ async function main() {
           '*Scanner Opportunity WARM_ALERT*',
           `project=arbitrage-flash-profit-2`,
           `timestamp=${new Date().toISOString()}`,
+          `reason_code=${ALERT_REASON_CODES.warm}`,
           `profile=${scoutSummary?.bestProfile?.profile || 'unknown'}`,
           `closeness=${scoutSummary?.bestProfile?.closenessScore ?? 'n/a'}`,
           `trend_delta=${scoutSummary?.trend?.deltaVsRecentMedian ?? 'n/a'}`,
@@ -506,6 +523,7 @@ async function main() {
             '*Scanner Connectivity ALERT*',
             `project=arbitrage-flash-profit-2`,
             `timestamp=${new Date().toISOString()}`,
+            `reason_code=${ALERT_REASON_CODES.connectivity}`,
             `endpoint_status=${scoutSummary?.endpointHealth?.status || 'unknown'}`,
             `error_profiles=${scoutSummary?.endpointHealth?.errorProfiles ?? 'n/a'}`,
             '',
@@ -548,6 +566,7 @@ async function main() {
             '*Scanner Data Heartbeat ALERT*',
             `project=arbitrage-flash-profit-2`,
             `timestamp=${new Date().toISOString()}`,
+            `reason_code=${ALERT_REASON_CODES.dataHeartbeat}`,
             `zero_pair_streak=${zeroPairStreak}`,
             `heartbeat_status=${scoutSummary?.dataHeartbeat?.status || 'unknown'}`,
             `best_pair_keys_median=${scoutSummary?.dataHeartbeat?.bestPairKeysMedian ?? 'n/a'}`,
@@ -578,6 +597,7 @@ async function main() {
           '*Scanner Opportunity NO_ALERT*',
           `project=arbitrage-flash-profit-2`,
           `timestamp=${new Date().toISOString()}`,
+          `reason_code=${ALERT_REASON_CODES.noAlert}`,
           '',
           '```',
           takeTail(scoutOutput, 14),

@@ -104,16 +104,16 @@ const runIndexerRefresh = async (networks: string[]): Promise<{ success: boolean
 
 // --- Full scanner call -------------------------------------------------------
 // Always runs — independent of any pre-scan result.
-const runFullScan = async (networks: string[]): Promise<{ success: boolean; found?: number; watchlist?: number; error?: string }> => {
+const runFullScan = async (networks: string[], triggerReason: string): Promise<{ success: boolean; found?: number; watchlist?: number; error?: string; diagnostics?: Record<string, unknown>; readinessGates?: Record<string, unknown> | null }> => {
   if (!supabase) return { success: false, error: 'No supabase client' };
   try {
     const { data, error } = await supabase.functions.invoke('scan-arbitrage-opportunities', {
-      body: { triggeredBy: 'cron-scheduler-24-7', networks },
+      body: { triggeredBy: 'cron-scheduler-24-7', triggerReason, scheduledRun: true, networks },
     });
     if (error) return { success: false, error: error.message };
-    const d = data as { found?: number; watchlistCount?: number; success?: boolean; error?: string };
+    const d = data as { found?: number; watchlistCount?: number; success?: boolean; error?: string; diagnostics?: Record<string, unknown>; readinessGates?: Record<string, unknown> | null };
     if (!d?.success) return { success: false, error: d?.error || 'scanner returned success=false' };
-    return { success: true, found: d.found ?? 0, watchlist: d.watchlistCount ?? 0 };
+    return { success: true, found: d.found ?? 0, watchlist: d.watchlistCount ?? 0, diagnostics: d.diagnostics, readinessGates: d.readinessGates ?? null };
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'scanner call failed' };
   }
@@ -123,6 +123,10 @@ const runFullScan = async (networks: string[]): Promise<{ success: boolean; foun
 const logSchedulerRun = async (
   opportunitiesFound: number,
   durationMs: number,
+  triggerReason: string,
+  networks: string[],
+  scanDiagnostics?: Record<string, unknown>,
+  readinessGates?: Record<string, unknown> | null,
   error?: string,
 ) => {
   if (!supabase) return;
@@ -133,9 +137,21 @@ const logSchedulerRun = async (
       scan_timestamp: scanTimestamp,
       scan_type: 'scheduled',
       opportunities_found: Math.max(0, opportunitiesFound),
+      networks_scanned: networks,
       execution_time_ms: durationMs,
       status: error ? 'failed' : 'success',
       error_message: error ?? null,
+      error_details: {
+        triggerReason,
+        readinessGates,
+        sourceFailureCounts: scanDiagnostics && typeof scanDiagnostics === 'object'
+          ? {
+            subgraphSourcesFailed: Math.max(0, 5 - Number((scanDiagnostics as { subgraphSourcesOk?: number }).subgraphSourcesOk ?? 0)),
+            fallbackEntriesAccepted: Number((scanDiagnostics as { fallbackEntriesAccepted?: number }).fallbackEntriesAccepted ?? 0),
+            fallbackFetches: Number(((scanDiagnostics as { indexCache?: { fallbackFetches?: number } }).indexCache?.fallbackFetches) ?? 0),
+          }
+          : null,
+      },
     });
     await supabase
       .from('scheduler_24_7_config')
@@ -147,20 +163,20 @@ const logSchedulerRun = async (
 };
 
 // --- Main pipeline -----------------------------------------------------------
-const runPipeline = async (networks: string[]) => {
+const runPipeline = async (networks: string[], triggerReason = 'cron') => {
   const start = performance.now();
   const seedResult = await seedHotPairs();
   const indexerResult = await runIndexerRefresh(networks);
-  const scanResult = await runFullScan(networks);
+  const scanResult = await runFullScan(networks, triggerReason);
   const durationMs = Math.round(performance.now() - start);
 
   const opportunitiesFound = scanResult.found ?? 0;
   const error = !scanResult.success ? scanResult.error : undefined;
-  await logSchedulerRun(opportunitiesFound, durationMs, error);
+  await logSchedulerRun(opportunitiesFound, durationMs, triggerReason, networks, scanResult.diagnostics, scanResult.readinessGates, error);
 
   console.log(`[cron] pipeline done in ${durationMs}ms | seed=${seedResult.seeded} indexer=${indexerResult.pairsScanned ?? 0} pairs | scan found=${opportunitiesFound} watchlist=${scanResult.watchlist ?? 0}`);
 
-  return { seedResult, indexerResult, scanResult, durationMs };
+  return { seedResult, indexerResult, scanResult, durationMs, triggerReason };
 };
 
 // --- Cron registration -------------------------------------------------------
@@ -170,7 +186,7 @@ const defaultNetworks = (Deno.env.get('CRON_NETWORKS') || 'ethereum,arbitrum,bas
 
 const denoWithCron = Deno as unknown as { cron?: (name: string, cron: string, fn: () => Promise<void>) => void };
 if (typeof denoWithCron.cron === 'function') {
-  denoWithCron.cron('cron-scheduler-24-7', scheduleExpression, () => runPipeline(defaultNetworks).catch(console.error));
+  denoWithCron.cron('cron-scheduler-24-7', scheduleExpression, () => runPipeline(defaultNetworks, 'cron').catch(console.error));
 }
 
 // --- HTTP handler ------------------------------------------------------------
@@ -178,17 +194,23 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const body = await req.json().catch(() => ({})) as { networks?: string[]; manualTrigger?: boolean };
+    const body = await req.json().catch(() => ({})) as { networks?: string[]; manualTrigger?: boolean; triggerReason?: string };
     const networks = Array.isArray(body.networks) && body.networks.length > 0
       ? body.networks
       : defaultNetworks;
+    const triggerReason = typeof body.triggerReason === 'string' && body.triggerReason.trim()
+      ? body.triggerReason.trim()
+      : body.manualTrigger
+        ? 'manual'
+        : 'http';
 
-    const result = await runPipeline(networks);
+    const result = await runPipeline(networks, triggerReason);
 
     return new Response(
       JSON.stringify({
         success: true,
         manualTrigger: body.manualTrigger ?? false,
+        triggerReason,
         networks,
         pipeline: result,
         timestamp: new Date().toISOString(),

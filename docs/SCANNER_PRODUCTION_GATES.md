@@ -13,12 +13,16 @@ Set these as Supabase Edge Function secrets (or in `supabase/.env.local` for loc
 - `SCANNER_ENFORCE_READINESS_GATES`
 - `SCANNER_MIN_GRAPH_SOURCES_HEALTHY`
 - `SCANNER_MAX_GRAPH_FALLBACK_SOURCES`
+- `SCANNER_ACTIVE_MIN_PERSISTENCE_OBSERVATIONS`
+- `EXEC_MAX_QUOTE_AGE_MS`
 
 Recommended starting values:
 
 - `SCANNER_ENFORCE_READINESS_GATES=true` (after burn-in)
 - `SCANNER_MIN_GRAPH_SOURCES_HEALTHY=3`
 - `SCANNER_MAX_GRAPH_FALLBACK_SOURCES=2`
+- `SCANNER_ACTIVE_MIN_PERSISTENCE_OBSERVATIONS=2`
+- `EXEC_MAX_QUOTE_AGE_MS=90000`
 
 ## Gate Logic
 
@@ -29,6 +33,32 @@ Scanner readiness passes only when all conditions are true:
 3. Fallback-used sources <= `SCANNER_MAX_GRAPH_FALLBACK_SOURCES`
 
 If gates fail and enforcement is enabled, scanner returns HTTP 503 and no scan is executed.
+
+## Runtime Audit Surface
+
+Each live scanner response and persisted `scanner_runs.diagnostics` payload now includes:
+
+- `readinessGates`
+- `triggerReason`
+- `sourceHardening.activeMinPersistenceObservations`
+- `sourceHardening.persistenceRoutesObserved`
+
+This makes gate state auditable for cron-triggered and manual scans.
+
+## Rollback Procedure
+
+1. Set `SCANNER_ENFORCE_READINESS_GATES=false` if upstream Graph reliability is the incident root cause.
+2. If quote/execution parity is rejecting too aggressively, raise `EXEC_MAX_QUOTE_AGE_MS` temporarily and lower `SCANNER_ACTIVE_MIN_PERSISTENCE_OBSERVATIONS` to `1`.
+3. Re-run `npm run scanner:readiness:full` and `node scripts/probe-scanner.mjs`.
+4. Restore the stricter values after the upstream source outage is confirmed resolved.
+
+## SLOs / Metrics to Monitor
+
+- `readinessGates.pass` success rate
+- `healthySources` and `fallbackSources` versus thresholds
+- `execution_quote_parity_mismatch` and `execution_quote_stale` rejection counts
+- `simulation_failed` / `simulation_reverted` rate
+- scheduler `error_details.sourceFailureCounts`
 
 ## Operational Flow
 

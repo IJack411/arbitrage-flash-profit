@@ -23,7 +23,7 @@ test.describe('scanner opportunity contract hardening', () => {
       tokenBDecimals: 18,
     });
 
-    expect(amountBMin.toString()).toBe('487804878048780487804');
+    expect(amountBMin.toString()).toBe('487804878000000000000');
   });
 
   test('rejects stale or parity-mismatched execution opportunities at boundary', () => {

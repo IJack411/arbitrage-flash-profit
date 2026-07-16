@@ -11,7 +11,16 @@ Evolve the scanner from profitable-opportunity detection to class-leading execut
     - Liquidity depth
     - Slippage penalty
     - Watchlist distance-to-executable penalty
+    - Source-quality penalty for fallback-only / low-reliability routes
+    - Short-horizon persistence gating before promotion to `active`
 - Result: higher quality top-of-list opportunities and fewer unstable candidates bubbling to the top.
+- Canonical scanner/executor contract now carries:
+  - deterministic `candidateId`
+  - `scanRunId`
+  - `quoteTimestamp`
+  - `reasonCode`
+  - quote-derived `amountBMin` parity metadata
+- Executor now rejects stale or parity-broken opportunities before submission.
 
 ## Next 5 Upgrades (High Impact)
 1. Adaptive Threshold Engine

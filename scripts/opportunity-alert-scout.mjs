@@ -285,7 +285,7 @@ const run = async () => {
   const iterations = parseNumber(process.env.ALERT_SCOUT_ITERATIONS, 2);
   const delayMs = parseNumber(process.env.ALERT_SCOUT_DELAY_MS, 1200);
   const httpTimeoutMs = Math.max(2_500, parseNumber(process.env.ALERT_HTTP_TIMEOUT_MS, 20_000));
-  const networks = (process.env.ALERT_NETWORKS || 'ethereum,arbitrum,base,polygon').split(',').map((n) => n.trim()).filter(Boolean);
+  const networks = (process.env.ALERT_NETWORKS || 'ethereum,arbitrum,base').split(',').map((n) => n.trim()).filter(Boolean);
 
   const thresholds = {
     activeMin: parseNumber(process.env.ALERT_ACTIVE_MIN, 1),
@@ -310,99 +310,104 @@ const run = async () => {
   const historyPath = path.resolve(historyFile);
 
   const base = {
-    minNetProfitUsd: parseNumber(process.env.ALERT_MIN_NET_PROFIT_USD, 3),
+    minNetProfitUsd: parseNumber(process.env.ALERT_MIN_NET_PROFIT_USD, 6),
     perNetworkMinNetProfitUsd: {
-      ethereum: parseNumber(process.env.ALERT_MIN_NET_PROFIT_ETHEREUM_USD, 8),
-      arbitrum: parseNumber(process.env.ALERT_MIN_NET_PROFIT_ARBITRUM_USD, 4),
-      base: parseNumber(process.env.ALERT_MIN_NET_PROFIT_BASE_USD, 3),
-      polygon: parseNumber(process.env.ALERT_MIN_NET_PROFIT_POLYGON_USD, 3),
+      ethereum: parseNumber(process.env.ALERT_MIN_NET_PROFIT_ETHEREUM_USD, 18),
+      arbitrum: parseNumber(process.env.ALERT_MIN_NET_PROFIT_ARBITRUM_USD, 5),
+      base: parseNumber(process.env.ALERT_MIN_NET_PROFIT_BASE_USD, 4),
+      polygon: parseNumber(process.env.ALERT_MIN_NET_PROFIT_POLYGON_USD, 6),
     },
-    minSpreadPercent: parseNumber(process.env.ALERT_MIN_SPREAD_PERCENT, 0.02),
-    estimatedGasUsd: parseNumber(process.env.ALERT_ESTIMATED_GAS_USD, 8),
+    minSpreadPercent: parseNumber(process.env.ALERT_MIN_SPREAD_PERCENT, 0.03),
+    estimatedGasUsd: parseNumber(process.env.ALERT_ESTIMATED_GAS_USD, 18),
     maxSlippageBps: parseNumber(process.env.ALERT_MAX_SLIPPAGE_BPS, 65),
     maxLiquidityUsagePercent: parseNumber(process.env.ALERT_MAX_LIQUIDITY_USAGE_PERCENT, 25),
-    minLiquidityUsd: parseNumber(process.env.ALERT_MIN_LIQUIDITY_USD, 120000),
-    maxResults: parseNumber(process.env.ALERT_MAX_RESULTS, 40),
+    minLiquidityUsd: parseNumber(process.env.ALERT_MIN_LIQUIDITY_USD, 150000),
+    maxResults: parseNumber(process.env.ALERT_MAX_RESULTS, 30),
   };
 
   const discovery = {
-    minNetProfitUsd: parseNumber(process.env.ALERT_DISCOVERY_MIN_NET_PROFIT_USD, 2),
+    minNetProfitUsd: parseNumber(process.env.ALERT_DISCOVERY_MIN_NET_PROFIT_USD, 4),
     perNetworkMinNetProfitUsd: {
-      ethereum: parseNumber(process.env.ALERT_DISCOVERY_MIN_NET_PROFIT_ETHEREUM_USD, 8),
-      arbitrum: parseNumber(process.env.ALERT_DISCOVERY_MIN_NET_PROFIT_ARBITRUM_USD, 4),
-      base: parseNumber(process.env.ALERT_DISCOVERY_MIN_NET_PROFIT_BASE_USD, 3),
-      polygon: parseNumber(process.env.ALERT_DISCOVERY_MIN_NET_PROFIT_POLYGON_USD, 3),
+      ethereum: parseNumber(process.env.ALERT_DISCOVERY_MIN_NET_PROFIT_ETHEREUM_USD, 15),
+      arbitrum: parseNumber(process.env.ALERT_DISCOVERY_MIN_NET_PROFIT_ARBITRUM_USD, 5),
+      base: parseNumber(process.env.ALERT_DISCOVERY_MIN_NET_PROFIT_BASE_USD, 4),
+      polygon: parseNumber(process.env.ALERT_DISCOVERY_MIN_NET_PROFIT_POLYGON_USD, 6),
     },
-    minLiquidityUsd: parseNumber(process.env.ALERT_DISCOVERY_MIN_LIQUIDITY_USD, 60000),
+    minLiquidityUsd: parseNumber(process.env.ALERT_DISCOVERY_MIN_LIQUIDITY_USD, 80000),
     maxSlippageBps: parseNumber(process.env.ALERT_DISCOVERY_MAX_SLIPPAGE_BPS, 75),
   };
 
   const profileSet = String(process.env.ALERT_SCOUT_PROFILE_SET || 'expanded').trim().toLowerCase();
   const enableGeckoMixed = parseBoolean(process.env.ALERT_ENABLE_GECKO_MIXED, true);
   const includeHighLoanProfiles = parseBoolean(process.env.ALERT_INCLUDE_HIGH_LOAN_PROFILES, true);
-  const highLoanAmounts = String(process.env.ALERT_HIGH_LOAN_AMOUNTS_USD || '3000,10000')
+  const highLoanAmounts = String(process.env.ALERT_HIGH_LOAN_AMOUNTS_USD || '12000,20000')
     .split(',')
     .map((item) => Number(item.trim()))
     .filter((n) => Number.isFinite(n) && n >= 2000)
     .slice(0, 4);
 
   const highLoanDiscovery = {
-    minNetProfitUsd: parseNumber(process.env.ALERT_HIGH_LOAN_MIN_NET_PROFIT_USD, 2),
+    minNetProfitUsd: parseNumber(process.env.ALERT_HIGH_LOAN_MIN_NET_PROFIT_USD, 4),
     perNetworkMinNetProfitUsd: {
-      ethereum: parseNumber(process.env.ALERT_HIGH_LOAN_MIN_NET_PROFIT_ETHEREUM_USD, 6),
-      arbitrum: parseNumber(process.env.ALERT_HIGH_LOAN_MIN_NET_PROFIT_ARBITRUM_USD, 3),
-      base: parseNumber(process.env.ALERT_HIGH_LOAN_MIN_NET_PROFIT_BASE_USD, 2),
-      polygon: parseNumber(process.env.ALERT_HIGH_LOAN_MIN_NET_PROFIT_POLYGON_USD, 2),
+      ethereum: parseNumber(process.env.ALERT_HIGH_LOAN_MIN_NET_PROFIT_ETHEREUM_USD, 18),
+      arbitrum: parseNumber(process.env.ALERT_HIGH_LOAN_MIN_NET_PROFIT_ARBITRUM_USD, 4),
+      base: parseNumber(process.env.ALERT_HIGH_LOAN_MIN_NET_PROFIT_BASE_USD, 3),
+      polygon: parseNumber(process.env.ALERT_HIGH_LOAN_MIN_NET_PROFIT_POLYGON_USD, 5),
     },
     minSpreadPercent: parseNumber(process.env.ALERT_HIGH_LOAN_MIN_SPREAD_PERCENT, 0.015),
     minLiquidityUsd: parseNumber(process.env.ALERT_HIGH_LOAN_MIN_LIQUIDITY_USD, 180000),
     maxSlippageBps: parseNumber(process.env.ALERT_HIGH_LOAN_MAX_SLIPPAGE_BPS, 80),
   };
 
+  const actionableEthereumLoanUsd = Math.max(4_000, parseNumber(process.env.ALERT_ACTIONABLE_ETHEREUM_LOAN_USD, 12_000));
+  const exploratoryEthereumLoanUsd = Math.max(3_000, parseNumber(process.env.ALERT_EXPLORATORY_ETHEREUM_LOAN_USD, 6_000));
+  const discoveryEthereumLoanUsd = Math.max(2_000, parseNumber(process.env.ALERT_DISCOVERY_ETHEREUM_LOAN_USD, 4_000));
+
   let profiles = profileSet === 'default'
     ? [
       {
-        id: 'subgraph-1000',
+        id: `subgraph-${actionableEthereumLoanUsd}`,
         ...base,
-        loanAmountUsd: 1000,
+        loanAmountUsd: actionableEthereumLoanUsd,
         enableDexScreener: false,
         enableGecko: false,
       },
       {
-        id: 'subgraph-600',
+        id: `subgraph-${exploratoryEthereumLoanUsd}-discovery`,
         ...base,
-        loanAmountUsd: 600,
+        ...discovery,
+        loanAmountUsd: exploratoryEthereumLoanUsd,
         enableDexScreener: false,
         enableGecko: false,
       },
       {
-        id: 'mixed-1000',
+        id: `mixed-${actionableEthereumLoanUsd}`,
         ...base,
-        loanAmountUsd: 1000,
+        loanAmountUsd: actionableEthereumLoanUsd,
         enableDexScreener: true,
         enableGecko: enableGeckoMixed,
       },
       {
-        id: 'mixed-1000-aggressive',
+        id: `mixed-${actionableEthereumLoanUsd}-aggressive`,
         ...base,
         minNetProfitUsd: parseNumber(process.env.ALERT_AGGRESSIVE_MIN_NET_PROFIT_USD, 2),
         perNetworkMinNetProfitUsd: {
-          ethereum: parseNumber(process.env.ALERT_AGGRESSIVE_MIN_NET_PROFIT_ETHEREUM_USD, 6),
+          ethereum: parseNumber(process.env.ALERT_AGGRESSIVE_MIN_NET_PROFIT_ETHEREUM_USD, 14),
           arbitrum: parseNumber(process.env.ALERT_AGGRESSIVE_MIN_NET_PROFIT_ARBITRUM_USD, 3),
           base: parseNumber(process.env.ALERT_AGGRESSIVE_MIN_NET_PROFIT_BASE_USD, 2),
           polygon: parseNumber(process.env.ALERT_AGGRESSIVE_MIN_NET_PROFIT_POLYGON_USD, 2),
         },
         maxSlippageBps: parseNumber(process.env.ALERT_AGGRESSIVE_MAX_SLIPPAGE_BPS, 75),
-        loanAmountUsd: 1000,
+        loanAmountUsd: actionableEthereumLoanUsd,
         enableDexScreener: true,
         enableGecko: enableGeckoMixed,
       },
       {
-        id: 'mixed-1000-ultra-discovery',
+        id: `mixed-${actionableEthereumLoanUsd}-ultra-discovery`,
         ...base,
         minNetProfitUsd: parseNumber(process.env.ALERT_ULTRA_MIN_NET_PROFIT_USD, 1),
         perNetworkMinNetProfitUsd: {
-          ethereum: parseNumber(process.env.ALERT_ULTRA_MIN_NET_PROFIT_ETHEREUM_USD, 4),
+          ethereum: parseNumber(process.env.ALERT_ULTRA_MIN_NET_PROFIT_ETHEREUM_USD, 10),
           arbitrum: parseNumber(process.env.ALERT_ULTRA_MIN_NET_PROFIT_ARBITRUM_USD, 2),
           base: parseNumber(process.env.ALERT_ULTRA_MIN_NET_PROFIT_BASE_USD, 1),
           polygon: parseNumber(process.env.ALERT_ULTRA_MIN_NET_PROFIT_POLYGON_USD, 1),
@@ -410,86 +415,87 @@ const run = async () => {
         estimatedGasUsd: parseNumber(process.env.ALERT_ULTRA_ESTIMATED_GAS_USD, 7),
         maxSlippageBps: parseNumber(process.env.ALERT_ULTRA_MAX_SLIPPAGE_BPS, 80),
         minLiquidityUsd: parseNumber(process.env.ALERT_ULTRA_MIN_LIQUIDITY_USD, 90000),
-        loanAmountUsd: 1000,
+        loanAmountUsd: actionableEthereumLoanUsd,
         enableDexScreener: true,
         enableGecko: enableGeckoMixed,
       },
       {
-        id: 'mixed-600',
+        id: `mixed-${exploratoryEthereumLoanUsd}-discovery`,
         ...base,
-        loanAmountUsd: 600,
+        ...discovery,
+        loanAmountUsd: exploratoryEthereumLoanUsd,
         enableDexScreener: true,
         enableGecko: enableGeckoMixed,
       },
     ]
     : [
       {
-        id: 'subgraph-1500-discovery',
+        id: `subgraph-${exploratoryEthereumLoanUsd}-discovery`,
         ...base,
         ...discovery,
-        loanAmountUsd: 1500,
+        loanAmountUsd: exploratoryEthereumLoanUsd,
         enableDexScreener: false,
         enableGecko: false,
       },
       {
-        id: 'subgraph-1000',
+        id: `subgraph-${actionableEthereumLoanUsd}`,
         ...base,
-        loanAmountUsd: 1000,
+        loanAmountUsd: actionableEthereumLoanUsd,
         enableDexScreener: false,
         enableGecko: false,
       },
       {
-        id: 'subgraph-600',
+        id: `subgraph-${discoveryEthereumLoanUsd}-discovery`,
         ...base,
         ...discovery,
-        loanAmountUsd: 600,
+        loanAmountUsd: discoveryEthereumLoanUsd,
         enableDexScreener: false,
         enableGecko: false,
       },
       {
-        id: 'subgraph-400-discovery',
+        id: `subgraph-${Math.max(2_000, Math.floor(discoveryEthereumLoanUsd * 0.75))}-discovery`,
         ...base,
         ...discovery,
-        loanAmountUsd: 400,
+        loanAmountUsd: Math.max(2_000, Math.floor(discoveryEthereumLoanUsd * 0.75)),
         enableDexScreener: false,
         enableGecko: false,
       },
       {
-        id: 'mixed-1500-discovery',
+        id: `mixed-${exploratoryEthereumLoanUsd}-discovery`,
         ...base,
         ...discovery,
-        loanAmountUsd: 1500,
+        loanAmountUsd: exploratoryEthereumLoanUsd,
         enableDexScreener: true,
         enableGecko: enableGeckoMixed,
       },
       {
-        id: 'mixed-1000',
+        id: `mixed-${actionableEthereumLoanUsd}`,
         ...base,
-        loanAmountUsd: 1000,
+        loanAmountUsd: actionableEthereumLoanUsd,
         enableDexScreener: true,
         enableGecko: enableGeckoMixed,
       },
       {
-        id: 'mixed-1000-aggressive',
+        id: `mixed-${actionableEthereumLoanUsd}-aggressive`,
         ...base,
         minNetProfitUsd: parseNumber(process.env.ALERT_AGGRESSIVE_MIN_NET_PROFIT_USD, 2),
         perNetworkMinNetProfitUsd: {
-          ethereum: parseNumber(process.env.ALERT_AGGRESSIVE_MIN_NET_PROFIT_ETHEREUM_USD, 6),
+          ethereum: parseNumber(process.env.ALERT_AGGRESSIVE_MIN_NET_PROFIT_ETHEREUM_USD, 14),
           arbitrum: parseNumber(process.env.ALERT_AGGRESSIVE_MIN_NET_PROFIT_ARBITRUM_USD, 3),
           base: parseNumber(process.env.ALERT_AGGRESSIVE_MIN_NET_PROFIT_BASE_USD, 2),
           polygon: parseNumber(process.env.ALERT_AGGRESSIVE_MIN_NET_PROFIT_POLYGON_USD, 2),
         },
         maxSlippageBps: parseNumber(process.env.ALERT_AGGRESSIVE_MAX_SLIPPAGE_BPS, 75),
-        loanAmountUsd: 1000,
+        loanAmountUsd: actionableEthereumLoanUsd,
         enableDexScreener: true,
         enableGecko: enableGeckoMixed,
       },
       {
-        id: 'mixed-1000-ultra-discovery',
+        id: `mixed-${actionableEthereumLoanUsd}-ultra-discovery`,
         ...base,
         minNetProfitUsd: parseNumber(process.env.ALERT_ULTRA_MIN_NET_PROFIT_USD, 1),
         perNetworkMinNetProfitUsd: {
-          ethereum: parseNumber(process.env.ALERT_ULTRA_MIN_NET_PROFIT_ETHEREUM_USD, 4),
+          ethereum: parseNumber(process.env.ALERT_ULTRA_MIN_NET_PROFIT_ETHEREUM_USD, 10),
           arbitrum: parseNumber(process.env.ALERT_ULTRA_MIN_NET_PROFIT_ARBITRUM_USD, 2),
           base: parseNumber(process.env.ALERT_ULTRA_MIN_NET_PROFIT_BASE_USD, 1),
           polygon: parseNumber(process.env.ALERT_ULTRA_MIN_NET_PROFIT_POLYGON_USD, 1),
@@ -497,23 +503,23 @@ const run = async () => {
         estimatedGasUsd: parseNumber(process.env.ALERT_ULTRA_ESTIMATED_GAS_USD, 7),
         maxSlippageBps: parseNumber(process.env.ALERT_ULTRA_MAX_SLIPPAGE_BPS, 80),
         minLiquidityUsd: parseNumber(process.env.ALERT_ULTRA_MIN_LIQUIDITY_USD, 90000),
-        loanAmountUsd: 1000,
+        loanAmountUsd: actionableEthereumLoanUsd,
         enableDexScreener: true,
         enableGecko: enableGeckoMixed,
       },
       {
-        id: 'mixed-600',
+        id: `mixed-${discoveryEthereumLoanUsd}-discovery`,
         ...base,
         ...discovery,
-        loanAmountUsd: 600,
+        loanAmountUsd: discoveryEthereumLoanUsd,
         enableDexScreener: true,
         enableGecko: enableGeckoMixed,
       },
       {
-        id: 'mixed-400-discovery',
+        id: `mixed-${Math.max(2_000, Math.floor(discoveryEthereumLoanUsd * 0.75))}-discovery`,
         ...base,
         ...discovery,
-        loanAmountUsd: 400,
+        loanAmountUsd: Math.max(2_000, Math.floor(discoveryEthereumLoanUsd * 0.75)),
         enableDexScreener: true,
         enableGecko: enableGeckoMixed,
       },

@@ -1,5 +1,11 @@
 import { ethers } from 'npm:ethers@6.7.0';
 import { FlashbotsBundleProvider, FlashbotsBundleResolution } from 'npm:@flashbots/ethers-provider-bundle@1.0.0';
+import {
+  classifySimulationGate,
+  OPPORTUNITY_REASON_CODES,
+  validateOpportunityParity,
+  type CanonicalOpportunity,
+} from '../_shared/opportunity-contract.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -122,6 +128,63 @@ const readPolicyNumber = (key: string, fallback: number, min?: number, max?: num
 const EXEC_POLICY_MIN_NET_PROFIT_USD = readPolicyNumber('EXEC_MIN_NET_PROFIT_USD', 15, 0);
 const EXEC_POLICY_MAX_GAS_TO_NET_RATIO = readPolicyNumber('EXEC_MAX_GAS_TO_NET_RATIO', 0.6, 0.05, 5);
 const EXEC_POLICY_MIN_CONFIDENCE_SCORE = Math.round(readPolicyNumber('EXEC_MIN_CONFIDENCE_SCORE', 35, 0, 100));
+const EXEC_POLICY_MAX_QUOTE_AGE_MS = Math.max(10_000, Math.round(readPolicyNumber('EXEC_MAX_QUOTE_AGE_MS', 90_000, 10_000, 900_000)));
+
+const loadScannerCandidateBoundary = async (candidateId: string) => {
+  if (!canPersistTelemetry() || !candidateId) return null;
+  try {
+    const query = new URLSearchParams({
+      select: 'id,scan_run_id,status',
+      id: `eq.${candidateId}`,
+      limit: '1',
+    });
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/scanner_candidates?${query.toString()}`, {
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: 'Bearer ' + SUPABASE_SERVICE_ROLE_KEY,
+        Accept: 'application/json',
+      },
+    });
+    if (!response.ok) return null;
+    const rows = await response.json() as Array<Record<string, unknown>>;
+    return rows[0] || null;
+  } catch {
+    return null;
+  }
+};
+
+const estimateActualGasUsd = (
+  receipt: ethers.TransactionReceipt | null,
+  network: string,
+): number | null => {
+  if (!receipt) return null;
+  const nativeUsdPrice = network === 'base'
+    ? readPolicyNumber('EXEC_NATIVE_TOKEN_USD_BASE', readPolicyNumber('EXEC_NATIVE_TOKEN_USD_ETHEREUM', 3500, 1), 1)
+    : readPolicyNumber('EXEC_NATIVE_TOKEN_USD_ETHEREUM', 3500, 1);
+  const gasUsed = receipt.gasUsed;
+  const gasPrice = receipt.gasPrice ?? receipt.effectiveGasPrice;
+  if (gasUsed === null || gasUsed === undefined || gasPrice === null || gasPrice === undefined) return null;
+  const weiSpent = gasUsed * gasPrice;
+  const nativeSpent = Number(ethers.formatEther(weiSpent));
+  if (!Number.isFinite(nativeSpent)) return null;
+  return nativeSpent * nativeUsdPrice;
+};
+
+const estimateRealizedNetProfitUsd = ({
+  predictedNetProfitUsd,
+  predictedGasCostUsd,
+  receipt,
+  network,
+}: {
+  predictedNetProfitUsd: number;
+  predictedGasCostUsd: number;
+  receipt: ethers.TransactionReceipt | null;
+  network: string;
+}): number | null => {
+  const actualGasUsd = estimateActualGasUsd(receipt, network);
+  if (actualGasUsd === null) return null;
+  return predictedNetProfitUsd + predictedGasCostUsd - actualGasUsd;
+};
 
 const parseExecutionPayload = (opportunity: Record<string, unknown> | undefined) => {
   const rawPayload = opportunity?.executionPayload;
@@ -258,7 +321,83 @@ Deno.serve(async (req) => {
         throw new Error('contractAddress is required to execute arbitrage');
       }
 
-      const requestedNetwork = String(opportunity?.executionPayload?.network ?? opportunity?.network ?? 'ethereum').toLowerCase();
+      const opportunityValidation = validateOpportunityParity(opportunity, {
+        maxQuoteAgeMs: EXEC_POLICY_MAX_QUOTE_AGE_MS,
+      });
+      if (!opportunityValidation.ok) {
+        const failureReason = opportunityValidation.errors.includes(OPPORTUNITY_REASON_CODES.executionQuoteStale)
+          ? OPPORTUNITY_REASON_CODES.executionQuoteStale
+          : opportunityValidation.errors.includes(OPPORTUNITY_REASON_CODES.executionParityMismatch)
+            ? OPPORTUNITY_REASON_CODES.executionParityMismatch
+            : OPPORTUNITY_REASON_CODES.executionBoundaryInvalid;
+        await persistExecutionAttempt({
+          id: executionAttemptId,
+          candidate_id: resolvedCandidateId,
+          scan_run_id: resolvedScanRunId,
+          submitted_at: new Date(startedAt).toISOString(),
+          target_block: null,
+          bundle_hash: null,
+          included: false,
+          failure_reason: failureReason,
+          realized_net_profit: null,
+          latency_ms: Date.now() - startedAt,
+          metadata: {
+            walletAddress: walletAddress || null,
+            action,
+            validationErrors: opportunityValidation.errors,
+          },
+        });
+        throw new Error(`Opportunity boundary validation failed: ${opportunityValidation.errors.join(', ')}`);
+      }
+
+      const canonicalOpportunity = opportunityValidation.value;
+      if (canonicalOpportunity.status !== 'active') {
+        await persistExecutionAttempt({
+          id: executionAttemptId,
+          candidate_id: resolvedCandidateId,
+          scan_run_id: resolvedScanRunId,
+          submitted_at: new Date(startedAt).toISOString(),
+          target_block: null,
+          bundle_hash: null,
+          included: false,
+          failure_reason: OPPORTUNITY_REASON_CODES.executionBoundaryInvalid,
+          realized_net_profit: null,
+          latency_ms: Date.now() - startedAt,
+          metadata: {
+            walletAddress: walletAddress || null,
+            action,
+            status: canonicalOpportunity.status,
+            reasonCode: canonicalOpportunity.reasonCode,
+          },
+        });
+        throw new Error(`Only active opportunities may be executed (received ${canonicalOpportunity.status})`);
+      }
+
+      const candidateBoundary = canPersistTelemetry() && resolvedCandidateId
+        ? await loadScannerCandidateBoundary(String(resolvedCandidateId))
+        : { id: resolvedCandidateId, scan_run_id: resolvedScanRunId, status: 'active' };
+      if (canPersistTelemetry() && (!candidateBoundary || candidateBoundary.scan_run_id !== resolvedScanRunId || candidateBoundary.status !== 'active')) {
+        await persistExecutionAttempt({
+          id: executionAttemptId,
+          candidate_id: resolvedCandidateId,
+          scan_run_id: resolvedScanRunId,
+          submitted_at: new Date(startedAt).toISOString(),
+          target_block: null,
+          bundle_hash: null,
+          included: false,
+          failure_reason: OPPORTUNITY_REASON_CODES.executionBoundaryInvalid,
+          realized_net_profit: null,
+          latency_ms: Date.now() - startedAt,
+          metadata: {
+            walletAddress: walletAddress || null,
+            action,
+            candidateBoundary,
+          },
+        });
+        throw new Error('Candidate boundary check failed: scanner candidate is missing, inactive, or mismatched');
+      }
+
+      const requestedNetwork = String(canonicalOpportunity.executionPayload?.network ?? canonicalOpportunity.network ?? 'ethereum').toLowerCase();
       const SUPPORTED_EXEC_NETWORKS = new Set(['ethereum', 'base']);
       if (!SUPPORTED_EXEC_NETWORKS.has(requestedNetwork)) {
         const failureReason = 'unsupported_network';
@@ -305,7 +444,7 @@ Deno.serve(async (req) => {
 
       const iface = new ethers.Interface(ARB_ABI);
 
-      const parsedPayload = parseExecutionPayload(opportunity as Record<string, unknown> | undefined);
+      const parsedPayload = parseExecutionPayload(canonicalOpportunity as unknown as Record<string, unknown>);
       if (!parsedPayload) {
         const failureReason = 'invalid_execution_payload';
         await persistExecutionAttempt({
@@ -324,9 +463,9 @@ Deno.serve(async (req) => {
         throw new Error('Missing or malformed executionPayload for executeArbitrage');
       }
 
-      const opportunityNetProfit = Number(opportunity?.netProfit ?? 0);
-      const opportunityGasCost = Number(opportunity?.gasCost ?? 0);
-      const opportunityConfidence = Number(opportunity?.confidenceScore ?? 0);
+      const opportunityNetProfit = Number(canonicalOpportunity.netProfit ?? 0);
+      const opportunityGasCost = Number(canonicalOpportunity.gasCost ?? 0);
+      const opportunityConfidence = Number(canonicalOpportunity.confidenceScore ?? 0);
       const gasToNetRatio = opportunityNetProfit > 0 ? opportunityGasCost / opportunityNetProfit : Number.POSITIVE_INFINITY;
 
       if (!Number.isFinite(opportunityNetProfit) || opportunityNetProfit < EXEC_POLICY_MIN_NET_PROFIT_USD) {
@@ -436,6 +575,7 @@ Deno.serve(async (req) => {
         const feeData = await provider.getFeeData();
         const maxFeePerGas = feeData.maxFeePerGas ?? ethers.parseUnits('0.1', 'gwei');
         const maxPriorityFeePerGas = feeData.maxPriorityFeePerGas ?? ethers.parseUnits('0.01', 'gwei');
+        const submissionBlock = await provider.getBlockNumber();
 
         let txResponse: ethers.TransactionResponse;
         let txReceipt: ethers.TransactionReceipt | null = null;
@@ -466,10 +606,13 @@ Deno.serve(async (req) => {
             metadata: {
               walletAddress: walletAddress || null,
               action,
-              tokenPair: opportunity?.tokenPair ?? null,
+              tokenPair: canonicalOpportunity.tokenPair,
               network: requestedNetwork,
-              buyDex: opportunity?.buyDex ?? null,
-              sellDex: opportunity?.sellDex ?? null,
+              buyDex: canonicalOpportunity.buyDex,
+              sellDex: canonicalOpportunity.sellDex,
+              submissionBlock,
+              quoteTimestamp: canonicalOpportunity.quoteTimestamp,
+              reasonCode: canonicalOpportunity.reasonCode,
               txHash,
               executionPayload: { asset, amount: amount.toString(), routerA, routerB, tokenB, routerAisV3, routerBisV3, feeA, feeB, amountBMin: amountBMin.toString() },
             },
@@ -489,20 +632,29 @@ Deno.serve(async (req) => {
             failure_reason: 'tx_send_failed',
             realized_net_profit: null,
             latency_ms: Date.now() - startedAt,
-            metadata: { walletAddress: walletAddress || null, action, error: errorMessage, tokenPair: opportunity?.tokenPair ?? null },
+            metadata: { walletAddress: walletAddress || null, action, error: errorMessage, tokenPair: canonicalOpportunity.tokenPair, submissionBlock },
           });
           throw new Error(errorMessage);
         }
 
         const included = txReceipt !== null && txReceipt.status === 1;
         const inclusionStatus = included ? 'included' : (txReceipt ? 'reverted' : 'pending');
+        const realizedNetProfit = included
+          ? estimateRealizedNetProfitUsd({
+            predictedNetProfitUsd: opportunityNetProfit,
+            predictedGasCostUsd: opportunityGasCost,
+            receipt: txReceipt,
+            network: requestedNetwork,
+          })
+          : null;
 
         if (txHash) {
           await updateExecutionAttemptByBundleHash(txHash, {
             included,
             failure_reason: included ? null : 'tx_reverted',
+            realized_net_profit: realizedNetProfit,
             latency_ms: Date.now() - startedAt,
-            metadata: { inclusionStatus, txReceipt },
+            metadata: { inclusionStatus, submissionBlock, txReceipt, realizedNetProfit },
           });
         }
 
@@ -522,7 +674,7 @@ Deno.serve(async (req) => {
             tokenB,
             routerA,
             routerB,
-            actualProfit: included ? opportunityNetProfit : 0,
+            actualProfit: included ? (realizedNetProfit ?? opportunityNetProfit) : 0,
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
@@ -530,6 +682,7 @@ Deno.serve(async (req) => {
 
       // ── Ethereum: Flashbots bundle submission ─────────────────────────────────────
       const blockNumber = await provider.getBlockNumber();
+      const submissionBlock = blockNumber;
       const targetBlock = blockNumber + 1;
 
       const signedBundle = await flashbotsProvider!.signBundle([
@@ -552,13 +705,9 @@ Deno.serve(async (req) => {
       try {
         simulationResult = await flashbotsProvider!.simulate(signedBundle, targetBlock);
         const simResult = simulationResult as Record<string, unknown> | undefined;
-        const hasError = simResult && 'error' in simResult;
-        const hasFirstRevert = simResult && 'firstRevert' in simResult && simResult.firstRevert !== undefined;
-        
-        if (hasError || hasFirstRevert) {
-          const simulationError = hasError 
-            ? ((simResult as { error?: { message?: string } }).error?.message || 'Bundle simulation returned error')
-            : `Transaction reverted: ${JSON.stringify((simResult as { firstRevert?: unknown }).firstRevert)}`;
+        const simulationGate = classifySimulationGate(simResult);
+        if (simulationGate.reject) {
+          const simulationError = simulationGate.detail || 'Bundle simulation failed';
           await persistExecutionAttempt({
             id: executionAttemptId,
             candidate_id: resolvedCandidateId,
@@ -567,15 +716,19 @@ Deno.serve(async (req) => {
             target_block: targetBlock,
             bundle_hash: null,
             included: false,
-            failure_reason: hasFirstRevert ? 'simulation_reverted' : 'simulation_failed',
+            failure_reason: simulationGate.reason,
             realized_net_profit: null,
             latency_ms: Date.now() - startedAt,
-            metadata: { walletAddress: walletAddress || null, action, simulationError, tokenPair: opportunity?.tokenPair ?? null, firstRevert: hasFirstRevert ? simResult?.firstRevert : null },
+            metadata: { walletAddress: walletAddress || null, action, simulationError, tokenPair: canonicalOpportunity.tokenPair, submissionBlock, targetBlock, quoteTimestamp: canonicalOpportunity.quoteTimestamp, firstRevert: simResult?.firstRevert ?? null },
           });
-          throw new Error(simulationError);
+          throw new Error(`SIMULATION_GATE_REJECTED:${simulationError}`);
         }
       } catch (simulationError) {
-        const message = simulationError instanceof Error ? simulationError.message : 'Bundle simulation failed';
+        const rawMessage = simulationError instanceof Error ? simulationError.message : 'Bundle simulation failed';
+        if (rawMessage.startsWith('SIMULATION_GATE_REJECTED:')) {
+          throw new Error(rawMessage.replace('SIMULATION_GATE_REJECTED:', ''));
+        }
+        const message = rawMessage;
         await persistExecutionAttempt({
           id: executionAttemptId,
           candidate_id: resolvedCandidateId,
@@ -587,7 +740,7 @@ Deno.serve(async (req) => {
           failure_reason: 'simulation_failed',
           realized_net_profit: null,
           latency_ms: Date.now() - startedAt,
-          metadata: { walletAddress: walletAddress || null, action, simulationError: message, tokenPair: opportunity?.tokenPair ?? null },
+          metadata: { walletAddress: walletAddress || null, action, simulationError: message, tokenPair: canonicalOpportunity.tokenPair, submissionBlock, targetBlock, quoteTimestamp: canonicalOpportunity.quoteTimestamp },
         });
         throw new Error(message);
       }
@@ -614,7 +767,9 @@ Deno.serve(async (req) => {
             walletAddress: walletAddress || null,
             action,
             relayError: bundleSubmission.error.message,
-            tokenPair: opportunity?.tokenPair ?? null,
+            tokenPair: canonicalOpportunity.tokenPair,
+            submissionBlock,
+            targetBlock,
           },
         });
         throw new Error(bundleSubmission.error.message);
@@ -634,10 +789,14 @@ Deno.serve(async (req) => {
         metadata: {
           walletAddress: walletAddress || null,
           action,
-          tokenPair: opportunity?.tokenPair ?? null,
+          tokenPair: canonicalOpportunity.tokenPair,
           network: requestedNetwork,
-          buyDex: opportunity?.buyDex ?? null,
-          sellDex: opportunity?.sellDex ?? null,
+          buyDex: canonicalOpportunity.buyDex,
+          sellDex: canonicalOpportunity.sellDex,
+          submissionBlock,
+          targetBlock,
+          quoteTimestamp: canonicalOpportunity.quoteTimestamp,
+          reasonCode: canonicalOpportunity.reasonCode,
           maxFeePerGas: maxFeePerGas.toString(),
           maxPriorityFeePerGas: maxPriorityFeePerGas.toString(),
           executionPayload: {
@@ -662,7 +821,7 @@ Deno.serve(async (req) => {
       let included: boolean | null = null;
       let inclusionStatus = 'pending';
       let failureReason: string | null = null;
-      let txReceipt: unknown = null;
+      let txReceipt: ethers.TransactionReceipt | null = null;
 
       try {
         const waitResult = await bundleSubmission.wait();
@@ -688,18 +847,31 @@ Deno.serve(async (req) => {
         failureReason = waitError instanceof Error ? waitError.message : 'bundle_wait_failed';
       }
 
+      const realizedNetProfit = included
+        ? estimateRealizedNetProfitUsd({
+          predictedNetProfitUsd: opportunityNetProfit,
+          predictedGasCostUsd: opportunityGasCost,
+          receipt: txReceipt,
+          network: requestedNetwork,
+        })
+        : null;
+
       await updateExecutionAttemptByBundleHash(bundleSubmission.bundleHash, {
         included,
         failure_reason: failureReason,
+        realized_net_profit: realizedNetProfit,
         latency_ms: Date.now() - startedAt,
         metadata: {
           walletAddress: walletAddress || null,
           action,
           inclusionStatus,
+          submissionBlock,
+          targetBlock,
           txHash: primaryTxHash,
           txReceipt,
           simulationResult,
-          tokenPair: opportunity?.tokenPair ?? null,
+          realizedNetProfit,
+          tokenPair: canonicalOpportunity.tokenPair,
           network: requestedNetwork,
           executionPayload: {
             asset,
@@ -735,7 +907,7 @@ Deno.serve(async (req) => {
           tokenB,
           routerA,
           routerB,
-          actualProfit: included ? opportunityNetProfit : 0,
+          actualProfit: included ? (realizedNetProfit ?? opportunityNetProfit) : 0,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );

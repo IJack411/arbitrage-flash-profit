@@ -24,7 +24,7 @@ const minNetProfitUsd = parseNumber(process.env.AUTO_MIN_NET_PROFIT_USD, 15);
 const maxSlippageBps = parseNumber(process.env.AUTO_MAX_SLIPPAGE_BPS, 65);
 const estimatedGasUsd = parseNumber(process.env.AUTO_ESTIMATED_GAS_USD, 8);
 const loanAmountUsd = parseNumber(process.env.AUTO_LOAN_USD, 20_000);
-const networks = parseList(process.env.AUTO_NETWORKS, ['ethereum', 'arbitrum', 'base']);
+const networks = parseList(process.env.AUTO_NETWORKS, ['ethereum', 'base']);
 const contractAddress = process.env.AUTO_CONTRACT_ADDRESS || process.env.VITE_ARBITRAGE_CONTRACT_ADDRESS || '';
 const walletAddress = process.env.AUTO_WALLET_ADDRESS || '';
 

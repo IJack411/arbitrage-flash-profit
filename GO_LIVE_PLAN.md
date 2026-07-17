@@ -1,5 +1,7 @@
 # 🚀 Go-Live Plan - Flash Loan Arbitrage Bot
 
+> For the current scanner → flash-loan contract connection flow, use `/home/runner/work/arbitrage-flash-profit/arbitrage-flash-profit/docs/FLASH_LOAN_SCANNER_CONNECTION_CHECKLIST.md`.
+
 ## Current System Status ✅
 
 **Opportunity Detection:** WORKING
@@ -289,4 +291,3 @@ The system is **ready to go live**. The execution path is built, the safety chec
 **Recommendation:** Start with $1,000 loan amount, $5 minimum profit, and increase once you see 3-5 successful profitable executions.
 
 You've got this! 🎯
-

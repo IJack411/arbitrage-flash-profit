@@ -132,6 +132,11 @@ const CAMELOT_ROUTER = '0xc873fEcbd354f5A56E00E710B90EF4201db2448d';
 // Routes using non-allowlisted venues are quoted but blocked from live on-chain submit.
 const LIVE_EXEC_VENUE_ALLOWLIST = new Set([UNIV3_ROUTER, SUSHI_ROUTER]);
 
+// Gas cost estimation for Arbitrum: typical 2-hop arb tx uses ~300k-500k gas.
+// Use midpoint 400k. If getFeeData/ETH-price lookup fails, fall back to $0.02.
+const GAS_UNITS_ARB = 400_000;
+const GAS_FALLBACK_USD = 0.02;
+
 // Returns true only when a route is safe to submit live:
 //   • exactly 2 hops (matches contract ABI constraint)
 //   • every v2 hop uses an allowlisted router address
@@ -206,7 +211,7 @@ const PRESETS = {
     rateLimitCooldownMs: 13000,
     tradeCooldownMs: 15000,
     routeCap: 96,
-    amountLadder: [250, 500, 1000, 2500, 5000, 10000],
+    amountLadder: [50, 100, 250, 500, 1000, 2500, 5000, 10000],
     includeAggressiveRoutes: true,
     // Phase 1: token bucket + pressure modulo + KPI
     diagnosticConcurrentQuotes: 3,
@@ -549,7 +554,41 @@ const runtime = {
     bestRoute: '',
     quoteFailures: 0,
   },
+  // Dynamic gas cost cache — refreshed every 30 scans via getFeeData() + ETH price quote.
+  // Falls back to GAS_FALLBACK_USD ($0.02) if the RPC call fails or provider is unavailable.
+  gasPriceCache: {
+    gasCostUsd: GAS_FALLBACK_USD,
+    lastRefreshScan: -1,
+  },
 };
+
+// Refresh the cached gas cost estimate from live RPC data.
+// Called every 30 scans (non-blocking fire-and-forget). Never throws.
+// gasCostUsd = GAS_UNITS_ARB * gasPrice (wei) / 1e18 * ethPriceUsd
+async function refreshGasPriceCache() {
+  if (!runtime.provider || OFFLINE_SMOKE_TEST) return;
+  try {
+    const [feeData, ethQuoteRaw] = await Promise.all([
+      runtime.provider.getFeeData(),
+      runtime.quoteV3.quoteExactInputSingle.staticCall(
+        TOKENS.WETH.address, TOKENS.USDC.address, 500, 10n ** 18n, 0,
+      ),
+    ]);
+    const gasPrice = feeData.gasPrice || feeData.maxFeePerGas;
+    if (!gasPrice || gasPrice <= 0n) throw new Error('no usable gas price in feeData');
+    const ethPriceUsd = Number(ethers.formatUnits(ethQuoteRaw, TOKENS.USDC.decimals));
+    if (!Number.isFinite(ethPriceUsd) || ethPriceUsd <= 0) throw new Error('bad ETH price from quoter');
+    const gasCostEth = (GAS_UNITS_ARB * Number(gasPrice)) / 1e18;
+    runtime.gasPriceCache.gasCostUsd = gasCostEth * ethPriceUsd;
+    runtime.gasPriceCache.lastRefreshScan = runtime.scansCompleted;
+    console.log(
+      `[gas] cache refreshed: gasPrice=${ethers.formatUnits(gasPrice, 'gwei')}gwei ` +
+      `ethPrice=$${ethPriceUsd.toFixed(0)} gasCost=$${runtime.gasPriceCache.gasCostUsd.toFixed(4)}`,
+    );
+  } catch (err) {
+    console.warn(`[gas] price refresh failed, using fallback $${GAS_FALLBACK_USD}: ${err?.message || 'unknown'}`);
+  }
+}
 
 // Build all route instances across families and amount ladders (no cap applied here).
 // Called by buildRoutes() which applies ranking before capping.
@@ -842,7 +881,7 @@ async function evaluateRoute(route) {
   const totalCost = loanAmount + aaveFee;
   const netProfitRaw = currentAmount - totalCost;
   const grossProfit = Number(ethers.formatUnits(netProfitRaw, loanToken.decimals));
-  const profitUsd = grossProfit - PRESET.maxGasUsd;
+  const profitUsd = grossProfit - runtime.gasPriceCache.gasCostUsd;
   const profitable = profitUsd >= PRESET.minProfitUsd;
 
   if (profitUsd > runtime.stats.bestProfitUsd) {
@@ -1026,7 +1065,7 @@ async function executeTrade(candidate) {
       }
     }
     if (POLICY_CHECK_GAS_TO_NET && candidate.profitUsd > 0) {
-      const gasToNetPct = (PRESET.maxGasUsd / candidate.profitUsd) * 100;
+      const gasToNetPct = (runtime.gasPriceCache.gasCostUsd / candidate.profitUsd) * 100;
       if (gasToNetPct > POLICY_GAS_TO_NET_MAX_PCT) {
         policyWarnings.push(`gas-to-net=${gasToNetPct.toFixed(1)}% > max=${POLICY_GAS_TO_NET_MAX_PCT}%`);
       }
@@ -1126,6 +1165,11 @@ async function scanOnce() {
     return;
   }
   runtime.lastScannedBlock = block;
+
+  // Refresh gas price cache every 30 scans (best-effort, non-blocking).
+  if ((runtime.scansCompleted % 30) === 0) {
+    refreshGasPriceCache(); // intentionally not awaited — fire-and-forget, never throws
+  }
 
   // Phase 1: partition routes — executable (2-hop) get primary budget; diagnostic (3-hop+) get limited budget
   const allRoutes = buildRoutes();

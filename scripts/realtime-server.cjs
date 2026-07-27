@@ -58,7 +58,13 @@ const EXEC_MIN_CONFIDENCE_SCORE = Math.max(60, Math.min(100, Number(process.env.
 const EXEC_MAX_GAS_TO_NET_RATIO = Math.min(0.35, Math.max(0.01, Number(process.env.EXEC_MAX_GAS_TO_NET_RATIO || 0.35)));
 const EXEC_AMOUNT_B_MIN_BPS = 9000; // 0.90
 const EXEC_AMOUNT_B_MAX_BPS = 9950; // 0.995
-const EXEC_DEFAULT_SLIPPAGE_RATIO = Math.min(0.995, Math.max(0.90, Number(process.env.EXEC_AMOUNT_B_SLIPPAGE_RATIO || 0.985)));
+const EXEC_DEFAULT_SLIPPAGE_BPS = Math.max(
+  EXEC_AMOUNT_B_MIN_BPS,
+  Math.min(
+    EXEC_AMOUNT_B_MAX_BPS,
+    Math.round(Number(process.env.EXEC_AMOUNT_B_SLIPPAGE_RATIO || 0.985) * 10000),
+  ),
+);
 
 // ---- Providers ----
 const wsUrl = `wss://arb-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY || ''}`;
@@ -90,6 +96,7 @@ const UNISWAP_V3_SWAP_ROUTER = '0xE592427A0AEce92De3Edee1F18E0157C05861564';
 const UNISWAP_V2_ROUTER = (process.env.UNISWAP_V2_ROUTER || '').trim();
 
 const ALLOWED_EXECUTION_V2_ROUTERS = new Set([SUSHI_ROUTER, UNISWAP_V2_ROUTER].filter(Boolean).map((x) => x.toLowerCase()));
+const BLOCKED_EXECUTION_ROUTERS = new Set([CAMELOT_ROUTER.toLowerCase()]);
 
 const QUOTER_ABI = [
   'function quoteExactInputSingle(address tokenIn, address tokenOut, uint24 fee, uint256 amountIn, uint160 sqrtPriceLimitX96) external returns (uint256 amountOut)',
@@ -201,6 +208,7 @@ const runtime = {
   consecutiveRpcErrors: 0,
   quoteTokens: QUOTE_BURST_LIMIT,
   quoteTokenLastRefill: Date.now(),
+  connectionGeneration: 0,
 };
 
 let stats = {
@@ -416,8 +424,15 @@ function isAllowedExecutionRoute(route) {
     if (step.type !== 'v2' && step.type !== 'v3') {
       return { ok: false, reason: `unsupported step type ${step.type}` };
     }
-    if (step.type === 'v2' && (!step.router || !ALLOWED_EXECUTION_V2_ROUTERS.has(step.router.toLowerCase()))) {
-      return { ok: false, reason: `v2 router not allowlisted (${step.router || 'missing'})` };
+    if (step.type === 'v2') {
+      const router = (step.router || '').toLowerCase();
+      if (!router) return { ok: false, reason: 'v2 router missing' };
+      if (BLOCKED_EXECUTION_ROUTERS.has(router)) {
+        return { ok: false, reason: `blocked execution venue (${step.router})` };
+      }
+      if (!ALLOWED_EXECUTION_V2_ROUTERS.has(router)) {
+        return { ok: false, reason: `v2 router not allowlisted (${step.router})` };
+      }
     }
   }
   return { ok: true, reason: '' };
@@ -435,7 +450,7 @@ function buildExecutionPolicy(route, result) {
   confidenceScore = Math.max(0, Math.min(100, confidenceScore));
 
   const amountBMin = expectedBuyTokenAmount
-    ? (expectedBuyTokenAmount * BigInt(Math.floor(EXEC_DEFAULT_SLIPPAGE_RATIO * 10000))) / 10000n
+    ? (expectedBuyTokenAmount * BigInt(EXEC_DEFAULT_SLIPPAGE_BPS)) / 10000n
     : 0n;
 
   const amountBMinRatioBps = expectedBuyTokenAmount && expectedBuyTokenAmount > 0n
@@ -710,6 +725,8 @@ function scheduleReconnect(reason, delayMs) {
 async function connect() {
   if (connecting || shuttingDown) return;
   connecting = true;
+  runtime.connectionGeneration += 1;
+  const currentGeneration = runtime.connectionGeneration;
   clearTimers();
   destroyWsProvider();
 
@@ -723,6 +740,7 @@ async function connect() {
   }
 
   wsProvider.on('block', (blockNumber) => {
+    if (currentGeneration !== runtime.connectionGeneration) return;
     onNewBlock(blockNumber).catch((err) => {
       stats.scanErrors++;
       runtime.scanning = false;
@@ -731,6 +749,7 @@ async function connect() {
   });
 
   wsProvider.on('error', (err) => {
+    if (currentGeneration !== runtime.connectionGeneration) return;
     const message = String(err?.message || err).slice(0, 140);
     console.error('WebSocket error:', message);
     const lower = message.toLowerCase();
@@ -743,9 +762,11 @@ async function connect() {
   });
 
   wsProvider.websocket?.on?.('close', () => {
+    if (currentGeneration !== runtime.connectionGeneration) return;
     scheduleReconnect('websocket closed', 10000);
   });
   wsProvider.websocket?.on?.('error', () => {
+    if (currentGeneration !== runtime.connectionGeneration) return;
     scheduleReconnect('websocket transport error', 10000);
   });
 

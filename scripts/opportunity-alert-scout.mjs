@@ -4,6 +4,7 @@ import dns from 'node:dns';
 import { getServers, setServers } from 'node:dns';
 import { Resolver } from 'node:dns/promises';
 import net from 'node:net';
+import { fileURLToPath } from 'node:url';
 
 const parseDotEnv = (fileText) => {
   const out = {};
@@ -122,6 +123,128 @@ const median = (values) => {
   return sorted[Math.floor(sorted.length / 2)];
 };
 
+// Fallback reasonCode values that mirror OPPORTUNITY_REASON_CODES in
+// supabase/functions/_shared/opportunity-contract.ts. Used only if the shared
+// contract file cannot be read at runtime.
+const FALLBACK_REASON_CODE_VALUES = [
+  'active_execution_ready',
+  'watchlist_net_profit_below_threshold',
+  'watchlist_realtime_verification_blocked',
+  'watchlist_partial_realtime_signal',
+  'watchlist_execution_payload_risk',
+  'watchlist_persistence_pending',
+  'execution_quote_parity_mismatch',
+  'execution_quote_stale',
+  'execution_boundary_invalid',
+  'readiness_gates_failed',
+];
+
+// Read the canonical reasonCode enum values from the shared contract so the
+// diagnostic tally uses exact keys rather than substring guesses.
+const loadReasonCodeCatalog = () => {
+  const candidates = [
+    path.join(process.cwd(), 'supabase/functions/_shared/opportunity-contract.ts'),
+    path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../supabase/functions/_shared/opportunity-contract.ts'),
+  ];
+  for (const file of candidates) {
+    try {
+      if (!fs.existsSync(file)) continue;
+      const text = fs.readFileSync(file, 'utf8');
+      const block = text.match(/OPPORTUNITY_REASON_CODES\s*=\s*\{([\s\S]*?)\}\s*as const/);
+      if (!block) continue;
+      const values = [];
+      const pairRe = /(\w+)\s*:\s*'([^']+)'/g;
+      let match;
+      while ((match = pairRe.exec(block[1])) !== null) {
+        values.push(match[2]);
+      }
+      if (values.length > 0) return { values, source: file };
+    } catch {
+      // Ignore and fall through to the next candidate / fallback.
+    }
+  }
+  return { values: [...FALLBACK_REASON_CODE_VALUES], source: 'fallback' };
+};
+
+// Coarse readability rollup. Works on both snake_case values and camelCase keys.
+const coarseBucketForReasonCode = (code) => {
+  const normalized = String(code || '').toLowerCase();
+  if (!normalized) return 'other';
+  if (normalized.includes('persistence')) return 'persistence';
+  if (normalized.includes('realtime') || normalized.includes('parity') || normalized.includes('quote_stale')) return 'realtimeVerification';
+  if (normalized.includes('liquidity')) return 'liquidity';
+  if (normalized.includes('payload')) return 'payload';
+  if (normalized.includes('net_profit') || normalized.includes('netprofit')) return 'netProfit';
+  return 'other';
+};
+
+// Build a per-run gating breakdown from a full watchlist array.
+const buildGatingBreakdown = (watchlist, knownReasonCodes) => {
+  const byReasonCode = {};
+  const byBucket = {};
+  const unknownReasonCodes = new Set();
+  const known = knownReasonCodes instanceof Set ? knownReasonCodes : new Set(knownReasonCodes || []);
+  for (const entry of Array.isArray(watchlist) ? watchlist : []) {
+    const rawCode = entry && typeof entry.reasonCode === 'string' && entry.reasonCode.trim()
+      ? entry.reasonCode.trim()
+      : 'other';
+    byReasonCode[rawCode] = (byReasonCode[rawCode] || 0) + 1;
+    if (rawCode !== 'other' && known.size > 0 && !known.has(rawCode)) {
+      unknownReasonCodes.add(rawCode);
+    }
+    const bucket = rawCode === 'other' ? 'other' : coarseBucketForReasonCode(rawCode);
+    byBucket[bucket] = (byBucket[bucket] || 0) + 1;
+  }
+  return {
+    total: Array.isArray(watchlist) ? watchlist.length : 0,
+    byReasonCode,
+    byBucket,
+    unknownReasonCodes: [...unknownReasonCodes],
+  };
+};
+
+// Compact record for a single near-miss watchlist candidate.
+const toWatchCandidateRecord = (entry) => {
+  if (!entry || typeof entry !== 'object') return null;
+  const route = entry.tokenPair
+    ? `${entry.tokenPair}${entry.buyDex && entry.sellDex ? ` ${entry.buyDex}->${entry.sellDex}` : ''}`
+    : (entry.route || entry.candidateId || 'unknown');
+  return {
+    route,
+    network: entry.network ?? 'unknown',
+    netProfit: Number(entry.netProfit ?? Number.NaN),
+    distanceToExecutableUsd: Number(entry.distanceToExecutableUsd ?? Number.NaN),
+    reasonCode: typeof entry.reasonCode === 'string' && entry.reasonCode.trim() ? entry.reasonCode.trim() : 'other',
+  };
+};
+
+// Median the per-reasonCode / per-bucket counts across runs, matching how the
+// scout medians its other metrics. Missing codes in a run count as 0.
+const aggregateGatingBreakdowns = (breakdowns) => {
+  const list = Array.isArray(breakdowns) ? breakdowns : [];
+  const allCodes = new Set();
+  const allBuckets = new Set();
+  for (const b of list) {
+    for (const code of Object.keys(b?.byReasonCode || {})) allCodes.add(code);
+    for (const bucket of Object.keys(b?.byBucket || {})) allBuckets.add(bucket);
+  }
+  const medianByReasonCode = {};
+  for (const code of allCodes) {
+    medianByReasonCode[code] = median(list.map((b) => Number(b?.byReasonCode?.[code] || 0)));
+  }
+  const medianByBucket = {};
+  for (const bucket of allBuckets) {
+    medianByBucket[bucket] = median(list.map((b) => Number(b?.byBucket?.[bucket] || 0)));
+  }
+  return {
+    runs: list.length,
+    medianTotal: median(list.map((b) => Number(b?.total || 0))),
+    byReasonCode: medianByReasonCode,
+    byBucket: medianByBucket,
+    unknownReasonCodes: [...new Set(list.flatMap((b) => b?.unknownReasonCodes || []))],
+  };
+};
+
 const isTransientNetworkError = (error) => {
   const message = String(error instanceof Error ? error.message : error || '').toLowerCase();
   return (
@@ -134,7 +257,7 @@ const isTransientNetworkError = (error) => {
   );
 };
 
-const evaluateProfile = async ({ endpoint, anonKey, profile, iterations, delayMs, thresholds, networks, httpTimeoutMs }) => {
+const evaluateProfile = async ({ endpoint, anonKey, profile, iterations, delayMs, thresholds, networks, httpTimeoutMs, knownReasonCodes }) => {
   const runs = [];
 
   for (let i = 0; i < iterations; i += 1) {
@@ -213,12 +336,16 @@ const evaluateProfile = async ({ endpoint, anonKey, profile, iterations, delayMs
       ? [...watchlist].sort((a, b) => Number(b.netProfit ?? -Infinity) - Number(a.netProfit ?? -Infinity))[0]
       : null;
 
+    const gatingBreakdown = buildGatingBreakdown(watchlist, knownReasonCodes);
+
     const row = {
       active: opportunities.length,
       badQuotes: Number(diagnostics.droppedByBadQuotes || 0),
       pairKeys: Number(diagnostics.pairKeys || 0),
       topWatchNet: topWatch ? Number(topWatch.netProfit ?? Number.NaN) : Number.NaN,
       topDistance: topWatch ? Number(topWatch.distanceToExecutableUsd ?? Number.NaN) : Number.NaN,
+      gatingBreakdown,
+      watchlist,
     };
     runs.push(row);
 
@@ -249,6 +376,14 @@ const evaluateProfile = async ({ endpoint, anonKey, profile, iterations, delayMs
     ? (topWatchNetBest - thresholds.topWatchNetMin) + (thresholds.topWatchDistanceMax - topDistanceBest)
     : -999;
 
+  const gatingBreakdown = aggregateGatingBreakdowns(runs.map((r) => r.gatingBreakdown));
+  const topWatchCandidates = runs
+    .flatMap((r) => (Array.isArray(r.watchlist) ? r.watchlist : []))
+    .map(toWatchCandidateRecord)
+    .filter(Boolean)
+    .sort((a, b) => Number(b.netProfit ?? -Infinity) - Number(a.netProfit ?? -Infinity))
+    .slice(0, 3);
+
   return {
     profile: profile.id,
     alert,
@@ -261,6 +396,8 @@ const evaluateProfile = async ({ endpoint, anonKey, profile, iterations, delayMs
       topWatchNet: topWatchNetBest,
       topDistance: topDistanceBest,
     },
+    gatingBreakdown,
+    topWatchCandidates,
     heartbeat: {
       anyPairKeysSeen,
     },
@@ -272,6 +409,10 @@ const evaluateProfile = async ({ endpoint, anonKey, profile, iterations, delayMs
 const run = async () => {
   loadEnvFallbacks();
   configureDnsResolvers();
+
+  const reasonCodeCatalog = loadReasonCodeCatalog();
+  const knownReasonCodes = new Set(reasonCodeCatalog.values);
+  console.log(`Loaded ${reasonCodeCatalog.values.length} reasonCodes from ${reasonCodeCatalog.source}`);
 
   const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
   const anonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
@@ -553,9 +694,13 @@ const run = async () => {
   const results = [];
   for (const profile of profiles) {
     try {
-      const result = await evaluateProfile({ endpoint, anonKey, profile, iterations, delayMs, thresholds, networks, httpTimeoutMs });
+      const result = await evaluateProfile({ endpoint, anonKey, profile, iterations, delayMs, thresholds, networks, httpTimeoutMs, knownReasonCodes });
       results.push(result);
-      console.log(`${profile.id}: alert=${result.alert} activeMed=${result.medians.active} badQuotesMed=${result.medians.badQuotes} pairKeysMed=${result.medians.pairKeys} topNet=${Number.isFinite(result.bestSeen.topWatchNet) ? result.bestSeen.topWatchNet.toFixed(2) : 'n/a'} topDist=${Number.isFinite(result.bestSeen.topDistance) ? result.bestSeen.topDistance.toFixed(2) : 'n/a'} score=${result.closenessScore.toFixed(2)}`);
+      const gate = result.gatingBreakdown || {};
+      const bucketSummary = Object.entries(gate.byBucket || {})
+        .map(([bucket, count]) => `${bucket}:${count}`)
+        .join(',') || 'none';
+      console.log(`${profile.id}: alert=${result.alert} activeMed=${result.medians.active} badQuotesMed=${result.medians.badQuotes} pairKeysMed=${result.medians.pairKeys} topNet=${Number.isFinite(result.bestSeen.topWatchNet) ? result.bestSeen.topWatchNet.toFixed(2) : 'n/a'} topDist=${Number.isFinite(result.bestSeen.topDistance) ? result.bestSeen.topDistance.toFixed(2) : 'n/a'} score=${result.closenessScore.toFixed(2)} watchMed=${gate.medianTotal ?? 'n/a'} gating=[${bucketSummary}]`);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       const failedResult = {
@@ -570,6 +715,8 @@ const run = async () => {
           topWatchNet: Number.NaN,
           topDistance: Number.NaN,
         },
+        gatingBreakdown: { runs: 0, medianTotal: Number.NaN, byReasonCode: {}, byBucket: {}, unknownReasonCodes: [] },
+        topWatchCandidates: [],
         heartbeat: {
           anyPairKeysSeen: false,
           endpointReachable: false,
@@ -639,6 +786,29 @@ const run = async () => {
     )
   );
 
+  // Cross-profile gating rollup: sum each profile's per-run median counts so the
+  // summary shows the overall distribution of why candidates stay on watchlist.
+  const gatingByReasonCode = {};
+  const gatingByBucket = {};
+  const gatingUnknownReasonCodes = new Set();
+  for (const r of results) {
+    const gb = r?.gatingBreakdown;
+    if (!gb) continue;
+    for (const [code, count] of Object.entries(gb.byReasonCode || {})) {
+      gatingByReasonCode[code] = (gatingByReasonCode[code] || 0) + Number(count || 0);
+    }
+    for (const [bucket, count] of Object.entries(gb.byBucket || {})) {
+      gatingByBucket[bucket] = (gatingByBucket[bucket] || 0) + Number(count || 0);
+    }
+    for (const code of gb.unknownReasonCodes || []) gatingUnknownReasonCodes.add(code);
+  }
+  const gatingSummary = {
+    byReasonCode: gatingByReasonCode,
+    byBucket: gatingByBucket,
+    unknownReasonCodes: [...gatingUnknownReasonCodes],
+    topWatchCandidates: (best?.topWatchCandidates || []),
+  };
+
   const summary = {
     anyAlert,
     precheckAlert,
@@ -658,6 +828,8 @@ const run = async () => {
     thresholds,
     precheckThresholds,
     warmThresholds,
+    reasonCodeCatalog: { source: reasonCodeCatalog.source, values: reasonCodeCatalog.values },
+    gatingSummary,
     bestProfile: best,
     trend: {
       recentMedianCloseness,
@@ -698,7 +870,25 @@ const run = async () => {
   }
 };
 
-run().catch((error) => {
-  console.error('Opportunity alert scout failed:', error instanceof Error ? error.message : String(error));
-  process.exit(1);
-});
+export {
+  buildGatingBreakdown,
+  aggregateGatingBreakdowns,
+  toWatchCandidateRecord,
+  coarseBucketForReasonCode,
+  loadReasonCodeCatalog,
+};
+
+const isMain = (() => {
+  try {
+    return Boolean(process.argv[1]) && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+  } catch {
+    return true;
+  }
+})();
+
+if (isMain) {
+  run().catch((error) => {
+    console.error('Opportunity alert scout failed:', error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  });
+}

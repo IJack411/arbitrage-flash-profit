@@ -302,8 +302,17 @@ const sendTelegramAlert = async ({ supabaseUrl, anonKey, chatId, message }) => {
   }
 };
 
-const numberFromEnv = (name, fallback) => {
-  const raw = process.env[name];
+// Compact renderer for the scout's gatingSummary.byBucket rollup.
+const formatGatingBuckets = (byBucket) => {
+  if (!byBucket || typeof byBucket !== 'object') return 'none';
+  const parts = Object.entries(byBucket)
+    .filter(([, count]) => Number(count) > 0)
+    .sort((a, b) => Number(b[1]) - Number(a[1]))
+    .map(([bucket, count]) => `${bucket}:${count}`);
+  return parts.length > 0 ? parts.join(',') : 'none';
+};
+
+const numberFromEnv = (name, fallback) => {  const raw = process.env[name];
   const parsed = Number(raw);
   return Number.isFinite(parsed) ? parsed : fallback;
 };
@@ -461,6 +470,7 @@ async function main() {
             `top_watch_net=${scoutSummary?.bestProfile?.bestSeen?.topWatchNet ?? 'n/a'}`,
             `top_distance=${scoutSummary?.bestProfile?.bestSeen?.topDistance ?? 'n/a'}`,
             `closeness=${scoutSummary?.bestProfile?.closenessScore ?? 'n/a'}`,
+            `gating=${formatGatingBuckets(scoutSummary?.gatingSummary?.byBucket)}`,
           ].join('\n');
           const alert = await sendTelegramAlert({ supabaseUrl, anonKey, chatId, message });
           if (alert.sent) {

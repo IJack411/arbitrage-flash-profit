@@ -38,6 +38,13 @@
  *   EXP_RPC_URL             override RPC endpoint
  *   EXP_CONTRACT_ADDRESS    override flash-arb contract address
  *
+ * Route-ranking tuner knobs (env overrides, conservative defaults):
+ *   EXP_RANK_WEIGHT_NEAR_MISS   weight for near-miss quality signal  (default 0.50)
+ *   EXP_RANK_WEIGHT_STABILITY   weight for quote-success stability    (default 0.30)
+ *   EXP_RANK_WEIGHT_LIVE_SAFE   weight bonus for live-safe routes     (default 0.20)
+ *   EXP_RANK_DECAY_WINDOW       near-miss EMA decay window in scans   (default 40)
+ *   All weights should sum to 1.0; liveSafe bonus lifts safe routes above scan-only regardless.
+ *
  * Notes:
  * - This script is intentionally separate from scripts/realtime-server.cjs.
  * - Aggressive behavior and live execution are both behind explicit flags.
@@ -315,6 +322,12 @@ function parseIntOr(value, fallback) {
   return Math.trunc(parsed);
 }
 
+function parseFloatOr(value, fallback) {
+  if (value == null || value === '') return fallback;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -338,6 +351,17 @@ const PRESET = {
   baseScanDelayMs: parseIntOr(process.env.EXP_SCAN_DELAY_MS, BASE_PRESET.baseScanDelayMs),
   maxConcurrentQuotes: parseIntOr(process.env.EXP_MAX_CONCURRENT_QUOTES, BASE_PRESET.maxConcurrentQuotes),
   routeCap: parseIntOr(process.env.EXP_ROUTE_CAP, BASE_PRESET.routeCap),
+};
+
+// ---- Route-ranking tuner (Phase 1 optimization) ----
+// Weights prioritise routes by near-miss quality, stability, and live-safe venue status.
+// Defaults are conservative; all three weights should nominally sum to 1.0.
+const RANK_CONFIG = {
+  weightNearMiss:   parseFloatOr(process.env.EXP_RANK_WEIGHT_NEAR_MISS,  0.50),
+  weightStability:  parseFloatOr(process.env.EXP_RANK_WEIGHT_STABILITY,  0.30),
+  weightLiveSafe:   parseFloatOr(process.env.EXP_RANK_WEIGHT_LIVE_SAFE,  0.20),
+  // Number of scans after which a near-miss observation has decayed to ~37% of its value.
+  decayWindowScans: parseIntOr(process.env.EXP_RANK_DECAY_WINDOW,        40),
 };
 
 const DRY_RUN = parseBool(process.env.EXP_DRY_RUN, true);
@@ -389,6 +413,8 @@ const runtime = {
   },
   // Phase 1: cache last partition counts for KPI display
   lastPartition: { execCount: 0, diagCount: 0, liveSafeCount: 0 },
+  // Phase 1 ranking tuner: per-family EMA state (nearMissEma, stabilityEma, liveSafe, lastScanIdx)
+  familyRankState: new Map(),
   stats: {
     opportunitiesFound: 0,
     dryRunOpportunities: 0,
@@ -401,7 +427,9 @@ const runtime = {
   },
 };
 
-function buildRoutes() {
+// Build all route instances across families and amount ladders (no cap applied here).
+// Called by buildRoutes() which applies ranking before capping.
+function buildAllRoutes() {
   const families = PRESET.includeAggressiveRoutes
     ? [...BASE_ROUTE_FAMILIES, ...AGGRESSIVE_ROUTE_FAMILIES]
     : [...BASE_ROUTE_FAMILIES];
@@ -427,10 +455,92 @@ function buildRoutes() {
         executable,
         liveSafe,
       });
-      if (routes.length >= PRESET.routeCap) return routes;
     }
   }
   return routes;
+}
+
+// Compute a bounded [0, 1] rank score for a route family.
+// Higher score → route is surfaced earlier in the quota when routeCap is applied.
+function computeFamilyRankScore(familyName, liveSafe) {
+  const state = runtime.familyRankState.get(familyName);
+  const nearMiss  = state ? Math.max(0, Math.min(1, state.nearMissEma))  : 0;
+  const stability = state ? Math.max(0, Math.min(1, state.stabilityEma)) : 0.5;
+  return (
+    RANK_CONFIG.weightNearMiss  * nearMiss  +
+    RANK_CONFIG.weightStability * stability +
+    RANK_CONFIG.weightLiveSafe  * (liveSafe ? 1 : 0)
+  );
+}
+
+// Sort routes by rank score (liveSafe always above scan-only), then apply routeCap.
+// Deterministic: ties broken by original build order (stable sort not guaranteed in V8
+// for equal keys, but score differences from the liveSafe binary flag prevent true ties
+// between safe and non-safe routes).
+function rankAndCapRoutes(routes) {
+  routes.sort((a, b) => {
+    const scoreA = computeFamilyRankScore(a.family, a.liveSafe);
+    const scoreB = computeFamilyRankScore(b.family, b.liveSafe);
+    if (scoreB !== scoreA) return scoreB - scoreA;
+    // Tie-break: liveSafe first (redundant if weights are configured correctly, but
+    // keeps the safety property unconditionally even with unusual weight configs)
+    if (a.liveSafe !== b.liveSafe) return a.liveSafe ? -1 : 1;
+    return 0;
+  });
+  return routes.slice(0, PRESET.routeCap);
+}
+
+// Build and rank-sort the active route list, applying routeCap after ranking.
+function buildRoutes() {
+  return rankAndCapRoutes(buildAllRoutes());
+}
+
+// Update per-family ranking EMA state after a completed scan cycle.
+// nearMissEma tracks how close routes have come to profitability (signal ∈ [0,1]).
+// stabilityEma tracks quote-success rate (signal 1=success, 0=failure).
+// Both signals use exponential decay referenced to RANK_CONFIG.decayWindowScans.
+function updateFamilyStats(results) {
+  const alpha = 1 / Math.max(1, RANK_CONFIG.decayWindowScans);
+  const currentScan = runtime.scansCompleted;
+
+  for (const r of results) {
+    const familyName = r.route.family;
+    let state = runtime.familyRankState.get(familyName);
+    if (!state) {
+      state = {
+        nearMissEma:  0,
+        stabilityEma: 0.5, // neutral prior — neither good nor bad
+        liveSafe:     r.route.liveSafe,
+        lastScanIdx:  currentScan,
+      };
+      runtime.familyRankState.set(familyName, state);
+    } else {
+      // Lazy exponential decay for scans where this family was not observed
+      const elapsed = Math.max(0, currentScan - state.lastScanIdx);
+      if (elapsed > 0) {
+        const decayFactor = Math.exp(-elapsed / RANK_CONFIG.decayWindowScans);
+        state.nearMissEma  *= decayFactor;
+        // Stability decays toward the neutral prior (0.5)
+        state.stabilityEma = 0.5 + (state.stabilityEma - 0.5) * decayFactor;
+      }
+      // Preserve the liveSafe flag from the most recent observation
+      state.liveSafe = r.route.liveSafe;
+    }
+
+    if (r.ok) {
+      // Near-miss signal: profitUsd normalised from [-10, +5] → [0, 1].
+      // Routes barely below the profit threshold (profitUsd ≈ 0) score near 0.67;
+      // very negative routes score near 0; profitable routes score ≥ 0.67.
+      const nearMissSignal = Math.max(0, Math.min(1, (r.profitUsd + 10) / 15));
+      state.nearMissEma  = (1 - alpha) * state.nearMissEma  + alpha * nearMissSignal;
+      state.stabilityEma = (1 - alpha) * state.stabilityEma + alpha * 1;
+    } else {
+      // Quote failure: only update stability (near-miss signal is undefined)
+      state.stabilityEma = (1 - alpha) * state.stabilityEma + alpha * 0;
+    }
+
+    state.lastScanIdx = currentScan;
+  }
 }
 
 // Partition route list into execution-safe (2-hop) vs diagnostic (3-hop+) buckets.
@@ -703,6 +813,27 @@ function emitKpiSnapshot() {
   runtime.kpi.windowRateLimits = 0;
   runtime.kpi.windowCooldownSkips = 0;
   runtime.kpi.windowModuloSkips = 0;
+
+  // ---- Rank telemetry (per-interval) ----
+  // Shows the top-ranked route families and current weight config for observability.
+  const rankedFamilies = [...runtime.familyRankState.entries()]
+    .map(([name, state]) => ({
+      name,
+      score: computeFamilyRankScore(name, state.liveSafe || false),
+      nearMiss: Math.max(0, Math.min(1, state.nearMissEma)).toFixed(3),
+      stability: Math.max(0, Math.min(1, state.stabilityEma)).toFixed(3),
+      liveSafe: state.liveSafe ? 'L' : 'S',
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+  const topStr = rankedFamilies.length > 0
+    ? rankedFamilies.map((f) => `${f.name}[${f.liveSafe}](score=${f.score.toFixed(3)} nm=${f.nearMiss} stab=${f.stability})`).join(' | ')
+    : 'no-data';
+  console.log(
+    `[kpi-R] topFamilies: ${topStr} | ` +
+    `weights(nearMiss=${RANK_CONFIG.weightNearMiss} stability=${RANK_CONFIG.weightStability} liveSafe=${RANK_CONFIG.weightLiveSafe}) ` +
+    `decayWin=${RANK_CONFIG.decayWindowScans}scans`,
+  );
 }
 
 async function executeTrade(candidate) {
@@ -845,6 +976,10 @@ async function scanOnce() {
 
   const execResults = execSettled.filter((s) => s.status === 'fulfilled').map((s) => s.value);
   const diagResults = diagSettled.filter((s) => s.status === 'fulfilled').map((s) => s.value);
+
+  // Phase 1 ranking tuner: update per-family EMA state from this cycle's exec results.
+  // Diagnostic results are excluded — they inform the diag bucket only.
+  updateFamilyStats(execResults);
 
   // Diagnostic-only: log profitable non-executable opportunities for analysis
   for (const d of diagResults) {
@@ -1068,6 +1203,70 @@ function offlineSmokeChecks() {
     throw new Error(`Offline smoke check failed: policy flag constant out of range (age=${POLICY_QUOTE_MAX_AGE_MS} pct=${POLICY_GAS_TO_NET_MAX_PCT} conf=${POLICY_CONFIDENCE_FLOOR_USD})`);
   }
 
+  // Phase 1 ranking tuner: verify buildAllRoutes, rankAndCapRoutes, and computeFamilyRankScore
+  const allRoutesUnranked = buildAllRoutes();
+  if (allRoutesUnranked.length === 0) throw new Error('Offline smoke check failed: buildAllRoutes returned no routes');
+  // buildAllRoutes must NOT apply the cap
+  const totalPossible = (PRESET.includeAggressiveRoutes
+    ? [...BASE_ROUTE_FAMILIES, ...AGGRESSIVE_ROUTE_FAMILIES]
+    : [...BASE_ROUTE_FAMILIES])
+    .reduce((sum, f) => sum + (f.fixedAmount ? 1 : PRESET.amountLadder.length), 0);
+  if (allRoutesUnranked.length !== totalPossible) {
+    throw new Error(`Offline smoke check failed: buildAllRoutes length mismatch (got ${allRoutesUnranked.length}, expected ${totalPossible})`);
+  }
+
+  // rankAndCapRoutes must respect routeCap
+  const ranked = rankAndCapRoutes([...allRoutesUnranked]);
+  if (ranked.length > PRESET.routeCap) throw new Error('Offline smoke check failed: rankAndCapRoutes exceeded routeCap');
+  if (ranked.length === 0) throw new Error('Offline smoke check failed: rankAndCapRoutes returned no routes');
+
+  // All rank scores must be bounded [0, 1]
+  for (const r of ranked) {
+    const score = computeFamilyRankScore(r.family, r.liveSafe);
+    if (score < 0 || score > 1 + 1e-9) {
+      throw new Error(`Offline smoke check failed: rank score out of bounds (${score}) for ${r.family}`);
+    }
+  }
+
+  // liveSafe routes must rank at or above scan-only routes (with default cold-start state)
+  const liveSafeRanked = ranked.filter((r) => r.liveSafe);
+  const scanOnlyRanked = ranked.filter((r) => r.executable && !r.liveSafe);
+  if (liveSafeRanked.length > 0 && scanOnlyRanked.length > 0) {
+    const lowestLiveSafeScore  = Math.min(...liveSafeRanked.map((r) => computeFamilyRankScore(r.family, r.liveSafe)));
+    const highestScanOnlyScore = Math.max(...scanOnlyRanked.map((r) => computeFamilyRankScore(r.family, r.liveSafe)));
+    if (lowestLiveSafeScore < highestScanOnlyScore - 1e-9) {
+      throw new Error(
+        `Offline smoke check failed: cold-start liveSafe score (${lowestLiveSafeScore.toFixed(4)}) ` +
+        `is below scan-only score (${highestScanOnlyScore.toFixed(4)}) — liveSafe weight is too low`,
+      );
+    }
+  }
+
+  // Simulate EMA updates and verify scores are updated correctly
+  const testFamily = ranked[0].family;
+  const testLiveSafe = ranked[0].liveSafe;
+  const scoreBefore = computeFamilyRankScore(testFamily, testLiveSafe);
+  // Inject a high near-miss signal for the test family
+  updateFamilyStats([{ route: ranked[0], ok: true, profitUsd: -0.1 }]);
+  const scoreAfter = computeFamilyRankScore(testFamily, testLiveSafe);
+  if (scoreAfter < scoreBefore) {
+    throw new Error(
+      `Offline smoke check failed: near-miss update lowered rank score for ${testFamily} ` +
+      `(before=${scoreBefore.toFixed(4)} after=${scoreAfter.toFixed(4)})`,
+    );
+  }
+
+  // Simulate a quote failure and verify stability decreases
+  const stabilityBefore = runtime.familyRankState.get(testFamily)?.stabilityEma ?? 0.5;
+  updateFamilyStats([{ route: ranked[0], ok: false, error: 'quote failed' }]);
+  const stabilityAfter = runtime.familyRankState.get(testFamily)?.stabilityEma ?? 0.5;
+  if (stabilityAfter >= stabilityBefore) {
+    throw new Error(
+      `Offline smoke check failed: quote-failure did not lower stabilityEma for ${testFamily} ` +
+      `(before=${stabilityBefore.toFixed(4)} after=${stabilityAfter.toFixed(4)})`,
+    );
+  }
+
   // Phase 1: verify emitKpiSnapshot executes without throwing
   try {
     emitKpiSnapshot();
@@ -1078,7 +1277,9 @@ function offlineSmokeChecks() {
   console.log(
     `[exp] offline smoke checks ok: totalRoutes=${allRoutes.length} exec=${execRoutes.length} ` +
     `liveSafe=${liveSafeRoutes.length} scanOnly=${scanOnlyRoutes.length} ` +
-    `diag=${diagRoutes.length} mode=${MODE} tokenBucket=${PRESET.tokenBucketCapacity}@${PRESET.tokenBucketRefillPerSec}/s`,
+    `diag=${diagRoutes.length} mode=${MODE} tokenBucket=${PRESET.tokenBucketCapacity}@${PRESET.tokenBucketRefillPerSec}/s ` +
+    `rankWeights=(nm=${RANK_CONFIG.weightNearMiss} stab=${RANK_CONFIG.weightStability} ls=${RANK_CONFIG.weightLiveSafe}) ` +
+    `decayWin=${RANK_CONFIG.decayWindowScans}scans`,
   );
 }
 
@@ -1155,6 +1356,12 @@ async function main() {
     `tokenBucket=${PRESET.tokenBucketCapacity}cap@${PRESET.tokenBucketRefillPerSec}/s ` +
     `pressureThreshold=${PRESET.pressureThreshold} scanModuloMax=${PRESET.scanModuloMax} ` +
     `kpiInterval=${PRESET.kpiIntervalScans}scans`,
+  );
+  console.log(
+    `[exp] rankTuner: weightNearMiss=${RANK_CONFIG.weightNearMiss} ` +
+    `weightStability=${RANK_CONFIG.weightStability} ` +
+    `weightLiveSafe=${RANK_CONFIG.weightLiveSafe} ` +
+    `decayWindow=${RANK_CONFIG.decayWindowScans}scans`,
   );
 
   if (OFFLINE_SMOKE_TEST) {

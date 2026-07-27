@@ -30,6 +30,19 @@
  *     EXP_CHECK_GAS_TO_NET=true   warn if estimated gas cost exceeds EXP_GAS_TO_NET_MAX_PCT of net profit (default 80%)
  *     EXP_CHECK_CONFIDENCE=true   warn if profitUsd is below EXP_CONFIDENCE_FLOOR_USD above minProfitUsd (default 0.50)
  *
+ * Phase 1.3 changes (near-miss diagnostics + adaptive threshold simulation):
+ * - Near-miss bucket: routes whose profitUsd falls within [minProfitUsd - NEAR_MISS_LOWER_USD, minProfitUsd)
+ *   are tracked and logged as [near-miss] lines each scan, showing gap-to-threshold.
+ *     EXP_NEAR_MISS_LOWER_USD=1.0    window below threshold counted as near-miss (default $1.00)
+ * - Per-route near-miss persistence score: exponentially weighted hit count over time; top-5 routes
+ *   by score are reported in the new [kpi-NM] line alongside windowed near-miss count.
+ *   Scores decay by 15% each KPI interval (recency-weighted).
+ * - Adaptive threshold simulation (dry-run only, EXP_NEAR_MISS_SIM=true, no live-submit effect):
+ *     reports how many exec-route candidates would pass at hypothetical minProfit levels {1.5, 1.0, 0.5}
+ *     without changing the actual execution gate. Emits [sim-thresh] lines each scan cycle.
+ *     EXP_NEAR_MISS_SIM=true    enable simulation output (default false)
+ * - All safety gates and dry-run defaults unchanged.
+ *
  * Phase 1 tuning knobs (env overrides):
  *   EXP_SCAN_DELAY_MS       base scan cadence override (ms)
  *   EXP_MAX_CONCURRENT_QUOTES  primary (executable-route) quote concurrency
@@ -377,6 +390,14 @@ const POLICY_CHECK_GAS_TO_NET = parseBool(process.env.EXP_CHECK_GAS_TO_NET, fals
 const POLICY_GAS_TO_NET_MAX_PCT = parseIntOr(process.env.EXP_GAS_TO_NET_MAX_PCT, 80);
 const POLICY_CHECK_CONFIDENCE = parseBool(process.env.EXP_CHECK_CONFIDENCE, false);
 const POLICY_CONFIDENCE_FLOOR_USD = Number(process.env.EXP_CONFIDENCE_FLOOR_USD || '0.50');
+
+// Phase 1.3: near-miss diagnostics + adaptive threshold simulation.
+// NEAR_MISS_LOWER_USD: how far below minProfitUsd counts as a near-miss (default $1.00).
+// NEAR_MISS_SIM_ENABLED: if true, emit [sim-thresh] lines showing pass-count at hypothetical thresholds.
+// NEAR_MISS_SIM_THRESHOLDS: fixed hypothetical minProfit levels for simulation (dry-run only, no live effect).
+const NEAR_MISS_LOWER_USD = Number(process.env.EXP_NEAR_MISS_LOWER_USD ?? '1.0');
+const NEAR_MISS_SIM_ENABLED = parseBool(process.env.EXP_NEAR_MISS_SIM, false);
+const NEAR_MISS_SIM_THRESHOLDS = [1.5, 1.0, 0.5];
 const HTTP_URL = process.env.EXP_RPC_URL || (ALCHEMY_KEY
   ? `https://arb-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}`
   : 'https://arb1.arbitrum.io/rpc');
@@ -415,6 +436,14 @@ const runtime = {
   lastPartition: { execCount: 0, diagCount: 0, liveSafeCount: 0 },
   // Phase 1 ranking tuner: per-family EMA state (nearMissEma, stabilityEma, liveSafe, lastScanIdx)
   familyRankState: new Map(),
+  // Phase 1.3: near-miss tracking — persistence scores (exponentially decayed hit counts) per route.
+  nearMiss: {
+    // Map<routeName, { score: number, lastProfitUsd: number, hitCount: number }>
+    // score: decaying weighted hit count; hitCount: all-time raw count.
+    scores: new Map(),
+    windowNearMisses: 0,  // windowed (reset each KPI interval)
+    totalNearMisses: 0,   // all-time cumulative
+  },
   stats: {
     opportunitiesFound: 0,
     dryRunOpportunities: 0,
@@ -807,6 +836,26 @@ function emitKpiSnapshot() {
     `bestEdge=${edgeTrend} | lat(P50/P95): ${latStr} | skips(cum): ${skips}`,
   );
 
+  // Phase 1.3: [kpi-NM] near-miss summary — top-5 routes by decaying persistence score.
+  const nmEntries = [...runtime.nearMiss.scores.entries()]
+    .sort((a, b) => b[1].score - a[1].score)
+    .slice(0, 5);
+  const nmTop5 = nmEntries.length > 0
+    ? nmEntries.map(([name, v]) => `${name}($${v.lastProfitUsd.toFixed(2)},n=${v.hitCount},s=${v.score.toFixed(1)})`).join(' ')
+    : 'none';
+  const nmWinPerMin = (runtime.nearMiss.windowNearMisses / Math.max(0.0001, elapsedMin)).toFixed(1);
+  console.log(
+    `[kpi-NM] win-nm/min=${nmWinPerMin} total-nm=${runtime.nearMiss.totalNearMisses} ` +
+    `threshold=$${PRESET.minProfitUsd} window=$${NEAR_MISS_LOWER_USD} | top5: ${nmTop5}`,
+  );
+
+  // Phase 1.3: decay near-miss persistence scores by 15% each KPI interval.
+  // Entries below 0.1 are pruned to keep the map bounded.
+  for (const [key, val] of runtime.nearMiss.scores) {
+    val.score *= 0.85;
+    if (val.score < 0.1) runtime.nearMiss.scores.delete(key);
+  }
+
   // Reset windowed counters
   runtime.kpi.windowStartMs = now;
   runtime.kpi.windowScans = 0;
@@ -834,6 +883,7 @@ function emitKpiSnapshot() {
     `weights(nearMiss=${RANK_CONFIG.weightNearMiss} stability=${RANK_CONFIG.weightStability} liveSafe=${RANK_CONFIG.weightLiveSafe}) ` +
     `decayWin=${RANK_CONFIG.decayWindowScans}scans`,
   );
+  runtime.nearMiss.windowNearMisses = 0;
 }
 
 async function executeTrade(candidate) {
@@ -929,6 +979,31 @@ function selectCandidates(results) {
   return profitable;
 }
 
+// Phase 1.3: collect candidates that fell just below the execution threshold (near-misses).
+// Includes exec and diagnostic results — near-misses in diagnostic bucket are still informative.
+function detectNearMisses(results) {
+  const lower = PRESET.minProfitUsd - NEAR_MISS_LOWER_USD;
+  return results.filter(
+    (r) => r.ok && r.profitUsd >= lower && r.profitUsd < PRESET.minProfitUsd,
+  );
+}
+
+// Phase 1.3: update per-route persistence scores for this cycle's near-misses.
+// Each hit increments score by 1. Scores decay 15% per KPI interval (see emitKpiSnapshot).
+function updateNearMissScores(nearMisses) {
+  for (const r of nearMisses) {
+    const key = r.route.name;
+    const existing = runtime.nearMiss.scores.get(key) || { score: 0, lastProfitUsd: r.profitUsd, hitCount: 0 };
+    runtime.nearMiss.scores.set(key, {
+      score: existing.score + 1,
+      lastProfitUsd: r.profitUsd,
+      hitCount: existing.hitCount + 1,
+    });
+    runtime.nearMiss.windowNearMisses += 1;
+    runtime.nearMiss.totalNearMisses += 1;
+  }
+}
+
 async function scanOnce() {
   const tCycleStart = Date.now();
 
@@ -990,6 +1065,25 @@ async function scanOnce() {
 
   const candidates = selectCandidates(execResults);
   const tPolicyDone = Date.now();
+
+  // Phase 1.3: near-miss detection across both exec and diagnostic results.
+  // Scored and logged each cycle; persistence scores decay in emitKpiSnapshot.
+  const allOkResults = [...execResults, ...diagResults].filter((r) => r.ok);
+  const nearMisses = detectNearMisses(allOkResults);
+  updateNearMissScores(nearMisses);
+  for (const nm of nearMisses.slice(0, 5)) {
+    const gap = (PRESET.minProfitUsd - nm.profitUsd).toFixed(4);
+    console.log(`[near-miss] ${nm.route.name} profit=$${nm.profitUsd.toFixed(4)} gap=-$${gap}`);
+  }
+
+  // Phase 1.3: adaptive threshold simulation — dry-run only, no live-submit effect.
+  // Reports how many exec-route candidates would pass at hypothetical minProfit levels.
+  if (NEAR_MISS_SIM_ENABLED && DRY_RUN && allOkResults.length > 0) {
+    const simStr = NEAR_MISS_SIM_THRESHOLDS
+      .map((t) => `@$${t}→${allOkResults.filter((r) => r.profitUsd >= t).length}`)
+      .join(' ');
+    console.log(`[sim-thresh] hypothetical-pass: ${simStr} (actual=$${PRESET.minProfitUsd} pass=${candidates.length})`);
+  }
   let tSubmit = tPolicyDone;
 
   if (candidates.length > 0) {
@@ -1266,6 +1360,34 @@ function offlineSmokeChecks() {
       `(before=${stabilityBefore.toFixed(4)} after=${stabilityAfter.toFixed(4)})`,
     );
   }
+
+  // Phase 1.3: verify near-miss detection logic
+  const mockNmResults = [
+    { ok: true, profitable: false, route: { name: 'test-route @500', amount: 500 }, profitUsd: PRESET.minProfitUsd - 0.50 }, // near-miss
+    { ok: true, profitable: false, route: { name: 'test-route @1000', amount: 1000 }, profitUsd: PRESET.minProfitUsd - NEAR_MISS_LOWER_USD - 0.01 }, // too far below
+    { ok: true, profitable: true, route: { name: 'test-route @2500', amount: 2500 }, profitUsd: PRESET.minProfitUsd + 0.10 }, // above threshold
+  ];
+  const detectedNm = detectNearMisses(mockNmResults);
+  if (detectedNm.length !== 1) {
+    throw new Error(`Offline smoke check failed: detectNearMisses returned ${detectedNm.length} results, expected 1`);
+  }
+  if (detectedNm[0].route.name !== 'test-route @500') {
+    throw new Error(`Offline smoke check failed: detectNearMisses picked wrong candidate: ${detectedNm[0].route.name}`);
+  }
+  // Verify score update — should not throw
+  const nmScoresBefore = runtime.nearMiss.scores.size;
+  updateNearMissScores(detectedNm);
+  if (!runtime.nearMiss.scores.has('test-route @500')) {
+    throw new Error('Offline smoke check failed: updateNearMissScores did not record near-miss route');
+  }
+  if (runtime.nearMiss.totalNearMisses < 1) {
+    throw new Error('Offline smoke check failed: nearMiss.totalNearMisses not incremented');
+  }
+  // Clean up mock entries so they don't pollute real KPI output
+  runtime.nearMiss.scores.delete('test-route @500');
+  runtime.nearMiss.windowNearMisses = 0;
+  runtime.nearMiss.totalNearMisses = 0;
+  void nmScoresBefore;
 
   // Phase 1: verify emitKpiSnapshot executes without throwing
   try {

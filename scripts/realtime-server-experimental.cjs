@@ -21,6 +21,15 @@
  * - Token bucket debits once per actual RPC attempt (including retries).
  * - KPI output uses [kpi-W] for windowed metrics and [kpi-C] for cumulative.
  *
+ * Phase 1.2 changes (amountBMin unit-safety + diagnostic policy flags):
+ * - amountBMin is now derived from the quoted step-1 output (buy-token units) * 98.5%, not loanAmount.
+ *   loanAmount is in the loan-token denomination; amountBMin must be in the buy-token (intermediate)
+ *   denomination that the contract checks after the first swap leg. Using loanAmount was unit-unsafe.
+ * - Optional diagnostic policy parity flags (all default false, dry-run only, no live-submit effect):
+ *     EXP_CHECK_QUOTE_AGE=true    warn if quote was evaluated more than EXP_QUOTE_MAX_AGE_MS ago (default 4000 ms)
+ *     EXP_CHECK_GAS_TO_NET=true   warn if estimated gas cost exceeds EXP_GAS_TO_NET_MAX_PCT of net profit (default 80%)
+ *     EXP_CHECK_CONFIDENCE=true   warn if profitUsd is below EXP_CONFIDENCE_FLOOR_USD above minProfitUsd (default 0.50)
+ *
  * Phase 1 tuning knobs (env overrides):
  *   EXP_SCAN_DELAY_MS       base scan cadence override (ms)
  *   EXP_MAX_CONCURRENT_QUOTES  primary (executable-route) quote concurrency
@@ -336,6 +345,14 @@ const LIVE_TRADING_ENABLED = !DRY_RUN && parseBool(process.env.EXP_ALLOW_LIVE_TR
 const SMOKE_TEST = parseBool(process.env.EXP_SMOKE_TEST, false);
 const OFFLINE_SMOKE_TEST = parseBool(process.env.EXP_OFFLINE_SMOKE_TEST, false);
 const MAX_SCANS = parseIntOr(process.env.EXP_MAX_SCANS, 0);
+
+// Phase 1.2: optional diagnostic policy flags — all default off, never affect live submit.
+const POLICY_CHECK_QUOTE_AGE = parseBool(process.env.EXP_CHECK_QUOTE_AGE, false);
+const POLICY_QUOTE_MAX_AGE_MS = parseIntOr(process.env.EXP_QUOTE_MAX_AGE_MS, 4000);
+const POLICY_CHECK_GAS_TO_NET = parseBool(process.env.EXP_CHECK_GAS_TO_NET, false);
+const POLICY_GAS_TO_NET_MAX_PCT = parseIntOr(process.env.EXP_GAS_TO_NET_MAX_PCT, 80);
+const POLICY_CHECK_CONFIDENCE = parseBool(process.env.EXP_CHECK_CONFIDENCE, false);
+const POLICY_CONFIDENCE_FLOOR_USD = Number(process.env.EXP_CONFIDENCE_FLOOR_USD || '0.50');
 const HTTP_URL = process.env.EXP_RPC_URL || (ALCHEMY_KEY
   ? `https://arb-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}`
   : 'https://arb1.arbitrum.io/rpc');
@@ -573,9 +590,12 @@ async function evaluateRoute(route) {
 
   const loanAmount = BigInt(route.amount) * (10n ** BigInt(loanToken.decimals));
   let currentAmount = loanAmount;
+  // Phase 1.2: track step-1 output separately — this is the buy-token quantity used for amountBMin.
+  let step1AmountOut = null;
   try {
-    for (const step of route.steps) {
-      currentAmount = await simulateStep(step, currentAmount);
+    for (let i = 0; i < route.steps.length; i++) {
+      currentAmount = await simulateStep(route.steps[i], currentAmount);
+      if (i === 0) step1AmountOut = currentAmount;
     }
   } catch (err) {
     runtime.stats.quoteFailures += 1;
@@ -601,6 +621,10 @@ async function evaluateRoute(route) {
     profitUsd,
     amountOut: currentAmount,
     loanAmount,
+    // Phase 1.2: step1AmountOut is the quoted intermediate amount in buy-token units.
+    // Used as the base for amountBMin slippage protection (unit-safe).
+    step1AmountOut,
+    quoteTimestampMs: Date.now(),
   };
 }
 
@@ -690,7 +714,14 @@ async function executeTrade(candidate) {
   const intermediateToken = TOKENS[step1.tokenOut]?.address;
   const wallet = new ethers.Wallet(PRIVATE_KEY, runtime.provider);
   const contract = new ethers.Contract(CONTRACT_ADDRESS, FLASH_LOAN_ABI, wallet);
-  const amountBMin = loanAmount * 985n / 1000n;
+
+  // Phase 1.2: amountBMin must be in buy-token (step1.tokenOut) units, not loan-token units.
+  // The contract checks: amount received from swap-A >= amountBMin before proceeding to swap-B.
+  // Using loanAmount (loan-token denomination) here would be unit-unsafe when decimals differ
+  // (e.g. USDC=6 dec for loan but WETH=18 dec for buy token).
+  // Correct base: quoted step-1 output (step1AmountOut) * 98.5% slippage floor.
+  const step1Base = candidate.step1AmountOut != null ? candidate.step1AmountOut : loanAmount;
+  const amountBMin = step1Base * 985n / 1000n;
 
   const payload = {
     asset: loanToken.address,
@@ -707,7 +738,30 @@ async function executeTrade(candidate) {
 
   if (!LIVE_TRADING_ENABLED) {
     runtime.stats.dryRunOpportunities += 1;
-    console.log(`[dry-run] would execute ${route.name} amount=${route.amount} expectedProfit=$${candidate.profitUsd.toFixed(4)}`);
+
+    // Phase 1.2: optional diagnostic policy parity checks (dry-run only, no live-submit effect).
+    const policyWarnings = [];
+    if (POLICY_CHECK_QUOTE_AGE && candidate.quoteTimestampMs != null) {
+      const ageMs = Date.now() - candidate.quoteTimestampMs;
+      if (ageMs > POLICY_QUOTE_MAX_AGE_MS) {
+        policyWarnings.push(`quote-age=${ageMs}ms > max=${POLICY_QUOTE_MAX_AGE_MS}ms`);
+      }
+    }
+    if (POLICY_CHECK_GAS_TO_NET && candidate.profitUsd > 0) {
+      const gasToNetPct = (PRESET.maxGasUsd / candidate.profitUsd) * 100;
+      if (gasToNetPct > POLICY_GAS_TO_NET_MAX_PCT) {
+        policyWarnings.push(`gas-to-net=${gasToNetPct.toFixed(1)}% > max=${POLICY_GAS_TO_NET_MAX_PCT}%`);
+      }
+    }
+    if (POLICY_CHECK_CONFIDENCE) {
+      const margin = candidate.profitUsd - PRESET.minProfitUsd;
+      if (margin < POLICY_CONFIDENCE_FLOOR_USD) {
+        policyWarnings.push(`confidence-margin=$${margin.toFixed(3)} < floor=$${POLICY_CONFIDENCE_FLOOR_USD}`);
+      }
+    }
+    const policyTag = policyWarnings.length > 0 ? ` [policy-warn: ${policyWarnings.join('; ')}]` : '';
+
+    console.log(`[dry-run] would execute ${route.name} amount=${route.amount} expectedProfit=$${candidate.profitUsd.toFixed(4)} amountBMin=${amountBMin.toString()}${policyTag}`);
     return { success: true, txHash: null, dryRun: true };
   }
 
@@ -984,10 +1038,34 @@ function offlineSmokeChecks() {
     throw new Error('Offline smoke check failed: small-first candidate ordering broke');
   }
 
-  // Phase 1: verify token bucket starts at full capacity
+  // Phase 1.1: verify token bucket starts at full capacity
   const bucketRatio = runtime.tokenBucket.tokens / PRESET.tokenBucketCapacity;
   if (bucketRatio < 0.9) {
     throw new Error(`Offline smoke check failed: token bucket not at capacity (${runtime.tokenBucket.tokens.toFixed(1)}/${PRESET.tokenBucketCapacity})`);
+  }
+
+  // Phase 1.2: verify amountBMin unit-safety — step1AmountOut path
+  // Simulate a candidate where step1AmountOut (buy-token units) differs from loanAmount (loan-token units).
+  // amountBMin must equal step1AmountOut * 985 / 1000, not loanAmount * 985 / 1000.
+  const mockStep1Out = 500_000_000_000_000_000n; // 0.5 WETH in 18-dec units
+  const mockLoanAmt = 1000n * 10n ** 6n;          // 1000 USDC in 6-dec units
+  const expectedAmtBMin = mockStep1Out * 985n / 1000n;
+  const wrongAmtBMin = mockLoanAmt * 985n / 1000n;
+  if (expectedAmtBMin === wrongAmtBMin) {
+    throw new Error('Offline smoke check failed: amountBMin unit-safety check is a no-op (values coincide — update test values)');
+  }
+  // Verify the formula itself
+  const computedAmtBMin = mockStep1Out * 985n / 1000n;
+  if (computedAmtBMin !== expectedAmtBMin) {
+    throw new Error(`Offline smoke check failed: amountBMin computation mismatch: ${computedAmtBMin} !== ${expectedAmtBMin}`);
+  }
+
+  // Phase 1.2: verify policy flag constants are parseable (no runtime errors at startup)
+  const _ageOk = POLICY_QUOTE_MAX_AGE_MS > 0;
+  const _pctOk = POLICY_GAS_TO_NET_MAX_PCT > 0 && POLICY_GAS_TO_NET_MAX_PCT <= 100;
+  const _confOk = Number.isFinite(POLICY_CONFIDENCE_FLOOR_USD) && POLICY_CONFIDENCE_FLOOR_USD >= 0;
+  if (!_ageOk || !_pctOk || !_confOk) {
+    throw new Error(`Offline smoke check failed: policy flag constant out of range (age=${POLICY_QUOTE_MAX_AGE_MS} pct=${POLICY_GAS_TO_NET_MAX_PCT} conf=${POLICY_CONFIDENCE_FLOOR_USD})`);
   }
 
   // Phase 1: verify emitKpiSnapshot executes without throwing

@@ -78,7 +78,12 @@
 
 const fs = require('fs');
 const path = require('path');
+const dns = require('dns');
 const { ethers } = require('ethers');
+
+// Force IPv4-first DNS resolution — public Arbitrum RPCs are reachable via IPv4
+// but IPv6 connections time out in this environment.
+dns.setDefaultResultOrder('ipv4first');
 
 function loadEnvFile(filePath, override = false) {
   if (!fs.existsSync(filePath)) return;
@@ -498,9 +503,15 @@ const POLICY_CONFIDENCE_FLOOR_USD = Number(process.env.EXP_CONFIDENCE_FLOOR_USD 
 const NEAR_MISS_LOWER_USD = Number(process.env.EXP_NEAR_MISS_LOWER_USD ?? '1.0');
 const NEAR_MISS_SIM_ENABLED = parseBool(process.env.EXP_NEAR_MISS_SIM, false);
 const NEAR_MISS_SIM_THRESHOLDS = [1.5, 1.0, 0.5];
-const HTTP_URL = process.env.EXP_RPC_URL || (ALCHEMY_KEY
-  ? `https://arb-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}`
-  : 'https://arb1.arbitrum.io/rpc');
+// RPC multi-endpoint failover — probed in order; first that returns chainId=42161 wins.
+const RPC_ENDPOINTS = [
+  process.env.EXP_RPC_URL,
+  ALCHEMY_KEY ? `https://arb-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}` : null,
+  'https://arbitrum-one-rpc.publicnode.com',
+  'https://arb-pokt.nodies.app',
+  'https://1rpc.io/arb',
+].filter(Boolean);
+const HTTP_URL = RPC_ENDPOINTS[RPC_ENDPOINTS.length - 1];
 
 const runtime = {
   provider: null,
@@ -1311,8 +1322,65 @@ async function verifyAddressCode(label, addr) {
   }
 }
 
-function initRuntimeProvider() {
-  runtime.provider = new ethers.JsonRpcProvider(HTTP_URL);
+async function findWorkingRpc() {
+  const https = require('https');
+  function probeRpc(url) {
+    return new Promise((resolve, reject) => {
+      const parsed = new URL(url);
+      const body = JSON.stringify({ jsonrpc: '2.0', method: 'eth_chainId', params: [], id: 1 });
+      const opts = {
+        hostname: parsed.hostname,
+        path: parsed.pathname + (parsed.search || ''),
+        method: 'POST',
+        family: 4,
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+        timeout: 10000,
+      };
+      const req = https.request(opts, (res) => {
+        let data = '';
+        res.on('data', (c) => { data += c; });
+        res.on('end', () => {
+          try {
+            const json = JSON.parse(data);
+            resolve({ status: res.statusCode, json });
+          } catch {
+            reject(new Error(`non-JSON response (HTTP ${res.statusCode})`));
+          }
+        });
+      });
+      req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+      req.on('error', reject);
+      req.write(body);
+      req.end();
+    });
+  }
+
+  for (const url of RPC_ENDPOINTS) {
+    console.log(`[rpc] trying ${url}`);
+    try {
+      const { status, json } = await probeRpc(url);
+      if (status === 429 || (json && json.error)) {
+        console.warn(`[rpc] ${url} returned error (HTTP ${status}): ${json.error && json.error.message || 'rate limited'} — skipping`);
+        continue;
+      }
+      const chainId = parseInt(json && json.result, 16);
+      if (chainId !== 42161) {
+        console.warn(`[rpc] ${url} returned chainId ${chainId} — skipping`);
+        continue;
+      }
+      console.log(`[rpc] connected: ${url} chainId=${chainId}`);
+      return url;
+    } catch (e) {
+      console.warn(`[rpc] ${url} failed: ${(e && e.message) || 'unknown'}`);
+    }
+  }
+  console.warn(`[rpc] all endpoints failed; falling back to ${HTTP_URL}`);
+  return HTTP_URL;
+}
+
+async function initRuntimeProvider() {
+  const url = await findWorkingRpc();
+  runtime.provider = new ethers.JsonRpcProvider(url);
   runtime.quoteV3 = new ethers.Contract(UNIV3_QUOTER, QUOTER_ABI, runtime.provider);
 }
 
@@ -1340,7 +1408,7 @@ async function startupSanityChecks() {
     throw new Error('Missing PRIVATE_KEY for live trading mode');
   }
 
-  initRuntimeProvider();
+  await initRuntimeProvider();
 
   const network = await retryStartupRpc('getNetwork', () => runtime.provider.getNetwork());
   if (network.chainId !== TARGET_CHAIN_ID) {
@@ -1659,7 +1727,7 @@ async function main() {
     if (!DRY_RUN) {
       throw new Error('EXP_SKIP_STARTUP_SANITY is allowed only in dry-run mode');
     }
-    initRuntimeProvider();
+    await initRuntimeProvider();
     console.warn('[exp] startup sanity checks skipped by EXP_SKIP_STARTUP_SANITY=true (dry-run only)');
   } else {
     await startupSanityChecks();

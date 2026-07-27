@@ -5976,6 +5976,7 @@ const findSpreads = (
             passReason: 'watchlist-net-profit-below-threshold',
           }),
           status: 'watchlist',
+          reasonCode: OPPORTUNITY_REASON_CODES.watchlistNetProfitBelowThreshold,
         });
 
         diagnostics.droppedByNetProfit++;
@@ -6125,6 +6126,7 @@ const findSpreads = (
           passReason: 'watchlist-net-profit-below-threshold',
         }),
         status: 'watchlist',
+        reasonCode: OPPORTUNITY_REASON_CODES.watchlistNetProfitBelowThreshold,
       });
       pushRejectionSample(diagnostics, {
         tokenPair: key,

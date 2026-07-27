@@ -44,9 +44,21 @@
  * - All safety gates and dry-run defaults unchanged.
  *
  * Phase 1 tuning knobs (env overrides):
+ *   EXP_MIN_PROFIT_USD     min net-profit threshold in USD
+ *   EXP_MAX_GAS_USD        max estimated gas cost in USD
  *   EXP_SCAN_DELAY_MS       base scan cadence override (ms)
  *   EXP_MAX_CONCURRENT_QUOTES  primary (executable-route) quote concurrency
+ *   EXP_MAX_QUOTE_RETRIES   retries per quote request
+ *   EXP_QUOTE_RETRY_BASE_MS base quote retry backoff
+ *   EXP_RATE_LIMIT_COOLDOWN_MS cooldown after rate-limit streak
+ *   EXP_TRADE_COOLDOWN_MS   delay between execution attempts
  *   EXP_ROUTE_CAP           max total routes per scan cycle
+ *   EXP_DIAG_CONCURRENCY    concurrent diagnostic-route quotes
+ *   EXP_TOKEN_BUCKET_CAPACITY token bucket capacity
+ *   EXP_TOKEN_BUCKET_REFILL_PER_SEC token bucket refill rate
+ *   EXP_PRESSURE_THRESHOLD  pressure score threshold for scan modulo
+ *   EXP_SCAN_MODULO_MAX     max adaptive scan modulo
+ *   EXP_KPI_INTERVAL_SCANS  scans per KPI snapshot
  *   EXP_BENCH               emit final KPI snapshot when EXP_MAX_SCANS exits (true/false)
  *   EXP_RPC_URL             override RPC endpoint
  *   EXP_CONTRACT_ADDRESS    override flash-arb contract address
@@ -103,6 +115,11 @@ const TOKENS = {
   USDCe: { address: '0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8', decimals: 6 },
   USDT: { address: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9', decimals: 6 },
   ARB: { address: '0x912CE59144191C1204E64559FE8253a0e49E6548', decimals: 18 },
+  GMX: { address: '0xfc5A1A6EB076a2C7aD06eD22C90d7E710E35ad0a', decimals: 18 },
+  MAGIC: { address: '0x539bdE0d7Dbd336b79148AA742883198BBF60342', decimals: 18 },
+  RDNT: { address: '0x3082CC23568eA640225c2467653dB90e9250AaA0', decimals: 18 },
+  PENDLE: { address: '0x0c880f6761F1af8d9Aa9C466984b80DAb9a8c9e8', decimals: 18 },
+  STG: { address: '0x6694340fc020c5E6B96567843da2df01b2CE1eb6', decimals: 18 },
 };
 
 const UNIV3_QUOTER = '0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6';
@@ -201,6 +218,8 @@ const PRESETS = {
   },
 };
 
+const OBSCURE_AMOUNT_LADDER = [100, 250, 500];
+
 const BASE_ROUTE_FAMILIES = [
   {
     name: 'WETH/USDC fee500->fee3000',
@@ -266,6 +285,33 @@ const BASE_ROUTE_FAMILIES = [
       { type: 'v2', router: CAMELOT_ROUTER, tokenIn: 'WETH', tokenOut: 'USDCe' },
     ],
   },
+  {
+    name: 'GMX/WETH fee3000->fee3000',
+    loan: 'GMX',
+    amountLadder: OBSCURE_AMOUNT_LADDER,
+    steps: [
+      { type: 'v3', tokenIn: 'GMX', tokenOut: 'WETH', fee: 3000 },
+      { type: 'v3', tokenIn: 'WETH', tokenOut: 'GMX', fee: 3000 },
+    ],
+  },
+  {
+    name: 'RDNT/WETH fee3000->fee3000',
+    loan: 'RDNT',
+    amountLadder: OBSCURE_AMOUNT_LADDER,
+    steps: [
+      { type: 'v3', tokenIn: 'RDNT', tokenOut: 'WETH', fee: 3000 },
+      { type: 'v3', tokenIn: 'WETH', tokenOut: 'RDNT', fee: 3000 },
+    ],
+  },
+  {
+    name: 'PENDLE/WETH fee3000->fee3000',
+    loan: 'PENDLE',
+    amountLadder: OBSCURE_AMOUNT_LADDER,
+    steps: [
+      { type: 'v3', tokenIn: 'PENDLE', tokenOut: 'WETH', fee: 3000 },
+      { type: 'v3', tokenIn: 'WETH', tokenOut: 'PENDLE', fee: 3000 },
+    ],
+  },
 ];
 
 const AGGRESSIVE_ROUTE_FAMILIES = [
@@ -321,6 +367,42 @@ const AGGRESSIVE_ROUTE_FAMILIES = [
       { type: 'v2', router: SUSHI_ROUTER, tokenIn: 'ARB', tokenOut: 'USDCe' },
     ],
   },
+  {
+    name: 'MAGIC/WETH Sushi->UniV3-3000',
+    loan: 'MAGIC',
+    amountLadder: OBSCURE_AMOUNT_LADDER,
+    steps: [
+      { type: 'v2', router: SUSHI_ROUTER, tokenIn: 'MAGIC', tokenOut: 'WETH' },
+      { type: 'v3', tokenIn: 'WETH', tokenOut: 'MAGIC', fee: 3000 },
+    ],
+  },
+  {
+    name: 'MAGIC/WETH UniV3-3000->Sushi',
+    loan: 'MAGIC',
+    amountLadder: OBSCURE_AMOUNT_LADDER,
+    steps: [
+      { type: 'v3', tokenIn: 'MAGIC', tokenOut: 'WETH', fee: 3000 },
+      { type: 'v2', router: SUSHI_ROUTER, tokenIn: 'WETH', tokenOut: 'MAGIC' },
+    ],
+  },
+  {
+    name: 'GMX/USDC Sushi->UniV3-3000',
+    loan: 'USDC',
+    amountLadder: OBSCURE_AMOUNT_LADDER,
+    steps: [
+      { type: 'v2', router: SUSHI_ROUTER, tokenIn: 'USDC', tokenOut: 'GMX' },
+      { type: 'v3', tokenIn: 'GMX', tokenOut: 'USDC', fee: 3000 },
+    ],
+  },
+  {
+    name: 'GMX/USDC UniV3-3000->Sushi',
+    loan: 'USDC',
+    amountLadder: OBSCURE_AMOUNT_LADDER,
+    steps: [
+      { type: 'v3', tokenIn: 'USDC', tokenOut: 'GMX', fee: 3000 },
+      { type: 'v2', router: SUSHI_ROUTER, tokenIn: 'GMX', tokenOut: 'USDC' },
+    ],
+  },
 ];
 
 function parseBool(value, defaultValue = false) {
@@ -361,9 +443,21 @@ if (MODE === 'aggressive' && !AGGRESSIVE_ENABLED) {
 const BASE_PRESET = PRESETS[MODE];
 const PRESET = {
   ...BASE_PRESET,
+  minProfitUsd: parseFloatOr(process.env.EXP_MIN_PROFIT_USD, BASE_PRESET.minProfitUsd),
+  maxGasUsd: parseFloatOr(process.env.EXP_MAX_GAS_USD, BASE_PRESET.maxGasUsd),
   baseScanDelayMs: parseIntOr(process.env.EXP_SCAN_DELAY_MS, BASE_PRESET.baseScanDelayMs),
   maxConcurrentQuotes: parseIntOr(process.env.EXP_MAX_CONCURRENT_QUOTES, BASE_PRESET.maxConcurrentQuotes),
+  maxQuoteRetries: parseIntOr(process.env.EXP_MAX_QUOTE_RETRIES, BASE_PRESET.maxQuoteRetries),
+  quoteRetryBaseMs: parseIntOr(process.env.EXP_QUOTE_RETRY_BASE_MS, BASE_PRESET.quoteRetryBaseMs),
+  rateLimitCooldownMs: parseIntOr(process.env.EXP_RATE_LIMIT_COOLDOWN_MS, BASE_PRESET.rateLimitCooldownMs),
+  tradeCooldownMs: parseIntOr(process.env.EXP_TRADE_COOLDOWN_MS, BASE_PRESET.tradeCooldownMs),
   routeCap: parseIntOr(process.env.EXP_ROUTE_CAP, BASE_PRESET.routeCap),
+  diagnosticConcurrentQuotes: parseIntOr(process.env.EXP_DIAG_CONCURRENCY, BASE_PRESET.diagnosticConcurrentQuotes),
+  tokenBucketCapacity: parseIntOr(process.env.EXP_TOKEN_BUCKET_CAPACITY, BASE_PRESET.tokenBucketCapacity),
+  tokenBucketRefillPerSec: parseFloatOr(process.env.EXP_TOKEN_BUCKET_REFILL_PER_SEC, BASE_PRESET.tokenBucketRefillPerSec),
+  pressureThreshold: parseFloatOr(process.env.EXP_PRESSURE_THRESHOLD, BASE_PRESET.pressureThreshold),
+  scanModuloMax: parseIntOr(process.env.EXP_SCAN_MODULO_MAX, BASE_PRESET.scanModuloMax),
+  kpiIntervalScans: parseIntOr(process.env.EXP_KPI_INTERVAL_SCANS, BASE_PRESET.kpiIntervalScans),
 };
 
 // ---- Route-ranking tuner (Phase 1 optimization) ----
@@ -382,6 +476,7 @@ const LIVE_TRADING_ENABLED = !DRY_RUN && parseBool(process.env.EXP_ALLOW_LIVE_TR
 const SMOKE_TEST = parseBool(process.env.EXP_SMOKE_TEST, false);
 const OFFLINE_SMOKE_TEST = parseBool(process.env.EXP_OFFLINE_SMOKE_TEST, false);
 const MAX_SCANS = parseIntOr(process.env.EXP_MAX_SCANS, 0);
+const SKIP_STARTUP_SANITY = parseBool(process.env.EXP_SKIP_STARTUP_SANITY, false);
 
 // Phase 1.2: optional diagnostic policy flags — all default off, never affect live submit.
 const POLICY_CHECK_QUOTE_AGE = parseBool(process.env.EXP_CHECK_QUOTE_AGE, false);
@@ -465,7 +560,9 @@ function buildAllRoutes() {
 
   const routes = [];
   for (const family of families) {
-    const ladder = family.fixedAmount ? [family.fixedAmount] : PRESET.amountLadder;
+    const ladder = family.fixedAmount
+      ? [family.fixedAmount]
+      : (Array.isArray(family.amountLadder) && family.amountLadder.length > 0 ? family.amountLadder : PRESET.amountLadder);
     for (const amount of ladder) {
       const steps = family.steps;
       const executable = steps.length === 2;
@@ -1164,10 +1261,31 @@ async function verifyAddressCode(label, addr) {
   if (!ethers.isAddress(addr)) {
     throw new Error(`${label} is not a valid address: ${addr}`);
   }
-  const code = await runtime.provider.getCode(addr);
+  const code = await retryStartupRpc(`getCode:${label}`, () => runtime.provider.getCode(addr));
   if (!code || code === '0x') {
     throw new Error(`${label} has no deployed code on the connected chain`);
   }
+}
+
+function initRuntimeProvider() {
+  runtime.provider = new ethers.JsonRpcProvider(HTTP_URL);
+  runtime.quoteV3 = new ethers.Contract(UNIV3_QUOTER, QUOTER_ABI, runtime.provider);
+}
+
+async function retryStartupRpc(label, fn, attempts = 4) {
+  let lastErr;
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (i < attempts - 1) {
+        const backoffMs = 300 * (2 ** i);
+        await sleep(backoffMs);
+      }
+    }
+  }
+  throw new Error(`[startup] ${label} failed after ${attempts} attempts: ${lastErr?.message || 'unknown error'}`);
 }
 
 async function startupSanityChecks() {
@@ -1178,10 +1296,9 @@ async function startupSanityChecks() {
     throw new Error('Missing PRIVATE_KEY for live trading mode');
   }
 
-  runtime.provider = new ethers.JsonRpcProvider(HTTP_URL);
-  runtime.quoteV3 = new ethers.Contract(UNIV3_QUOTER, QUOTER_ABI, runtime.provider);
+  initRuntimeProvider();
 
-  const network = await runtime.provider.getNetwork();
+  const network = await retryStartupRpc('getNetwork', () => runtime.provider.getNetwork());
   if (network.chainId !== TARGET_CHAIN_ID) {
     throw new Error(`Wrong network: expected ${TARGET_CHAIN_ID}, got ${network.chainId}`);
   }
@@ -1202,7 +1319,7 @@ async function startupSanityChecks() {
     fee: 500,
   };
   const probeAmount = 100n * 10n ** 6n;
-  const quote = await simulateStep(probe, probeAmount);
+  const quote = await retryStartupRpc('probeQuote', () => simulateStep(probe, probeAmount), 3);
   if (!quote || quote <= 0n) {
     throw new Error('Probe quote failed during startup checks');
   }
@@ -1304,7 +1421,9 @@ function offlineSmokeChecks() {
   const totalPossible = (PRESET.includeAggressiveRoutes
     ? [...BASE_ROUTE_FAMILIES, ...AGGRESSIVE_ROUTE_FAMILIES]
     : [...BASE_ROUTE_FAMILIES])
-    .reduce((sum, f) => sum + (f.fixedAmount ? 1 : PRESET.amountLadder.length), 0);
+    .reduce((sum, f) => sum + (f.fixedAmount
+      ? 1
+      : (Array.isArray(f.amountLadder) && f.amountLadder.length > 0 ? f.amountLadder.length : PRESET.amountLadder.length)), 0);
   if (allRoutesUnranked.length !== totalPossible) {
     throw new Error(`Offline smoke check failed: buildAllRoutes length mismatch (got ${allRoutesUnranked.length}, expected ${totalPossible})`);
   }
@@ -1492,7 +1611,15 @@ async function main() {
   return;
   }
 
-  await startupSanityChecks();
+  if (SKIP_STARTUP_SANITY) {
+    if (!DRY_RUN) {
+      throw new Error('EXP_SKIP_STARTUP_SANITY is allowed only in dry-run mode');
+    }
+    initRuntimeProvider();
+    console.warn('[exp] startup sanity checks skipped by EXP_SKIP_STARTUP_SANITY=true (dry-run only)');
+  } else {
+    await startupSanityChecks();
+  }
   await notify(`Experimental scanner started: mode=${MODE} dryRun=${DRY_RUN} routeCap=${PRESET.routeCap}`);
 
   if (SMOKE_TEST) {
@@ -1511,6 +1638,9 @@ async function main() {
 
 main().catch((err) => {
   console.error(`[exp] fatal: ${err?.message || err}`);
+  if (err?.stack) {
+    console.error(err.stack);
+  }
   process.exit(1);
 });
 

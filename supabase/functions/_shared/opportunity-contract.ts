@@ -32,6 +32,9 @@ export interface QuoteParityPayload {
   routeKey: string;
   quoteTimestamp: string;
   quoteTokenUsdPrice: number;
+  // 'high' when the USD anchor was confirmed by a >=3-venue consensus; 'low' when
+  // derived from fewer venues (unverified — downstream should treat with caution).
+  quoteTokenUsdPriceConfidence?: UsdAnchorConfidence;
   buyPrice: number;
   expectedBuyTokenAmount: string;
   amountBMin: string;
@@ -207,6 +210,103 @@ export const deriveAmountBMinFromQuote = ({
   const slippageBufferBps = BigInt(10_000 + Math.max(0, Math.round(estimatedSlippageBps)) + 200);
   const minTokenAmount = (expectedTokenAmount * 10_000n) / slippageBufferBps;
   return scaleAmount(minTokenAmount, 6, Math.max(0, tokenBDecimals));
+};
+
+export type UsdAnchorConfidence = 'high' | 'low';
+
+export interface UsdAnchorVenueQuote {
+  /** USD-denominated per-unit price quoted by this venue. */
+  price: number;
+  /** Pool depth in USD (reserveUSD). Higher = deeper = less slippage / least-slipped. */
+  liquidityUsd?: number;
+  /** Optional venue label, for diagnostics and tie-breaking only. */
+  venue?: string;
+}
+
+export interface UsdAnchorResult {
+  price: number;
+  median: number;
+  confidence: UsdAnchorConfidence;
+  venueCount: number;
+  consideredCount: number;
+  droppedOutliers: number;
+  anchorVenue?: string;
+}
+
+const medianOf = (values: number[]): number => {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+};
+
+/**
+ * Derive a token's USD reference price from the DEEPEST / least-slipped venue
+ * across ALL available venues, guarded by a >=3-venue median consensus filter.
+ *
+ * Why: a token's USD reference (used for netProfit and USD thresholds, and
+ * surfaced as quoteTokenUsdPrice) must NOT be anchored on a single venue. A
+ * thin/stale pool — e.g. a near-empty Uniswap GRAIL pool quoting ~$1.55 when the
+ * deepest venue (Camelot V3) quotes ~$43, a 28x error — would otherwise poison
+ * the anchor and misfire USD thresholds.
+ *
+ * Algorithm:
+ *  1. Keep only finite, positive prices.
+ *  2. If >= minConsensusVenues quote, drop any venue whose price deviates from
+ *     the median by more than outlierPct (default 3%). This kills uniformly
+ *     stale single-venue quotes that a two-probe thin check cannot catch.
+ *  3. Among survivors pick the DEEPEST (highest liquidityUsd) venue as the
+ *     anchor; ties break toward the price nearest the median.
+ *  4. Confidence is 'high' only when >= minConsensusVenues quoted; with fewer
+ *     venues the price is flagged 'low' so downstream can see it is unverified
+ *     (we do NOT silently trust a sub-consensus anchor).
+ */
+export const deriveUsdReferenceAnchor = (
+  quotes: UsdAnchorVenueQuote[],
+  options?: { outlierPct?: number; minConsensusVenues?: number },
+): UsdAnchorResult | null => {
+  const outlierPct = Number.isFinite(options?.outlierPct) && (options?.outlierPct as number) > 0
+    ? (options?.outlierPct as number)
+    : 3;
+  const minConsensusVenues = Number.isFinite(options?.minConsensusVenues) && (options?.minConsensusVenues as number) >= 1
+    ? Math.floor(options?.minConsensusVenues as number)
+    : 3;
+
+  const valid = (quotes || []).filter((q) => q && Number.isFinite(q.price) && q.price > 0);
+  if (valid.length === 0) return null;
+
+  const median = medianOf(valid.map((q) => q.price));
+
+  let considered = valid;
+  let droppedOutliers = 0;
+  if (valid.length >= minConsensusVenues && median > 0) {
+    const kept = valid.filter((q) => Math.abs(q.price - median) / median <= outlierPct / 100);
+    // Only treat outliers as dropped when a consensus set actually survives; if every
+    // venue deviates (pathological), fall back to all venues and report zero dropped.
+    if (kept.length > 0) {
+      considered = kept;
+      droppedOutliers = valid.length - kept.length;
+    }
+  }
+
+  const depthOf = (q: UsdAnchorVenueQuote): number => (Number.isFinite(q.liquidityUsd) ? (q.liquidityUsd as number) : 0);
+  let anchor = considered[0];
+  for (const q of considered) {
+    if (depthOf(q) > depthOf(anchor)) {
+      anchor = q;
+    } else if (depthOf(q) === depthOf(anchor) && Math.abs(q.price - median) < Math.abs(anchor.price - median)) {
+      anchor = q;
+    }
+  }
+
+  return {
+    price: anchor.price,
+    median,
+    confidence: valid.length >= minConsensusVenues ? 'high' : 'low',
+    venueCount: valid.length,
+    consideredCount: considered.length,
+    droppedOutliers,
+    anchorVenue: anchor.venue,
+  };
 };
 
 export const evaluateSourceQualityPenalty = ({

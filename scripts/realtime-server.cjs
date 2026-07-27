@@ -56,9 +56,9 @@ const QUOTE_BURST_LIMIT = Math.min(40, Math.max(1, Number(process.env.EXEC_QUOTE
 const EXEC_MAX_QUOTE_AGE_MS = Math.min(45000, Math.max(1000, Number(process.env.EXEC_MAX_QUOTE_AGE_MS || 45000)));
 const EXEC_MIN_CONFIDENCE_SCORE = Math.max(60, Math.min(100, Number(process.env.EXEC_MIN_CONFIDENCE_SCORE || 60)));
 const EXEC_MAX_GAS_TO_NET_RATIO = Math.min(0.35, Math.max(0.01, Number(process.env.EXEC_MAX_GAS_TO_NET_RATIO || 0.35)));
-const EXEC_AMOUNT_B_MIN_RATIO = 0.90;
-const EXEC_AMOUNT_B_MAX_RATIO = 0.995;
-const EXEC_DEFAULT_SLIPPAGE_RATIO = Math.min(EXEC_AMOUNT_B_MAX_RATIO, Math.max(EXEC_AMOUNT_B_MIN_RATIO, Number(process.env.EXEC_AMOUNT_B_SLIPPAGE_RATIO || 0.985)));
+const EXEC_AMOUNT_B_MIN_BPS = 9000; // 0.90
+const EXEC_AMOUNT_B_MAX_BPS = 9950; // 0.995
+const EXEC_DEFAULT_SLIPPAGE_RATIO = Math.min(0.995, Math.max(0.90, Number(process.env.EXEC_AMOUNT_B_SLIPPAGE_RATIO || 0.985)));
 
 // ---- Providers ----
 const wsUrl = `wss://arb-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY || ''}`;
@@ -438,8 +438,8 @@ function buildExecutionPolicy(route, result) {
     ? (expectedBuyTokenAmount * BigInt(Math.floor(EXEC_DEFAULT_SLIPPAGE_RATIO * 10000))) / 10000n
     : 0n;
 
-  const amountBMinRatio = expectedBuyTokenAmount && expectedBuyTokenAmount > 0n
-    ? Number((amountBMin * 10000n) / expectedBuyTokenAmount) / 10000
+  const amountBMinRatioBps = expectedBuyTokenAmount && expectedBuyTokenAmount > 0n
+    ? Number((amountBMin * 10000n) / expectedBuyTokenAmount)
     : 0;
   const gasToNetRatio = result.profit > 0 ? MAX_GAS_USD / result.profit : Infinity;
 
@@ -450,8 +450,8 @@ function buildExecutionPolicy(route, result) {
   if (confidenceScore < EXEC_MIN_CONFIDENCE_SCORE) reasons.push(`confidence ${confidenceScore} < ${EXEC_MIN_CONFIDENCE_SCORE}`);
   if (gasToNetRatio > EXEC_MAX_GAS_TO_NET_RATIO) reasons.push(`gas/net ${gasToNetRatio.toFixed(3)} > ${EXEC_MAX_GAS_TO_NET_RATIO}`);
   if (!expectedBuyTokenAmount || expectedBuyTokenAmount <= 0n) reasons.push('missing expected buy-token quote amount');
-  if (amountBMinRatio < EXEC_AMOUNT_B_MIN_RATIO || amountBMinRatio > EXEC_AMOUNT_B_MAX_RATIO) {
-    reasons.push(`amountBMin ratio ${amountBMinRatio.toFixed(3)} outside [${EXEC_AMOUNT_B_MIN_RATIO}, ${EXEC_AMOUNT_B_MAX_RATIO}]`);
+  if (amountBMinRatioBps < EXEC_AMOUNT_B_MIN_BPS || amountBMinRatioBps > EXEC_AMOUNT_B_MAX_BPS) {
+    reasons.push(`amountBMin ratio ${(amountBMinRatioBps / 10000).toFixed(4)} outside [0.9000, 0.9950]`);
   }
 
   return {
@@ -462,7 +462,7 @@ function buildExecutionPolicy(route, result) {
     quoteAgeMs,
     gasToNetRatio,
     expectedBuyTokenAmount,
-    amountBMinRatio,
+    amountBMinRatioBps,
   };
 }
 

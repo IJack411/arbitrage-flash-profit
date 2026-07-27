@@ -85,9 +85,13 @@ export function gateCandidate(payload, requote, opts = {}) {
 
   const reasons = [];
 
-  // Venue allowlist (defense-in-depth).
-  const routerAok = payload.routerAisV3 || LIVE_EXEC_VENUE_ALLOWLIST.has(payload.routerA);
-  const routerBok = payload.routerBisV3 || LIVE_EXEC_VENUE_ALLOWLIST.has(payload.routerB);
+  // Venue allowlist (defense-in-depth). Enforce on the router ADDRESS
+  // unconditionally — a V3 flag must never bypass the allowlist, or an
+  // unexpected router address could reach the ready-to-submit calldata.
+  // Compare case-insensitively so lowercased discovery payloads still match.
+  const allowlistLc = new Set([...LIVE_EXEC_VENUE_ALLOWLIST].map((a) => String(a).toLowerCase()));
+  const routerAok = allowlistLc.has(String(payload.routerA || '').toLowerCase());
+  const routerBok = allowlistLc.has(String(payload.routerB || '').toLowerCase());
   if (!routerAok || !routerBok) reasons.push('venue_not_allowlisted');
 
   const quoteUsdPrice = Number(payload.quote?.quoteTokenUsdPrice ?? 1);

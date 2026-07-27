@@ -20,7 +20,15 @@
 // Known limit: the guard catches SLIPPAGE mirages, not a pool that is uniformly
 // thin/stale at both sizes (similar wrong price at $50 and $1000 = low impact =
 // looks OK). So an unusually large spread on an otherwise-efficient asset (e.g.
-// an LST) is more likely a stale small pool than a real edge — sanity-check it.
+// an LST) is more likely a stale small pool than a real edge.
+//
+// CONSENSUS CHECK: to catch that stale-but-uniform case, when a pair has >=3
+// LIQ-OK venues we take the MEDIAN per-unit price and drop any venue more than
+// OUTLIER_PCT (default 3%) off it — one broken quote 4% off the pack is a bad
+// quote, not an arb. Such pairs are labelled VERIFIED. Pairs with only 2 LIQ-OK
+// venues can't form a consensus (a real 2-DEX gap and one broken quote look
+// identical), so they're kept but labelled 2-VENUE (unverified). The raw
+// pre-consensus spread is still shown in SIMPLE_SCAN_DEBUG so nothing is hidden.
 
 import { JsonRpcProvider, Network, Contract, formatUnits, parseUnits } from 'ethers';
 
@@ -82,6 +90,8 @@ const PROBE_SMALL_USD = 50; // small trade probe (~spot)
 const PROBE_LARGE_USD = 1000; // modest trade probe (executable size)
 const MIN_INTERESTING_SPREAD = 0.25; // realistic post-fee threshold to highlight
 const THROTTLE_MS = 120; // min gap between RPC calls (be nice to public nodes)
+const MIN_CONSENSUS_VENUES = 3; // need this many LIQ-OK venues to form consensus
+const OUTLIER_PCT = Number(process.env.SIMPLE_SCAN_OUTLIER_PCT || 3); // drop venues this far off the median
 
 // ---------------------------------------------------------------------------
 // ABIs (only the one method we need from each).
@@ -304,14 +314,54 @@ async function scanOnce(provider) {
       continue;
     }
 
-    let low = healthy[0];
-    let high = healthy[0];
-    for (const q of healthy) {
-      if (q.price < low.price) low = q;
-      if (q.price > high.price) high = q;
+    // Raw (pre-consensus) spread across all LIQ-OK venues — shown in debug.
+    const rawEnds = lowHigh(healthy);
+    const rawSpread = ((rawEnds.high.price - rawEnds.low.price) / rawEnds.low.price) * 100;
+
+    // Consensus check: with >=3 LIQ-OK venues, drop any whose price is an
+    // outlier vs the median (a broken/stale quote). With only 2 we can't tell a
+    // real gap from a bad quote, so keep both and mark the row unverified.
+    let used = healthy;
+    let dropped = [];
+    let verified = false;
+    if (healthy.length >= MIN_CONSENSUS_VENUES) {
+      const med = median(healthy.map((q) => q.price));
+      used = [];
+      for (const q of healthy) {
+        if (Math.abs(q.price - med) / med * 100 > OUTLIER_PCT) dropped.push(q);
+        else used.push(q);
+      }
+      verified = true;
     }
+
+    if (debug) {
+      console.log(
+        `[debug]   raw spread ${rawSpread.toFixed(3)}% (${rawEnds.low.venue} -> ${rawEnds.high.venue})` +
+          (dropped.length ? ` | dropped outliers: ${dropped.map((q) => `${q.venue}(${fmtPrice(q.price)})`).join(', ')}` : ''),
+      );
+    }
+
+    if (used.length < 2) {
+      rows.push({
+        label,
+        note: `no consensus (all but ${used.length} LIQ-OK venue(s) were outliers > ${OUTLIER_PCT}% off median)`,
+      });
+      continue;
+    }
+
+    const { low, high } = lowHigh(used);
     const spreadPct = ((high.price - low.price) / low.price) * 100;
-    rows.push({ label, low, high, spreadPct, healthy: healthy.length, total: quotes.length, thinCount });
+    rows.push({
+      label,
+      low,
+      high,
+      spreadPct,
+      liqOk: used.length,
+      total: quotes.length,
+      thinCount,
+      verified,
+      droppedCount: dropped.length,
+    });
   }
 
   rows.sort((a, b) => (b.spreadPct ?? -1) - (a.spreadPct ?? -1));
@@ -328,6 +378,22 @@ function fmtPrice(n) {
   return n.toPrecision(4);
 }
 
+function median(nums) {
+  const s = [...nums].sort((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+}
+
+function lowHigh(quotes) {
+  let low = quotes[0];
+  let high = quotes[0];
+  for (const q of quotes) {
+    if (q.price < low.price) low = q;
+    if (q.price > high.price) high = q;
+  }
+  return { low, high };
+}
+
 function pad(str, width) {
   str = String(str);
   return str.length >= width ? str : str + ' '.repeat(width - str.length);
@@ -337,11 +403,17 @@ function printTable(rows) {
   const stamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
   console.log(`\n=== Simple Spread Scanner — Arbitrum — ${stamp} UTC ===`);
   console.log('RAW gross spread only (no DEX fees / gas subtracted).');
-  console.log(`Venues probed at ~$${PROBE_SMALL_USD} vs ~$${PROBE_LARGE_USD}; >${THIN_IMPACT_PCT}% price move = THIN pool (excluded).\n`);
+  console.log(`Venues probed at ~$${PROBE_SMALL_USD} vs ~$${PROBE_LARGE_USD}; >${THIN_IMPACT_PCT}% price move = THIN pool (excluded).`);
+  console.log(`VERIFIED = >=${MIN_CONSENSUS_VENUES} LIQ-OK venues agree (outliers >${OUTLIER_PCT}% off median dropped); 2-VENUE = only 2 venues, gap unconfirmed.\n`);
   console.log(
-    `${pad('PAIR', 14)}${pad('BUY @ (cheapest)', 26)}${pad('SELL @ (dearest)', 26)}${pad('SPREAD%', 10)}LIQ`,
+    `${pad('PAIR', 14)}${pad('BUY @ (cheapest)', 26)}${pad('SELL @ (dearest)', 26)}${pad('SPREAD%', 10)}STATUS`,
   );
-  console.log('-'.repeat(84));
+  console.log('-'.repeat(94));
+
+  const statusOf = (r) =>
+    r.verified
+      ? `VERIFIED ${r.liqOk}/${r.total}${r.droppedCount ? ` (-${r.droppedCount} outlier)` : ''}`
+      : `2-VENUE ${r.liqOk}/${r.total} (unverified)`;
 
   let best = null;
   const interesting = [];
@@ -352,27 +424,26 @@ function printTable(rows) {
     }
     const buy = `${r.low.venue} (${fmtPrice(r.low.price)})`;
     const sell = `${r.high.venue} (${fmtPrice(r.high.price)})`;
-    const liq = `LIQ-OK ${r.healthy}/${r.total}`;
     console.log(
-      `${pad(r.label, 14)}${pad(buy, 26)}${pad(sell, 26)}${pad(r.spreadPct.toFixed(3) + '%', 10)}${liq}`,
+      `${pad(r.label, 14)}${pad(buy, 26)}${pad(sell, 26)}${pad(r.spreadPct.toFixed(3) + '%', 10)}${statusOf(r)}`,
     );
     if (!best || r.spreadPct > best.spreadPct) best = r;
     if (r.spreadPct >= MIN_INTERESTING_SPREAD) interesting.push(r);
   }
 
-  console.log('-'.repeat(84));
+  console.log('-'.repeat(94));
   if (best) {
-    console.log(`BIGGEST SPREAD RIGHT NOW: ${best.label} ${best.spreadPct.toFixed(3)}% (${best.low.venue} -> ${best.high.venue})`);
+    console.log(`BIGGEST SPREAD RIGHT NOW: ${best.label} ${best.spreadPct.toFixed(3)}% (${best.low.venue} -> ${best.high.venue}) [${best.verified ? 'VERIFIED' : '2-VENUE unverified'}]`);
   } else {
     console.log('BIGGEST SPREAD RIGHT NOW: none (no pair had 2+ deep venues)');
   }
   if (interesting.length) {
-    console.log(`\nLIQ-OK spreads above ${MIN_INTERESTING_SPREAD}% (worth a closer look):`);
+    console.log(`\nSpreads above ${MIN_INTERESTING_SPREAD}% (worth a closer look):`);
     for (const r of interesting) {
-      console.log(`  ${pad(r.label, 14)} ${r.spreadPct.toFixed(3)}%  buy ${r.low.venue} / sell ${r.high.venue}`);
+      console.log(`  ${pad(r.label, 14)} ${pad(r.spreadPct.toFixed(3) + '%', 9)} ${r.verified ? 'VERIFIED' : '2-VENUE(unverified)'}  buy ${r.low.venue} / sell ${r.high.venue}`);
     }
   } else {
-    console.log(`\nNo LIQ-OK pair cleared ${MIN_INTERESTING_SPREAD}% — markets look efficient right now.`);
+    console.log(`\nNo pair cleared ${MIN_INTERESTING_SPREAD}% — markets look efficient right now.`);
   }
 }
 

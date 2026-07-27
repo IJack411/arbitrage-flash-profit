@@ -439,7 +439,15 @@ function sleep(ms) {
 
 function isRateLimitError(err) {
   const msg = String(err?.message || '').toLowerCase();
-  return msg.includes('429') || msg.includes('rate limit') || msg.includes('too many requests');
+  const code = err?.code ?? err?.error?.code;
+  // JSON-RPC -32005 = "rate limit exceeded" (publicnode/allnodes and others).
+  if (code === -32005 || String(code) === '-32005') return true;
+  return msg.includes('429')
+    || msg.includes('rate limit')
+    || msg.includes('too many requests')
+    || msg.includes('-32005')
+    || msg.includes('capacity')                 // Alchemy "Monthly capacity limit exceeded"
+    || msg.includes('exceeded maximum retry');  // ethers wrapper around repeated 429s
 }
 
 const REQUESTED_MODE = (process.env.EXP_MODE || 'balanced').toLowerCase();
@@ -512,10 +520,24 @@ const RPC_ENDPOINTS = [
   'https://1rpc.io/arb',
 ].filter(Boolean);
 const HTTP_URL = RPC_ENDPOINTS[RPC_ENDPOINTS.length - 1];
+// After this many consecutive rate-limit errors on the active endpoint, rotate
+// to the next healthy RPC (mid-run failover). Configurable via EXP_RPC_ROTATE_THRESHOLD.
+const RPC_ROTATE_THRESHOLD = Math.max(1, parseInt(process.env.EXP_RPC_ROTATE_THRESHOLD || '3', 10));
 
 const runtime = {
   provider: null,
   quoteV3: null,
+  // RPC rotation state (mid-run failover, not just at startup).
+  rpcIndex: 0,
+  currentRpcUrl: null,
+  rotating: false,
+  rotations: 0,
+  // Per-block quote cache: dedupes identical (block, step, amountIn) reads so a
+  // block whose routes share legs isn't re-quoted repeatedly. Reset each new block.
+  quoteCache: new Map(),
+  quoteCacheBlock: 0,
+  quoteCacheHits: 0,
+  quoteCacheMisses: 0,
   lastScannedBlock: 0,
   scanInFlight: false,
   adaptiveDelayMs: PRESET.baseScanDelayMs,
@@ -797,6 +819,11 @@ async function callWithRetries(label, fn) {
           runtime.cooldownUntil,
           Date.now() + PRESET.rateLimitCooldownMs + (runtime.consecutiveRateLimits * 250),
         );
+        // Mid-run failover: after repeated throttling on the active endpoint,
+        // rotate to the next healthy RPC instead of backing off on a dead node.
+        if (runtime.consecutiveRateLimits >= RPC_ROTATE_THRESHOLD) {
+          await rotateProvider(`consecutiveRateLimits=${runtime.consecutiveRateLimits}`);
+        }
       }
       if (attempt >= PRESET.maxQuoteRetries) break;
       const waitMs = PRESET.quoteRetryBaseMs * (2 ** attempt);
@@ -851,21 +878,35 @@ async function simulateStep(step, amountIn) {
     throw new Error(`invalid token mapping: ${step.tokenIn}->${step.tokenOut}`);
   }
 
+  // Per-block quote cache: identical (block, step, amountIn) reads are served
+  // once. Routes that share a leg (e.g. WETH->USDC @ same tier/amount) then cost
+  // a single RPC call per block instead of N. Cache is reset per new block.
+  const cacheKey = step.type === 'v3'
+    ? `v3|${tokenIn}|${tokenOut}|${step.fee}|${amountIn}`
+    : `v2|${step.router}|${tokenIn}|${tokenOut}|${amountIn}`;
+  if (runtime.quoteCache.has(cacheKey)) {
+    runtime.quoteCacheHits += 1;
+    return runtime.quoteCache.get(cacheKey);
+  }
+  runtime.quoteCacheMisses += 1;
+
+  let result;
   if (step.type === 'v3') {
-    return callWithRetries('v3 quote', async () => {
+    result = await callWithRetries('v3 quote', async () => {
       return runtime.quoteV3.quoteExactInputSingle.staticCall(tokenIn, tokenOut, step.fee, amountIn, 0);
     });
-  }
-
-  if (step.type === 'v2') {
-    const router = new ethers.Contract(step.router, V2_ROUTER_ABI, runtime.provider);
-    return callWithRetries('v2 quote', async () => {
+  } else if (step.type === 'v2') {
+    result = await callWithRetries('v2 quote', async () => {
+      const router = new ethers.Contract(step.router, V2_ROUTER_ABI, runtime.provider);
       const amounts = await router.getAmountsOut(amountIn, [tokenIn, tokenOut]);
       return amounts[1];
     });
+  } else {
+    throw new Error(`unsupported step type: ${step.type}`);
   }
 
-  throw new Error(`unsupported step type: ${step.type}`);
+  runtime.quoteCache.set(cacheKey, result);
+  return result;
 }
 
 async function evaluateRoute(route) {
@@ -949,7 +990,9 @@ function emitKpiSnapshot() {
   console.log(
     `[kpi-W] win=${winSec}s scans/min=${scansPerMin} rl/min=${rlPerMin} ` +
     `cooldownDuty=${cooldownDutyPct}% modulo=${runtime.scanModulo} pressure=${runtime.pressureScore.toFixed(1)} ` +
-    `exec=${runtime.lastPartition.execCount} diag=${runtime.lastPartition.diagCount} liveSafe=${runtime.lastPartition.liveSafeCount}`,
+    `exec=${runtime.lastPartition.execCount} diag=${runtime.lastPartition.diagCount} liveSafe=${runtime.lastPartition.liveSafeCount} ` +
+    `rpc=${runtime.currentRpcUrl || 'n/a'} rotations=${runtime.rotations} ` +
+    `cache(hit/miss)=${runtime.quoteCacheHits}/${runtime.quoteCacheMisses}`,
   );
 
   // ---- Cumulative KPIs (all-time) ----
@@ -1169,13 +1212,29 @@ async function scanOnce() {
     return;
   }
 
-  const block = await runtime.provider.getBlockNumber();
+  let block;
+  try {
+    block = await runtime.provider.getBlockNumber();
+  } catch (err) {
+    // Cycle-start read failed — if it's throttling, rotate and skip this cycle
+    // rather than aborting the loop on a dead endpoint.
+    if (isRateLimitError(err)) {
+      runtime.consecutiveRateLimits += 1;
+      await rotateProvider('getBlockNumber');
+    }
+    return;
+  }
   const tBlockSeen = Date.now();
   if (block <= runtime.lastScannedBlock) {
     runtime.skipReasons.noNewBlock += 1;
     return;
   }
   runtime.lastScannedBlock = block;
+  // Reset the per-block quote cache when we advance to a new block.
+  if (runtime.quoteCacheBlock !== block) {
+    runtime.quoteCache.clear();
+    runtime.quoteCacheBlock = block;
+  }
 
   // Refresh gas price cache every 30 scans (best-effort, non-blocking).
   if ((runtime.scansCompleted % 30) === 0) {
@@ -1322,7 +1381,7 @@ async function verifyAddressCode(label, addr) {
   }
 }
 
-async function findWorkingRpc() {
+async function findWorkingRpc(startIndex = 0) {
   const https = require('https');
   function probeRpc(url) {
     return new Promise((resolve, reject) => {
@@ -1355,7 +1414,10 @@ async function findWorkingRpc() {
     });
   }
 
-  for (const url of RPC_ENDPOINTS) {
+  // Probe endpoints in rotation order starting at startIndex, wrapping around.
+  for (let offset = 0; offset < RPC_ENDPOINTS.length; offset += 1) {
+    const idx = (startIndex + offset) % RPC_ENDPOINTS.length;
+    const url = RPC_ENDPOINTS[idx];
     console.log(`[rpc] trying ${url}`);
     try {
       const { status, json } = await probeRpc(url);
@@ -1369,19 +1431,54 @@ async function findWorkingRpc() {
         continue;
       }
       console.log(`[rpc] connected: ${url} chainId=${chainId}`);
-      return url;
+      return { url, index: idx };
     } catch (e) {
       console.warn(`[rpc] ${url} failed: ${(e && e.message) || 'unknown'}`);
     }
   }
   console.warn(`[rpc] all endpoints failed; falling back to ${HTTP_URL}`);
-  return HTTP_URL;
+  return { url: HTTP_URL, index: RPC_ENDPOINTS.length - 1 };
+}
+
+function bindProvider(url, index) {
+  runtime.provider = new ethers.JsonRpcProvider(url);
+  runtime.quoteV3 = new ethers.Contract(UNIV3_QUOTER, QUOTER_ABI, runtime.provider);
+  runtime.currentRpcUrl = url;
+  runtime.rpcIndex = index;
+}
+
+// Mid-run failover: when the active endpoint is throttling, probe the NEXT
+// endpoints (wrapping) and swap the live provider. Guarded so only one rotation
+// runs at a time. Returns true if it switched to a different endpoint.
+async function rotateProvider(reason = 'rate-limit') {
+  if (runtime.rotating || RPC_ENDPOINTS.length < 2) return false;
+  runtime.rotating = true;
+  const from = runtime.currentRpcUrl;
+  try {
+    const { url, index } = await findWorkingRpc(runtime.rpcIndex + 1);
+    if (url && url !== from) {
+      bindProvider(url, index);
+      runtime.rotations += 1;
+      runtime.consecutiveRateLimits = 0;
+      // Clear the per-block cache: entries were quoted against the old endpoint's
+      // pending block view; re-quote fresh on the new endpoint.
+      runtime.quoteCache.clear();
+      console.warn(`[rpc] rotated (${reason}) ${from} -> ${url} (rotation #${runtime.rotations})`);
+      return true;
+    }
+    console.warn(`[rpc] rotation (${reason}) found no healthier endpoint than ${from}`);
+    return false;
+  } catch (e) {
+    console.warn(`[rpc] rotation error: ${(e && e.message) || 'unknown'}`);
+    return false;
+  } finally {
+    runtime.rotating = false;
+  }
 }
 
 async function initRuntimeProvider() {
-  const url = await findWorkingRpc();
-  runtime.provider = new ethers.JsonRpcProvider(url);
-  runtime.quoteV3 = new ethers.Contract(UNIV3_QUOTER, QUOTER_ABI, runtime.provider);
+  const { url, index } = await findWorkingRpc(0);
+  bindProvider(url, index);
 }
 
 async function retryStartupRpc(label, fn, attempts = 4) {
@@ -1681,6 +1778,11 @@ async function loop() {
       emitKpiSnapshot();
     }
     shutdownRequested = true;
+    // Clean shutdown so a bounded run actually exits: stop the KPI interval and
+    // tear down the provider's background poller (otherwise the event loop stays
+    // alive and the process hangs after "exiting").
+    if (runtime.kpiIntervalHandle) clearInterval(runtime.kpiIntervalHandle);
+    try { runtime.provider?.destroy?.(); } catch { /* best-effort */ }
     return;
   }
 
@@ -1742,23 +1844,30 @@ async function main() {
 
   loop();
 
-  // Phase 1: time-based KPI snapshot fallback (every 5 min) in case scan count is low
-  setInterval(() => {
+  // Phase 1: time-based KPI snapshot fallback (every 5 min) in case scan count is low.
+  // Handle is stored + unref'd so a bounded (EXP_MAX_SCANS) run can exit cleanly.
+  runtime.kpiIntervalHandle = setInterval(() => {
     if (!shutdownRequested && runtime.kpi.windowScans > 0) emitKpiSnapshot();
   }, 5 * 60 * 1000);
+  if (runtime.kpiIntervalHandle.unref) runtime.kpiIntervalHandle.unref();
 }
 
-main().catch((err) => {
-  console.error(`[exp] fatal: ${err?.message || err}`);
-  if (err?.stack) {
-    console.error(err.stack);
-  }
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((err) => {
+    console.error(`[exp] fatal: ${err?.message || err}`);
+    if (err?.stack) {
+      console.error(err.stack);
+    }
+    process.exit(1);
+  });
 
-process.on('SIGINT', async () => {
-  shutdownRequested = true;
-  await notify('Experimental scanner stopped');
-  console.log('[exp] stopped');
-  process.exit(0);
-});
+  process.on('SIGINT', async () => {
+    shutdownRequested = true;
+    await notify('Experimental scanner stopped');
+    console.log('[exp] stopped');
+    process.exit(0);
+  });
+}
+
+// Exported for unit tests (does not run the server when required).
+module.exports = { isRateLimitError };

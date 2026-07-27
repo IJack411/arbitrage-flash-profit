@@ -29,6 +29,13 @@
 // venues can't form a consensus (a real 2-DEX gap and one broken quote look
 // identical), so they're kept but labelled 2-VENUE (unverified). The raw
 // pre-consensus spread is still shown in SIMPLE_SCAN_DEBUG so nothing is hidden.
+//
+// FEE FLOOR: a raw spread only matters if it beats trading costs. Each row shows
+// FEE% = buy-venue swap fee + sell-venue swap fee + gas (a fixed ~$GAS_USD for
+// two swaps, expressed as a % of the clip). NET% = SPREAD% - FEE%, and PROFIT?
+// flags whether NET% is positive. Because gas is a fixed dollar cost, its % share
+// grows as the clip shrinks, so small clips are HARDER to make profitable.
+// Tune with SIMPLE_SCAN_CLIP_USD (default 1000) and SIMPLE_SCAN_GAS_USD (0.2).
 
 import { JsonRpcProvider, Network, Contract, formatUnits, parseUnits } from 'ethers';
 
@@ -86,8 +93,10 @@ const V3_FEE_TIERS = [500, 3000]; // 0.05% and 0.3%
 
 // Tuning knobs.
 const THIN_IMPACT_PCT = 1.5; // >this move between the two probes = thin pool
-const PROBE_SMALL_USD = 50; // small trade probe (~spot)
-const PROBE_LARGE_USD = 1000; // modest trade probe (executable size)
+const PROBE_SMALL_USD = 50; // small trade probe (~spot reference)
+const CLIP_USD = Number(process.env.SIMPLE_SCAN_CLIP_USD || 1000); // the clip / "modest" executable size (also the large probe)
+const GAS_USD = Number(process.env.SIMPLE_SCAN_GAS_USD || 0.2); // approx Arbitrum gas for the two swaps of a round trip
+const V2_FEE_PCT = 0.3; // constant-product V2 swap fee (Sushi V2 / Camelot V2 ~0.3%)
 const MIN_INTERESTING_SPREAD = 0.25; // realistic post-fee threshold to highlight
 const THROTTLE_MS = 120; // min gap between RPC calls (be nice to public nodes)
 const MIN_CONSENSUS_VENUES = 3; // need this many LIQ-OK venues to form consensus
@@ -173,7 +182,7 @@ function toUnitString(human, decimals) {
 }
 
 // ---------------------------------------------------------------------------
-// Build the list of venues. Each returns amountOut (bigint) or throws.
+// Build the list of venues. Each quote returns { out: bigint, feePct } or throws.
 // ---------------------------------------------------------------------------
 function makeVenues(provider) {
   const uni = new Contract(ADDR.uniV3Quoter, UNI_QUOTER_V2_ABI, provider);
@@ -192,17 +201,20 @@ function makeVenues(provider) {
       fee,
       sqrtPriceLimitX96: 0n,
     });
-    return out;
+    return { out, feePct: fee / 10000 };
   };
-  const sushiV3Like = (fee) => async (tIn, tOut, amt) =>
-    sushiV3.quoteExactInputSingle.staticCall(tIn.address, tOut.address, fee, amt, 0n);
+  const sushiV3Like = (fee) => async (tIn, tOut, amt) => {
+    const out = await sushiV3.quoteExactInputSingle.staticCall(tIn.address, tOut.address, fee, amt, 0n);
+    return { out, feePct: fee / 10000 };
+  };
   const algebraLike = (contract) => async (tIn, tOut, amt) => {
-    const [out] = await contract.quoteExactInputSingle.staticCall(tIn.address, tOut.address, amt, 0n);
-    return out;
+    // Algebra pools charge a DYNAMIC fee, returned by the quoter — capture it.
+    const [out, fee] = await contract.quoteExactInputSingle.staticCall(tIn.address, tOut.address, amt, 0n);
+    return { out, feePct: Number(fee) / 10000 };
   };
   const v2Like = (router) => async (tIn, tOut, amt) => {
     const amounts = await router.getAmountsOut(amt, [tIn.address, tOut.address]);
-    return amounts[amounts.length - 1];
+    return { out: amounts[amounts.length - 1], feePct: V2_FEE_PCT };
   };
 
   const venues = [];
@@ -232,9 +244,9 @@ async function priceInQuote(base, quote, venues) {
   const wei = parseUnits(DISCOVERY_UNITS, tokenIn.decimals);
   let best = null;
   for (const v of venues) {
-    const out = await tryQuote(() => v.quote(tokenIn, tokenOut, wei));
-    if (out && out > 0n) {
-      const price = Number(formatUnits(out, tokenOut.decimals)) / Number(DISCOVERY_UNITS);
+    const r = await tryQuote(() => v.quote(tokenIn, tokenOut, wei));
+    if (r && r.out > 0n) {
+      const price = Number(formatUnits(r.out, tokenOut.decimals)) / Number(DISCOVERY_UNITS);
       if (best === null || price > best) best = price;
     }
   }
@@ -250,20 +262,20 @@ function quoteUsdOf(sym, wethUsd) {
 
 // ---------------------------------------------------------------------------
 // Quote one venue at two sizes and decide if the pool is deep enough.
-// Returns { venue, price, impactPct, thin } or null (venue has no pool).
+// Returns { venue, price, feePct, impactPct, thin } or null (venue has no pool).
 // ---------------------------------------------------------------------------
 async function probeVenue(venue, tokenIn, tokenOut, smallHuman, largeHuman) {
   const smallWei = parseUnits(toUnitString(smallHuman, tokenIn.decimals), tokenIn.decimals);
   const largeWei = parseUnits(toUnitString(largeHuman, tokenIn.decimals), tokenIn.decimals);
 
-  const outSmall = await tryQuote(() => venue.quote(tokenIn, tokenOut, smallWei));
-  const outLarge = await tryQuote(() => venue.quote(tokenIn, tokenOut, largeWei));
-  if (!outSmall || !outLarge || outSmall <= 0n || outLarge <= 0n) return null;
+  const rSmall = await tryQuote(() => venue.quote(tokenIn, tokenOut, smallWei));
+  const rLarge = await tryQuote(() => venue.quote(tokenIn, tokenOut, largeWei));
+  if (!rSmall || !rLarge || rSmall.out <= 0n || rLarge.out <= 0n) return null;
 
-  const priceSmall = Number(formatUnits(outSmall, tokenOut.decimals)) / smallHuman;
-  const priceLarge = Number(formatUnits(outLarge, tokenOut.decimals)) / largeHuman;
+  const priceSmall = Number(formatUnits(rSmall.out, tokenOut.decimals)) / smallHuman;
+  const priceLarge = Number(formatUnits(rLarge.out, tokenOut.decimals)) / largeHuman;
   const impactPct = Math.abs(priceSmall - priceLarge) / priceSmall * 100;
-  return { venue: venue.name, price: priceSmall, impactPct, thin: impactPct > THIN_IMPACT_PCT };
+  return { venue: venue.name, price: priceSmall, feePct: rSmall.feePct, impactPct, thin: impactPct > THIN_IMPACT_PCT };
 }
 
 // ---------------------------------------------------------------------------
@@ -282,12 +294,12 @@ async function scanOnce(provider) {
     const tokenIn = TOKENS[pair.base];
     const tokenOut = TOKENS[pair.quote];
 
-    // Size the two probes to ~$50 and ~$1000 of the base token.
+    // Size the two probes to ~$PROBE_SMALL_USD and ~$CLIP_USD of the base token.
     const priceBQ = await priceInQuote(pair.base, pair.quote, venues);
     const quoteUsd = quoteUsdOf(pair.quote, wethUsd);
     const baseUsd = priceBQ && quoteUsd ? priceBQ * quoteUsd : null;
     const smallHuman = baseUsd ? PROBE_SMALL_USD / baseUsd : 0.05;
-    const largeHuman = baseUsd ? PROBE_LARGE_USD / baseUsd : 1.0;
+    const largeHuman = baseUsd ? CLIP_USD / baseUsd : 1.0;
     if (debug) {
       console.log(
         `[debug] ${label} baseUsd=${baseUsd ? baseUsd.toFixed(4) : 'n/a'} small=${smallHuman.toPrecision(3)} large=${largeHuman.toPrecision(3)} ${pair.base}`,
@@ -351,11 +363,22 @@ async function scanOnce(provider) {
 
     const { low, high } = lowHigh(used);
     const spreadPct = ((high.price - low.price) / low.price) * 100;
+
+    // Fee floor = round-trip swap fees (buy venue + sell venue) + gas as a % of
+    // the clip. Gas is fixed in $, so its % share grows as the clip shrinks.
+    const gasPct = (GAS_USD / CLIP_USD) * 100;
+    const feeFloorPct = low.feePct + high.feePct + gasPct;
+    const netPct = spreadPct - feeFloorPct;
+
     rows.push({
       label,
       low,
       high,
       spreadPct,
+      feeFloorPct,
+      gasPct,
+      netPct,
+      profitable: netPct > 0,
       liqOk: used.length,
       total: quotes.length,
       thinCount,
@@ -402,13 +425,14 @@ function pad(str, width) {
 function printTable(rows) {
   const stamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
   console.log(`\n=== Simple Spread Scanner — Arbitrum — ${stamp} UTC ===`);
-  console.log('RAW gross spread only (no DEX fees / gas subtracted).');
-  console.log(`Venues probed at ~$${PROBE_SMALL_USD} vs ~$${PROBE_LARGE_USD}; >${THIN_IMPACT_PCT}% price move = THIN pool (excluded).`);
-  console.log(`VERIFIED = >=${MIN_CONSENSUS_VENUES} LIQ-OK venues agree (outliers >${OUTLIER_PCT}% off median dropped); 2-VENUE = only 2 venues, gap unconfirmed.\n`);
+  console.log(`Clip size ~$${CLIP_USD} per swap; gas allowance ~$${GAS_USD} for the round trip.`);
+  console.log(`Venues probed at ~$${PROBE_SMALL_USD} vs ~$${CLIP_USD}; >${THIN_IMPACT_PCT}% price move = THIN pool (excluded).`);
+  console.log(`VERIFIED = >=${MIN_CONSENSUS_VENUES} LIQ-OK venues agree (outliers >${OUTLIER_PCT}% off median dropped); 2-VENUE = only 2 venues, gap unconfirmed.`);
+  console.log('FEE% = buy-venue fee + sell-venue fee + gas(as % of clip). NET% = SPREAD% - FEE%. PROFIT? = is NET% positive.\n');
   console.log(
-    `${pad('PAIR', 14)}${pad('BUY @ (cheapest)', 26)}${pad('SELL @ (dearest)', 26)}${pad('SPREAD%', 10)}STATUS`,
+    `${pad('PAIR', 14)}${pad('BUY @ (cheapest)', 24)}${pad('SELL @ (dearest)', 24)}${pad('SPREAD%', 9)}${pad('FEE%', 8)}${pad('NET%', 9)}${pad('PROFIT?', 8)}STATUS`,
   );
-  console.log('-'.repeat(94));
+  console.log('-'.repeat(120));
 
   const statusOf = (r) =>
     r.verified
@@ -416,7 +440,7 @@ function printTable(rows) {
       : `2-VENUE ${r.liqOk}/${r.total} (unverified)`;
 
   let best = null;
-  const interesting = [];
+  const profitable = [];
   for (const r of rows) {
     if (r.note) {
       console.log(`${pad(r.label, 14)}${r.note}`);
@@ -424,26 +448,27 @@ function printTable(rows) {
     }
     const buy = `${r.low.venue} (${fmtPrice(r.low.price)})`;
     const sell = `${r.high.venue} (${fmtPrice(r.high.price)})`;
+    const net = r.netPct.toFixed(3) + '%';
     console.log(
-      `${pad(r.label, 14)}${pad(buy, 26)}${pad(sell, 26)}${pad(r.spreadPct.toFixed(3) + '%', 10)}${statusOf(r)}`,
+      `${pad(r.label, 14)}${pad(buy, 24)}${pad(sell, 24)}${pad(r.spreadPct.toFixed(3) + '%', 9)}${pad(r.feeFloorPct.toFixed(3) + '%', 8)}${pad(net, 9)}${pad(r.profitable ? 'YES' : 'no', 8)}${statusOf(r)}`,
     );
     if (!best || r.spreadPct > best.spreadPct) best = r;
-    if (r.spreadPct >= MIN_INTERESTING_SPREAD) interesting.push(r);
+    if (r.profitable && r.verified) profitable.push(r);
   }
 
-  console.log('-'.repeat(94));
+  console.log('-'.repeat(120));
   if (best) {
-    console.log(`BIGGEST SPREAD RIGHT NOW: ${best.label} ${best.spreadPct.toFixed(3)}% (${best.low.venue} -> ${best.high.venue}) [${best.verified ? 'VERIFIED' : '2-VENUE unverified'}]`);
+    console.log(`BIGGEST SPREAD RIGHT NOW: ${best.label} ${best.spreadPct.toFixed(3)}% (${best.low.venue} -> ${best.high.venue}) [${best.verified ? 'VERIFIED' : '2-VENUE unverified'}] -> NET ${best.netPct.toFixed(3)}% after fees.`);
   } else {
     console.log('BIGGEST SPREAD RIGHT NOW: none (no pair had 2+ deep venues)');
   }
-  if (interesting.length) {
-    console.log(`\nSpreads above ${MIN_INTERESTING_SPREAD}% (worth a closer look):`);
-    for (const r of interesting) {
-      console.log(`  ${pad(r.label, 14)} ${pad(r.spreadPct.toFixed(3) + '%', 9)} ${r.verified ? 'VERIFIED' : '2-VENUE(unverified)'}  buy ${r.low.venue} / sell ${r.high.venue}`);
+  if (profitable.length) {
+    console.log(`\nVERIFIED + net-positive after the ~${(GAS_USD / CLIP_USD * 100).toFixed(3)}% gas + swap-fee floor:`);
+    for (const r of profitable) {
+      console.log(`  ${pad(r.label, 14)} NET ${pad(r.netPct.toFixed(3) + '%', 9)} (spread ${r.spreadPct.toFixed(3)}% - fees ${r.feeFloorPct.toFixed(3)}%)  buy ${r.low.venue} / sell ${r.high.venue}`);
     }
   } else {
-    console.log(`\nNo pair cleared ${MIN_INTERESTING_SPREAD}% — markets look efficient right now.`);
+    console.log(`\nNothing clears the fee floor: no VERIFIED pair has a positive NET% after swap fees + gas. Raw spreads exist, but none are executable at a profit.`);
   }
 }
 

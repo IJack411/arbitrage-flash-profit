@@ -46,8 +46,9 @@
 // flags whether NET% is positive. Because gas is a fixed dollar cost, its % share
 // grows as the clip shrinks, so small clips are HARDER to make profitable.
 // NOTE: net-positive rows are LEADS, not confirmed profit — verify on a paid RPC
-// (EXP_RPC_URL). Aerodrome V1 fees are APPROXIMATED (0.3% volatile / 0.05% stable),
-// so any AERO NET depends on that estimate.
+// (EXP_RPC_URL). Aerodrome V1 fees are read LIVE from the pool factory (getFee) for
+// the winning pool, falling back to 0.30% volatile / 0.05% stable only if that read
+// reverts. (Confirmed: the AERO/WETH volatile pool 0x7f670f... charges 1.0%.)
 // Tune with SIMPLE_SCAN_CLIP_USD (default 1000) and SIMPLE_SCAN_GAS_USD
 // (default: Arbitrum 0.2, Base 0.02 — Base gas is far cheaper).
 
@@ -190,8 +191,14 @@ const V2_ROUTER_ABI = [
   'function getAmountsOut(uint256 amountIn, address[] path) view returns (uint256[] amounts)',
 ];
 // Aerodrome V1 (Solidly) — route tuple carries the stable/volatile flag + factory.
+// poolFor resolves the actual pool so we can read its REAL fee from the factory
+// (getFee value / 100 = fee percent; e.g. 100 -> 1.0%, 30 -> 0.30%).
 const AERO_V1_ABI = [
   'function getAmountsOut(uint256 amountIn, (address from,address to,bool stable,address factory)[] routes) view returns (uint256[] amounts)',
+  'function poolFor(address tokenA,address tokenB,bool stable,address _factory) view returns (address)',
+];
+const AERO_FACTORY_ABI = [
+  'function getFee(address pool, bool _stable) view returns (uint256)',
 ];
 // Aerodrome CL / Slipstream — UniV3-fork but keyed on tickSpacing, not fee.
 const AERO_CL_QUOTER_ABI = [
@@ -350,6 +357,25 @@ const v2Like = (router) => async (tIn, tOut, amt) => {
   return { out: amounts[amounts.length - 1], feePct: V2_FEE_PCT };
 };
 // Aerodrome V1 (Solidly): quote both stable + volatile routes, keep the better.
+// Fee is read LIVE from the factory (getFee) for the winning pool rather than
+// approximated; falls back to 0.30% volatile / 0.05% stable if the read reverts.
+const AERO_FEE_CACHE = new Map();
+const aeroRealFee = async (router, factory, tIn, tOut, stable) => {
+  const key = `${factory}-${tIn}-${tOut}-${stable}`;
+  if (AERO_FEE_CACHE.has(key)) return AERO_FEE_CACHE.get(key);
+  const fallback = stable ? 0.05 : 0.3;
+  try {
+    const pool = await router.poolFor(tIn, tOut, stable, factory);
+    if (!pool || /^0x0+$/.test(pool)) return fallback;
+    const fac = new Contract(factory, AERO_FACTORY_ABI, router.runner);
+    const raw = await fac.getFee(pool, stable);
+    const pct = Number(raw) / 100; // getFee value / 100 = fee percent
+    if (pct > 0 && pct < 10) { AERO_FEE_CACHE.set(key, pct); return pct; }
+  } catch {
+    // factory/router lookup failed on this RPC — use the conservative default
+  }
+  return fallback;
+};
 const aeroV1Like = (router, factory) => async (tIn, tOut, amt) => {
   let best = null;
   for (const stable of [false, true]) {
@@ -358,13 +384,14 @@ const aeroV1Like = (router, factory) => async (tIn, tOut, amt) => {
         { from: tIn.address, to: tOut.address, stable, factory },
       ]);
       const out = amounts[amounts.length - 1];
-      if (out > 0n && (best === null || out > best.out)) best = { out, feePct: stable ? 0.05 : 0.3 };
+      if (out > 0n && (best === null || out > best.out)) best = { out, stable };
     } catch {
       // this route flavour has no pool — try the other
     }
   }
   if (!best) throw new Error('no aerodrome v1 route');
-  return best;
+  const feePct = await aeroRealFee(router, factory, tIn.address, tOut.address, best.stable);
+  return { out: best.out, feePct };
 };
 // Aerodrome CL / Slipstream: UniV3-fork keyed on tickSpacing, non-view -> staticCall.
 const aeroCLLike = (quoter, tickSpacing, feePct) => async (tIn, tOut, amt) => {

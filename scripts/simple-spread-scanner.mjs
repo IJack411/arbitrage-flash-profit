@@ -26,17 +26,28 @@
 //
 // CONSENSUS CHECK: to catch that stale-but-uniform case, when a pair has >=3
 // LIQ-OK venues we take the MEDIAN per-unit price and drop any venue more than
-// OUTLIER_PCT (default 3%) off it — one broken quote 4% off the pack is a bad
+// OUTLIER_PCT (default 1.5%) off it — a leg ~1%+ off the pack is a bad/stale
 // quote, not an arb. Such pairs are labelled VERIFIED. Pairs with only 2 LIQ-OK
 // venues can't form a consensus (a real 2-DEX gap and one broken quote look
 // identical), so they're kept but labelled 2-VENUE (unverified). The raw
 // pre-consensus spread is still shown in SIMPLE_SCAN_DEBUG so nothing is hidden.
+//
+// STALE-POOL MIRAGE GUARDS (added after Base surfaced fake edges):
+//  - BUY-leg tier filter: the cheap leg is never sourced from a neglected top
+//    (1% / 10000) fee tier (SIMPLE_SCAN_EXCLUDE_TOP_FEE_TIER, default ON). Those
+//    pools are still quoted and shown in DEBUG, just not chosen as the buy venue.
+//  - MAJOR flag: if BOTH legs are bluechips (WETH/USDC/cbETH/cbBTC/wstETH/...),
+//    a large spread is almost certainly a stale pool, not arb, so the row is
+//    labelled "MAJOR — stale-pool, not arb" and excluded from the leads list.
 //
 // FEE FLOOR: a raw spread only matters if it beats trading costs. Each row shows
 // FEE% = buy-venue swap fee + sell-venue swap fee + gas (a fixed ~$GAS_USD for
 // two swaps, expressed as a % of the clip). NET% = SPREAD% - FEE%, and PROFIT?
 // flags whether NET% is positive. Because gas is a fixed dollar cost, its % share
 // grows as the clip shrinks, so small clips are HARDER to make profitable.
+// NOTE: net-positive rows are LEADS, not confirmed profit — verify on a paid RPC
+// (EXP_RPC_URL). Aerodrome V1 fees are APPROXIMATED (0.3% volatile / 0.05% stable),
+// so any AERO NET depends on that estimate.
 // Tune with SIMPLE_SCAN_CLIP_USD (default 1000) and SIMPLE_SCAN_GAS_USD
 // (default: Arbitrum 0.2, Base 0.02 — Base gas is far cheaper).
 
@@ -157,7 +168,11 @@ const V2_FEE_PCT = 0.3; // constant-product V2 swap fee (Sushi V2 / Camelot V2 /
 const MIN_INTERESTING_SPREAD = 0.25; // realistic post-fee threshold to highlight
 const THROTTLE_MS = Number(process.env.SIMPLE_SCAN_THROTTLE_MS || 120); // min gap between RPC calls (be nice to public nodes)
 const MIN_CONSENSUS_VENUES = 3; // need this many LIQ-OK venues to form consensus
-const OUTLIER_PCT = Number(process.env.SIMPLE_SCAN_OUTLIER_PCT || 3); // drop venues this far off the median
+const OUTLIER_PCT = Number(process.env.SIMPLE_SCAN_OUTLIER_PCT || 1.5); // drop venues this far off the median
+const EXCLUDE_TOP_FEE_TIER = process.env.SIMPLE_SCAN_EXCLUDE_TOP_FEE_TIER !== '0'; // default ON: never source the BUY leg from a neglected 1% pool
+// A pair is a MAJOR when both legs are bluechips — a big spread there is almost
+// certainly a stale pool, not a real arb, so we call it out explicitly.
+const BLUECHIPS = new Set(['WETH', 'USDC', 'USDCe', 'USDT', 'DAI', 'cbETH', 'cbBTC', 'wstETH']);
 
 // ---------------------------------------------------------------------------
 // ABIs (only the one method we need from each).
@@ -266,8 +281,8 @@ function makeArbitrumVenues(provider) {
   const camV2 = new Contract(A.camelotV2Router, V2_ROUTER_ABI, provider);
 
   const venues = [];
-  for (const fee of V3_FEE_TIERS) venues.push({ name: `UniV3 ${fee / 10000}%`, quote: uniV3Like(uni, fee) });
-  for (const fee of V3_FEE_TIERS) venues.push({ name: `SushiV3 ${fee / 10000}%`, quote: sushiV3Like(sushiV3, fee) });
+  for (const fee of V3_FEE_TIERS) venues.push({ name: `UniV3 ${fee / 10000}%`, quote: uniV3Like(uni, fee), topFeeTier: fee >= 10000 });
+  for (const fee of V3_FEE_TIERS) venues.push({ name: `SushiV3 ${fee / 10000}%`, quote: sushiV3Like(sushiV3, fee), topFeeTier: fee >= 10000 });
   venues.push({ name: 'CamelotV3', quote: algebraLike(camV3) });
   venues.push({ name: 'CamelotV4', quote: algebraLike(camV4) });
   venues.push({ name: 'RamsesCL', quote: algebraLike(ramses) }); // unverified — skipped on revert
@@ -302,9 +317,9 @@ function makeBaseVenues(provider) {
   venues.push({ name: 'AeroV1', quote: aeroV1Like(aeroV1, A.aerodromeFactory) });
   // Aerodrome CL / Slipstream across common tickSpacings.
   for (const t of AERO_CL_TIERS) venues.push({ name: `AeroCL ts${t.tickSpacing}`, quote: aeroCLLike(aeroCL, t.tickSpacing, t.feePct) });
-  for (const fee of BASE_V3_FEE_TIERS) venues.push({ name: `UniV3 ${fee / 10000}%`, quote: uniV3Like(uniV3, fee) });
+  for (const fee of BASE_V3_FEE_TIERS) venues.push({ name: `UniV3 ${fee / 10000}%`, quote: uniV3Like(uniV3, fee), topFeeTier: fee >= 10000 });
   venues.push({ name: 'UniV2', quote: v2Like(uniV2) });
-  for (const fee of PANCAKE_V3_FEE_TIERS) venues.push({ name: `PancakeV3 ${fee / 10000}%`, quote: uniV3Like(pancakeV3, fee) }); // to-verify
+  for (const fee of PANCAKE_V3_FEE_TIERS) venues.push({ name: `PancakeV3 ${fee / 10000}%`, quote: uniV3Like(pancakeV3, fee), topFeeTier: fee >= 10000 }); // to-verify
   venues.push({ name: 'SushiV2', quote: v2Like(sushiV2) }); // to-verify
   venues.push({ name: 'BaseSwap', quote: v2Like(baseSwap) }); // to-verify
   return venues;
@@ -404,7 +419,7 @@ async function probeVenue(venue, tokenIn, tokenOut, smallHuman, largeHuman) {
   const priceSmall = Number(formatUnits(rSmall.out, tokenOut.decimals)) / smallHuman;
   const priceLarge = Number(formatUnits(rLarge.out, tokenOut.decimals)) / largeHuman;
   const impactPct = Math.abs(priceSmall - priceLarge) / priceSmall * 100;
-  return { venue: venue.name, price: priceSmall, feePct: rSmall.feePct, impactPct, thin: impactPct > THIN_IMPACT_PCT };
+  return { venue: venue.name, price: priceSmall, feePct: rSmall.feePct, impactPct, thin: impactPct > THIN_IMPACT_PCT, topFeeTier: !!venue.topFeeTier };
 }
 
 // ---------------------------------------------------------------------------
@@ -490,8 +505,15 @@ async function scanOnce(provider) {
       continue;
     }
 
-    const { low, high } = lowHigh(used);
+    // BUY leg must not come from a neglected top (1%) fee tier — a real arb never
+    // sources the cheap side there. High/sell leg can still use any LIQ-OK venue.
+    const buyPool = EXCLUDE_TOP_FEE_TIER ? used.filter((q) => !q.topFeeTier) : used;
+    const lowSet = buyPool.length ? buyPool : used;
+    const low = lowSet.reduce((a, b) => (b.price < a.price ? b : a));
+    const high = used.reduce((a, b) => (b.price > a.price ? b : a));
     const spreadPct = ((high.price - low.price) / low.price) * 100;
+
+    const isMajor = BLUECHIPS.has(pair.base) && BLUECHIPS.has(pair.quote);
 
     // Fee floor = round-trip swap fees (buy venue + sell venue) + gas as a % of
     // the clip. Gas is fixed in $, so its % share grows as the clip shrinks.
@@ -508,6 +530,7 @@ async function scanOnce(provider) {
       gasPct,
       netPct,
       profitable: netPct > 0,
+      isMajor,
       liqOk: used.length,
       total: quotes.length,
       thinCount,
@@ -557,16 +580,19 @@ function printTable(rows) {
   console.log(`Clip size ~$${CLIP_USD} per swap; gas allowance ~$${GAS_USD} for the round trip.`);
   console.log(`Venues probed at ~$${PROBE_SMALL_USD} vs ~$${CLIP_USD}; >${THIN_IMPACT_PCT}% price move = THIN pool (excluded).`);
   console.log(`VERIFIED = >=${MIN_CONSENSUS_VENUES} LIQ-OK venues agree (outliers >${OUTLIER_PCT}% off median dropped); 2-VENUE = only 2 venues, gap unconfirmed.`);
-  console.log('FEE% = buy-venue fee + sell-venue fee + gas(as % of clip). NET% = SPREAD% - FEE%. PROFIT? = is NET% positive.\n');
+  console.log('FEE% = buy-venue fee + sell-venue fee + gas(as % of clip). NET% = SPREAD% - FEE%. PROFIT? = is NET% positive.');
+  console.log(`BUY leg excludes the top (1%) fee tier: ${EXCLUDE_TOP_FEE_TIER ? 'ON' : 'off'}. MAJOR pairs (bluechip/bluechip) are flagged: a big spread there is a stale pool, not arb.\n`);
   console.log(
     `${pad('PAIR', 14)}${pad('BUY @ (cheapest)', 24)}${pad('SELL @ (dearest)', 24)}${pad('SPREAD%', 9)}${pad('FEE%', 8)}${pad('NET%', 9)}${pad('PROFIT?', 8)}STATUS`,
   );
   console.log('-'.repeat(120));
 
-  const statusOf = (r) =>
-    r.verified
+  const statusOf = (r) => {
+    const base = r.verified
       ? `VERIFIED ${r.liqOk}/${r.total}${r.droppedCount ? ` (-${r.droppedCount} outlier)` : ''}`
       : `2-VENUE ${r.liqOk}/${r.total} (unverified)`;
+    return r.isMajor ? `${base}  MAJOR — spread here is almost certainly stale-pool, not arb` : base;
+  };
 
   let best = null;
   const profitable = [];
@@ -582,22 +608,23 @@ function printTable(rows) {
       `${pad(r.label, 14)}${pad(buy, 24)}${pad(sell, 24)}${pad(r.spreadPct.toFixed(3) + '%', 9)}${pad(r.feeFloorPct.toFixed(3) + '%', 8)}${pad(net, 9)}${pad(r.profitable ? 'YES' : 'no', 8)}${statusOf(r)}`,
     );
     if (!best || r.spreadPct > best.spreadPct) best = r;
-    if (r.profitable && r.verified) profitable.push(r);
+    // A "lead" is VERIFIED, net-positive, and NOT a major (majors = stale-pool).
+    if (r.profitable && r.verified && !r.isMajor) profitable.push(r);
   }
 
   console.log('-'.repeat(120));
   if (best) {
-    console.log(`BIGGEST SPREAD RIGHT NOW: ${best.label} ${best.spreadPct.toFixed(3)}% (${best.low.venue} -> ${best.high.venue}) [${best.verified ? 'VERIFIED' : '2-VENUE unverified'}] -> NET ${best.netPct.toFixed(3)}% after fees.`);
+    console.log(`BIGGEST SPREAD RIGHT NOW: ${best.label} ${best.spreadPct.toFixed(3)}% (${best.low.venue} -> ${best.high.venue}) [${best.verified ? 'VERIFIED' : '2-VENUE unverified'}${best.isMajor ? ', MAJOR/stale' : ''}] -> NET ${best.netPct.toFixed(3)}% after fees.`);
   } else {
     console.log('BIGGEST SPREAD RIGHT NOW: none (no pair had 2+ deep venues)');
   }
   if (profitable.length) {
-    console.log(`\nVERIFIED + net-positive after the ~${(GAS_USD / CLIP_USD * 100).toFixed(3)}% gas + swap-fee floor:`);
+    console.log(`\nLEADS — VERIFIED, non-major, net-positive after the ~${(GAS_USD / CLIP_USD * 100).toFixed(3)}% gas + swap-fee floor (verify on a paid RPC before trusting):`);
     for (const r of profitable) {
       console.log(`  ${pad(r.label, 14)} NET ${pad(r.netPct.toFixed(3) + '%', 9)} (spread ${r.spreadPct.toFixed(3)}% - fees ${r.feeFloorPct.toFixed(3)}%)  buy ${r.low.venue} / sell ${r.high.venue}`);
     }
   } else {
-    console.log(`\nNothing clears the fee floor: no VERIFIED pair has a positive NET% after swap fees + gas. Raw spreads exist, but none are executable at a profit.`);
+    console.log(`\nNo non-major VERIFIED lead clears the fee floor. Raw spreads exist, but none look executable at a profit.`);
   }
 }
 

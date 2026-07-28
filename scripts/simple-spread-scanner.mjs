@@ -6,6 +6,8 @@
 //
 // Run once (default):   node scripts/simple-spread-scanner.mjs
 // Loop every N seconds: SIMPLE_SCAN_INTERVAL_SEC=30 node scripts/simple-spread-scanner.mjs
+// Pick a chain:         SIMPLE_SCAN_CHAIN=base node scripts/simple-spread-scanner.mjs
+//                       (default arbitrum; also supports base / chainId 8453)
 //
 // This prints the RAW gross spread. It does NOT subtract DEX swap fees, price
 // impact, or gas, so a positive number here is necessary-but-not-sufficient for
@@ -35,15 +37,22 @@
 // two swaps, expressed as a % of the clip). NET% = SPREAD% - FEE%, and PROFIT?
 // flags whether NET% is positive. Because gas is a fixed dollar cost, its % share
 // grows as the clip shrinks, so small clips are HARDER to make profitable.
-// Tune with SIMPLE_SCAN_CLIP_USD (default 1000) and SIMPLE_SCAN_GAS_USD (0.2).
+// Tune with SIMPLE_SCAN_CLIP_USD (default 1000) and SIMPLE_SCAN_GAS_USD
+// (default: Arbitrum 0.2, Base 0.02 — Base gas is far cheaper).
 
 import { JsonRpcProvider, Network, Contract, formatUnits, parseUnits } from 'ethers';
 
 // ---------------------------------------------------------------------------
-// EDIT ME: token pairs to watch. base = the token you price, quote = priced in.
-// Priority pairs (real cross-venue fragmentation) first, majors as a baseline.
+// CHAIN SELECTION. All the honesty guards (least-slipped USD anchor, two-probe
+// thin-pool guard, >=3-venue median consensus, fee-floor NET/PROFIT? columns)
+// are chain-agnostic and reused unchanged. Only the token/venue tables differ.
 // ---------------------------------------------------------------------------
-const PAIRS = [
+const CHAIN_NAME = (process.env.SIMPLE_SCAN_CHAIN || 'arbitrum').toLowerCase();
+
+// ===========================================================================
+// ARBITRUM (chainId 42161)
+// ===========================================================================
+const ARB_PAIRS = [
   { base: 'GRAIL', quote: 'WETH' },
   { base: 'MAGIC', quote: 'WETH' },
   { base: 'wstETH', quote: 'WETH' },
@@ -55,10 +64,7 @@ const PAIRS = [
   { base: 'WETH', quote: 'USDCe' }, // baseline major (should be ~0%)
 ];
 
-// ---------------------------------------------------------------------------
-// Arbitrum token addresses + decimals (canonical mainnet addresses).
-// ---------------------------------------------------------------------------
-const TOKENS = {
+const ARB_TOKENS = {
   WETH: { address: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1', decimals: 18 },
   USDC: { address: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831', decimals: 6 }, // native USDC
   USDCe: { address: '0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8', decimals: 6 }, // bridged USDC.e
@@ -74,12 +80,9 @@ const TOKENS = {
   RAM: { address: '0xAAA6C1E32C55A7Bfa8066A6FAE9b42650F262418', decimals: 18 },
 };
 
-const STABLES = new Set(['USDC', 'USDCe', 'USDT']);
+const ARB_STABLES = new Set(['USDC', 'USDCe', 'USDT']);
 
-// ---------------------------------------------------------------------------
-// DEX quoter/router addresses on Arbitrum.
-// ---------------------------------------------------------------------------
-const ADDR = {
+const ARB_ADDR = {
   uniV3Quoter: '0x61fFE014bA17989E743c5F6cB21bF9697530B21e', // UniswapV3 QuoterV2
   sushiV3Quoter: '0x0524E833cCD057e4d7A296e3aaAb9f7675964Ce1', // SushiSwap V3 (UniV3-fork) quoter
   camelotV3Quoter: '0x0Fc73040b26E9bC8514fA028D998E73A254Fa76E', // Camelot V3 (Algebra) quoter
@@ -89,16 +92,70 @@ const ADDR = {
   camelotV2Router: '0xc873fEcbd354f5A56E00E710B90EF4201db2448d', // Camelot V2 router
 };
 
-const V3_FEE_TIERS = [500, 3000]; // 0.05% and 0.3%
+// ===========================================================================
+// BASE (chainId 8453). Verified venues: Aerodrome V1 (Solidly) + CL/Slipstream,
+// Uniswap V3 + V2. To-verify (behind try/catch, skipped on revert): Pancake V3,
+// SushiSwap V2, BaseSwap. Addresses lowercased where the source checksum was
+// uncertain so ethers never throws on construction.
+// ===========================================================================
+const BASE_PAIRS = [
+  { base: 'AERO', quote: 'WETH' },
+  { base: 'AERO', quote: 'USDC' },
+  { base: 'DEGEN', quote: 'WETH' },
+  { base: 'BRETT', quote: 'WETH' },
+  { base: 'TOSHI', quote: 'WETH' },
+  { base: 'VIRTUAL', quote: 'WETH' },
+  { base: 'cbETH', quote: 'WETH' },
+  { base: 'cbBTC', quote: 'WETH' },
+  { base: 'WETH', quote: 'USDC' }, // baseline major (should be ~0%)
+];
+
+const BASE_TOKENS = {
+  WETH: { address: '0x4200000000000000000000000000000000000006', decimals: 18 },
+  USDC: { address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', decimals: 6 },
+  AERO: { address: '0x940181a94A35A4569E4529A3CDfB74e38FD98631', decimals: 18 },
+  cbETH: { address: '0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22', decimals: 18 },
+  cbBTC: { address: '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf', decimals: 8 },
+  wstETH: { address: '0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452', decimals: 18 },
+  DEGEN: { address: '0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed', decimals: 18 },
+  BRETT: { address: '0x532f27101965dd16442E59d40670FaF5eBB142E4', decimals: 18 },
+  TOSHI: { address: '0xAC1Bd2486aAf3B5C0fc3Fd868558b082a531B2B4', decimals: 18 },
+  VIRTUAL: { address: '0x0b3e328455c4059EEb9e3f84b5543F74E24e7020', decimals: 18 },
+};
+
+const BASE_STABLES = new Set(['USDC']);
+
+const BASE_ADDR = {
+  aerodromeV1Router: '0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43', // Aerodrome V1 (Solidly) router
+  aerodromeFactory: '0x420DD381b31aEf6683db6B902084cB0FFECe40Da', // Aerodrome PoolFactory (route tuple)
+  aerodromeCLQuoter: '0x514c8B5f54112481E28028F1166Bd78501089259', // Aerodrome CL / Slipstream QuoterV2
+  uniV3Quoter: '0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a', // Uniswap V3 QuoterV2
+  uniV2Router: '0x4752ba5dbc23f44d87826276bf6fd6b1c372ad24', // Uniswap V2 router
+  pancakeV3Quoter: '0xb048bbc1ee6b733fffcfb9e9cef7375518e25997', // PancakeSwap V3 quoter — TO-VERIFY (lowercased)
+  sushiV2Router: '0x6bded42c6da8fbf0d2ba55b2fa120c5e0c8d7891', // SushiSwap V2 router — TO-VERIFY (lowercased)
+  baseSwapRouter: '0x327df1e6de05895d2ab08513aadd9313fe505d86', // BaseSwap router — TO-VERIFY (lowercased)
+};
+
+const V3_FEE_TIERS = [500, 3000]; // Arbitrum Uni/Sushi V3 tiers: 0.05% and 0.3%
+
+// Per-chain config, selected by SIMPLE_SCAN_CHAIN. makeVenues fns are hoisted.
+const CHAINS = {
+  arbitrum: { id: 42161, label: 'Arbitrum', tokens: ARB_TOKENS, stables: ARB_STABLES, pairs: ARB_PAIRS, gasUsd: 0.2, makeVenues: makeArbitrumVenues },
+  base: { id: 8453, label: 'Base', tokens: BASE_TOKENS, stables: BASE_STABLES, pairs: BASE_PAIRS, gasUsd: 0.02, makeVenues: makeBaseVenues },
+};
+const CHAIN = CHAINS[CHAIN_NAME] || CHAINS.arbitrum;
+const TOKENS = CHAIN.tokens;
+const STABLES = CHAIN.stables;
+const PAIRS = CHAIN.pairs;
 
 // Tuning knobs.
 const THIN_IMPACT_PCT = 1.5; // >this move between the two probes = thin pool
 const PROBE_SMALL_USD = 50; // small trade probe (~spot reference)
 const CLIP_USD = Number(process.env.SIMPLE_SCAN_CLIP_USD || 1000); // the clip / "modest" executable size (also the large probe)
-const GAS_USD = Number(process.env.SIMPLE_SCAN_GAS_USD || 0.2); // approx Arbitrum gas for the two swaps of a round trip
-const V2_FEE_PCT = 0.3; // constant-product V2 swap fee (Sushi V2 / Camelot V2 ~0.3%)
+const GAS_USD = Number(process.env.SIMPLE_SCAN_GAS_USD || CHAIN.gasUsd); // approx gas for the two swaps of a round trip (chain-specific default)
+const V2_FEE_PCT = 0.3; // constant-product V2 swap fee (Sushi V2 / Camelot V2 / Uni V2 / BaseSwap ~0.3%)
 const MIN_INTERESTING_SPREAD = 0.25; // realistic post-fee threshold to highlight
-const THROTTLE_MS = 120; // min gap between RPC calls (be nice to public nodes)
+const THROTTLE_MS = Number(process.env.SIMPLE_SCAN_THROTTLE_MS || 120); // min gap between RPC calls (be nice to public nodes)
 const MIN_CONSENSUS_VENUES = 3; // need this many LIQ-OK venues to form consensus
 const OUTLIER_PCT = Number(process.env.SIMPLE_SCAN_OUTLIER_PCT || 3); // drop venues this far off the median
 
@@ -117,12 +174,26 @@ const ALGEBRA_QUOTER_ABI = [
 const V2_ROUTER_ABI = [
   'function getAmountsOut(uint256 amountIn, address[] path) view returns (uint256[] amounts)',
 ];
+// Aerodrome V1 (Solidly) — route tuple carries the stable/volatile flag + factory.
+const AERO_V1_ABI = [
+  'function getAmountsOut(uint256 amountIn, (address from,address to,bool stable,address factory)[] routes) view returns (uint256[] amounts)',
+];
+// Aerodrome CL / Slipstream — UniV3-fork but keyed on tickSpacing, not fee.
+const AERO_CL_QUOTER_ABI = [
+  'function quoteExactInputSingle(address tokenIn,address tokenOut,uint256 amountIn,int24 tickSpacing,uint160 sqrtPriceLimitX96) returns (uint256 amountOut,uint160 sqrtPriceX96After,uint32 initializedTicksCrossed,uint256 gasEstimate)',
+];
 
 // ---------------------------------------------------------------------------
-// RPC selection: EXP_RPC_URL > VITE_ALCHEMY_API_KEY > public fallback.
+// RPC selection: EXP_RPC_URL > VITE_ALCHEMY_API_KEY > public fallback (per chain).
 // ---------------------------------------------------------------------------
 function resolveRpcUrl() {
   if (process.env.EXP_RPC_URL) return process.env.EXP_RPC_URL;
+  if (CHAIN_NAME === 'base') {
+    if (process.env.VITE_ALCHEMY_API_KEY) {
+      return `https://base-mainnet.g.alchemy.com/v2/${process.env.VITE_ALCHEMY_API_KEY}`;
+    }
+    return 'https://mainnet.base.org'; // alt: https://base-rpc.publicnode.com
+  }
   if (process.env.VITE_ALCHEMY_API_KEY) {
     return `https://arb-mainnet.g.alchemy.com/v2/${process.env.VITE_ALCHEMY_API_KEY}`;
   }
@@ -184,42 +255,19 @@ function toUnitString(human, decimals) {
 // ---------------------------------------------------------------------------
 // Build the list of venues. Each quote returns { out: bigint, feePct } or throws.
 // ---------------------------------------------------------------------------
-function makeVenues(provider) {
-  const uni = new Contract(ADDR.uniV3Quoter, UNI_QUOTER_V2_ABI, provider);
-  const sushiV3 = new Contract(ADDR.sushiV3Quoter, SUSHI_V3_QUOTER_ABI, provider);
-  const camV3 = new Contract(ADDR.camelotV3Quoter, ALGEBRA_QUOTER_ABI, provider);
-  const camV4 = new Contract(ADDR.camelotV4Quoter, ALGEBRA_QUOTER_ABI, provider);
-  const ramses = new Contract(ADDR.ramsesQuoter, ALGEBRA_QUOTER_ABI, provider);
-  const sushiV2 = new Contract(ADDR.sushiV2Router, V2_ROUTER_ABI, provider);
-  const camV2 = new Contract(ADDR.camelotV2Router, V2_ROUTER_ABI, provider);
-
-  const uniLike = (contract, fee) => async (tIn, tOut, amt) => {
-    const [out] = await contract.quoteExactInputSingle.staticCall({
-      tokenIn: tIn.address,
-      tokenOut: tOut.address,
-      amountIn: amt,
-      fee,
-      sqrtPriceLimitX96: 0n,
-    });
-    return { out, feePct: fee / 10000 };
-  };
-  const sushiV3Like = (fee) => async (tIn, tOut, amt) => {
-    const out = await sushiV3.quoteExactInputSingle.staticCall(tIn.address, tOut.address, fee, amt, 0n);
-    return { out, feePct: fee / 10000 };
-  };
-  const algebraLike = (contract) => async (tIn, tOut, amt) => {
-    // Algebra pools charge a DYNAMIC fee, returned by the quoter — capture it.
-    const [out, fee] = await contract.quoteExactInputSingle.staticCall(tIn.address, tOut.address, amt, 0n);
-    return { out, feePct: Number(fee) / 10000 };
-  };
-  const v2Like = (router) => async (tIn, tOut, amt) => {
-    const amounts = await router.getAmountsOut(amt, [tIn.address, tOut.address]);
-    return { out: amounts[amounts.length - 1], feePct: V2_FEE_PCT };
-  };
+function makeArbitrumVenues(provider) {
+  const A = ARB_ADDR;
+  const uni = new Contract(A.uniV3Quoter, UNI_QUOTER_V2_ABI, provider);
+  const sushiV3 = new Contract(A.sushiV3Quoter, SUSHI_V3_QUOTER_ABI, provider);
+  const camV3 = new Contract(A.camelotV3Quoter, ALGEBRA_QUOTER_ABI, provider);
+  const camV4 = new Contract(A.camelotV4Quoter, ALGEBRA_QUOTER_ABI, provider);
+  const ramses = new Contract(A.ramsesQuoter, ALGEBRA_QUOTER_ABI, provider);
+  const sushiV2 = new Contract(A.sushiV2Router, V2_ROUTER_ABI, provider);
+  const camV2 = new Contract(A.camelotV2Router, V2_ROUTER_ABI, provider);
 
   const venues = [];
-  for (const fee of V3_FEE_TIERS) venues.push({ name: `UniV3 ${fee / 10000}%`, quote: uniLike(uni, fee) });
-  for (const fee of V3_FEE_TIERS) venues.push({ name: `SushiV3 ${fee / 10000}%`, quote: sushiV3Like(fee) });
+  for (const fee of V3_FEE_TIERS) venues.push({ name: `UniV3 ${fee / 10000}%`, quote: uniV3Like(uni, fee) });
+  for (const fee of V3_FEE_TIERS) venues.push({ name: `SushiV3 ${fee / 10000}%`, quote: sushiV3Like(sushiV3, fee) });
   venues.push({ name: 'CamelotV3', quote: algebraLike(camV3) });
   venues.push({ name: 'CamelotV4', quote: algebraLike(camV4) });
   venues.push({ name: 'RamsesCL', quote: algebraLike(ramses) }); // unverified — skipped on revert
@@ -227,6 +275,87 @@ function makeVenues(provider) {
   venues.push({ name: 'CamelotV2', quote: v2Like(camV2) });
   return venues;
 }
+
+// Aerodrome CL / Slipstream fee is set per-pool; approximate by tickSpacing.
+const AERO_CL_TIERS = [
+  { tickSpacing: 1, feePct: 0.01 },
+  { tickSpacing: 50, feePct: 0.05 },
+  { tickSpacing: 100, feePct: 0.05 },
+  { tickSpacing: 200, feePct: 0.3 },
+  { tickSpacing: 2000, feePct: 1.0 },
+];
+const BASE_V3_FEE_TIERS = [500, 3000, 10000]; // Uniswap V3 on Base
+const PANCAKE_V3_FEE_TIERS = [100, 500, 2500, 10000]; // PancakeSwap V3 on Base
+
+function makeBaseVenues(provider) {
+  const A = BASE_ADDR;
+  const aeroV1 = new Contract(A.aerodromeV1Router, AERO_V1_ABI, provider);
+  const aeroCL = new Contract(A.aerodromeCLQuoter, AERO_CL_QUOTER_ABI, provider);
+  const uniV3 = new Contract(A.uniV3Quoter, UNI_QUOTER_V2_ABI, provider);
+  const uniV2 = new Contract(A.uniV2Router, V2_ROUTER_ABI, provider);
+  const pancakeV3 = new Contract(A.pancakeV3Quoter, UNI_QUOTER_V2_ABI, provider); // Pancake V3 quoter shares Uni QuoterV2 struct
+  const sushiV2 = new Contract(A.sushiV2Router, V2_ROUTER_ABI, provider);
+  const baseSwap = new Contract(A.baseSwapRouter, V2_ROUTER_ABI, provider);
+
+  const venues = [];
+  // Aerodrome V1 (Solidly): try volatile + stable routes, keep the better fill.
+  venues.push({ name: 'AeroV1', quote: aeroV1Like(aeroV1, A.aerodromeFactory) });
+  // Aerodrome CL / Slipstream across common tickSpacings.
+  for (const t of AERO_CL_TIERS) venues.push({ name: `AeroCL ts${t.tickSpacing}`, quote: aeroCLLike(aeroCL, t.tickSpacing, t.feePct) });
+  for (const fee of BASE_V3_FEE_TIERS) venues.push({ name: `UniV3 ${fee / 10000}%`, quote: uniV3Like(uniV3, fee) });
+  venues.push({ name: 'UniV2', quote: v2Like(uniV2) });
+  for (const fee of PANCAKE_V3_FEE_TIERS) venues.push({ name: `PancakeV3 ${fee / 10000}%`, quote: uniV3Like(pancakeV3, fee) }); // to-verify
+  venues.push({ name: 'SushiV2', quote: v2Like(sushiV2) }); // to-verify
+  venues.push({ name: 'BaseSwap', quote: v2Like(baseSwap) }); // to-verify
+  return venues;
+}
+
+// --- Shared venue quote adapters (each returns { out, feePct } or throws) -----
+const uniV3Like = (contract, fee) => async (tIn, tOut, amt) => {
+  const [out] = await contract.quoteExactInputSingle.staticCall({
+    tokenIn: tIn.address,
+    tokenOut: tOut.address,
+    amountIn: amt,
+    fee,
+    sqrtPriceLimitX96: 0n,
+  });
+  return { out, feePct: fee / 10000 };
+};
+const sushiV3Like = (contract, fee) => async (tIn, tOut, amt) => {
+  const out = await contract.quoteExactInputSingle.staticCall(tIn.address, tOut.address, fee, amt, 0n);
+  return { out, feePct: fee / 10000 };
+};
+const algebraLike = (contract) => async (tIn, tOut, amt) => {
+  // Algebra pools charge a DYNAMIC fee, returned by the quoter — capture it.
+  const [out, fee] = await contract.quoteExactInputSingle.staticCall(tIn.address, tOut.address, amt, 0n);
+  return { out, feePct: Number(fee) / 10000 };
+};
+const v2Like = (router) => async (tIn, tOut, amt) => {
+  const amounts = await router.getAmountsOut(amt, [tIn.address, tOut.address]);
+  return { out: amounts[amounts.length - 1], feePct: V2_FEE_PCT };
+};
+// Aerodrome V1 (Solidly): quote both stable + volatile routes, keep the better.
+const aeroV1Like = (router, factory) => async (tIn, tOut, amt) => {
+  let best = null;
+  for (const stable of [false, true]) {
+    try {
+      const amounts = await router.getAmountsOut(amt, [
+        { from: tIn.address, to: tOut.address, stable, factory },
+      ]);
+      const out = amounts[amounts.length - 1];
+      if (out > 0n && (best === null || out > best.out)) best = { out, feePct: stable ? 0.05 : 0.3 };
+    } catch {
+      // this route flavour has no pool — try the other
+    }
+  }
+  if (!best) throw new Error('no aerodrome v1 route');
+  return best;
+};
+// Aerodrome CL / Slipstream: UniV3-fork keyed on tickSpacing, non-view -> staticCall.
+const aeroCLLike = (quoter, tickSpacing, feePct) => async (tIn, tOut, amt) => {
+  const [out] = await quoter.quoteExactInputSingle.staticCall(tIn.address, tOut.address, amt, tickSpacing, 0n);
+  return { out, feePct };
+};
 
 // ---------------------------------------------------------------------------
 // Least-slipped price of `base` measured in `quote`, used only to size probes.
@@ -282,7 +411,7 @@ async function probeVenue(venue, tokenIn, tokenOut, smallHuman, largeHuman) {
 // One full scan pass.
 // ---------------------------------------------------------------------------
 async function scanOnce(provider) {
-  const venues = makeVenues(provider);
+  const venues = CHAIN.makeVenues(provider);
   const debug = !!process.env.SIMPLE_SCAN_DEBUG;
 
   // Anchor: ETH price in USD from the least-slipped WETH->USDC quote.
@@ -424,7 +553,7 @@ function pad(str, width) {
 
 function printTable(rows) {
   const stamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
-  console.log(`\n=== Simple Spread Scanner — Arbitrum — ${stamp} UTC ===`);
+  console.log(`\n=== Simple Spread Scanner — ${CHAIN.label} — ${stamp} UTC ===`);
   console.log(`Clip size ~$${CLIP_USD} per swap; gas allowance ~$${GAS_USD} for the round trip.`);
   console.log(`Venues probed at ~$${PROBE_SMALL_USD} vs ~$${CLIP_USD}; >${THIN_IMPACT_PCT}% price move = THIN pool (excluded).`);
   console.log(`VERIFIED = >=${MIN_CONSENSUS_VENUES} LIQ-OK venues agree (outliers >${OUTLIER_PCT}% off median dropped); 2-VENUE = only 2 venues, gap unconfirmed.`);
@@ -477,9 +606,9 @@ function printTable(rows) {
 // ---------------------------------------------------------------------------
 async function main() {
   const rpcUrl = resolveRpcUrl();
-  // Arbitrum-only: pin the network so ethers doesn't re-detect on every hiccup.
-  const provider = new JsonRpcProvider(rpcUrl, Network.from(42161), { staticNetwork: true });
-  console.log(`RPC: ${rpcUrl}`);
+  // Pin the network so ethers doesn't re-detect on every hiccup.
+  const provider = new JsonRpcProvider(rpcUrl, Network.from(CHAIN.id), { staticNetwork: true });
+  console.log(`Chain: ${CHAIN.label} (${CHAIN.id})   RPC: ${rpcUrl}`);
 
   const intervalSec = Number(process.env.SIMPLE_SCAN_INTERVAL_SEC || 0);
   const loop = intervalSec > 0 && !process.argv.includes('--once');

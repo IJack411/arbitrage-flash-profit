@@ -59,6 +59,12 @@ module.exports = {
           }
         : undefined,
       chainId: 31337,
+      // EDR needs an explicit hardfork history for OP-stack chains (e.g. Base
+      // chainId 8453) when forking, otherwise eth_call at the fork block fails
+      // with "No known hardfork for execution on historical block ...".
+      chains: {
+        8453: { hardforkHistory: { cancun: 0 } },
+      },
     },
   },
 

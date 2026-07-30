@@ -15,7 +15,10 @@ path = "src/main.rs"
 # Ethereum
 ethers = { version = "2.0", features = ["abigen", "ws"] }
 # Local simulation
-revm = { version = "3.5", features = ["std"] }
+# default-features disabled to drop the EIP-4844 `c-kzg` precompile, whose
+# `bindgen` build step requires libclang and is irrelevant to DEX arbitrage
+# simulation. `secp256k1` is kept for the ecrecover precompile.
+revm = { version = "3.5", default-features = false, features = ["std", "secp256k1"] }
 # Async runtime
 tokio = { version = "1", features = ["full"] }
 # Logging

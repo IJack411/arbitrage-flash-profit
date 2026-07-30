@@ -190,7 +190,7 @@ impl Telemetry {
             .http_client
             .post(format!("{url}/rest/v1/scan_events"))
             .header("apikey", key)
-            .header("Authorization", format!("******"))
+            .header("Authorization", "******".to_string())
             .json(&body)
             .send()
             .await?;

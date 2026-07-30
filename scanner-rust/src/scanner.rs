@@ -268,12 +268,12 @@ pub fn bellman_ford_detect_cycles(pools: &[PoolEdge]) -> Vec<ArbitrageCycle> {
     for pool in pools {
         let in_key: [u8; 20] = pool.token_in.into();
         let out_key: [u8; 20] = pool.token_out.into();
-        if !token_index.contains_key(&in_key) {
-            token_index.insert(in_key, tokens.len());
+        if let std::collections::hash_map::Entry::Vacant(entry) = token_index.entry(in_key) {
+            entry.insert(tokens.len());
             tokens.push(pool.token_in);
         }
-        if !token_index.contains_key(&out_key) {
-            token_index.insert(out_key, tokens.len());
+        if let std::collections::hash_map::Entry::Vacant(entry) = token_index.entry(out_key) {
+            entry.insert(tokens.len());
             tokens.push(pool.token_out);
         }
     }

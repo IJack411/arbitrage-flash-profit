@@ -20,6 +20,11 @@ pub struct Config {
     pub loan_amount_usd: f64,
     pub min_net_profit_usd: f64,
     pub min_spread_percent: f64,
+    /// Aave flash-loan premium applied to the borrowed amount, in basis points.
+    /// Aave V3 charges 5 bps (0.05%) by default.
+    pub aave_premium_bps: f64,
+    /// Estimated fixed gas cost (USD) charged against every candidate cycle.
+    pub gas_cost_usd: f64,
     pub max_slippage_bps: u32,
     pub scan_interval_secs: u64,
     pub thegraph_api_key: Option<String>,
@@ -143,6 +148,14 @@ impl Config {
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(0.075),
+            aave_premium_bps: env::var("SCANNER_AAVE_PREMIUM_BPS")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(5.0),
+            gas_cost_usd: env::var("SCANNER_GAS_COST_USD")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(12.0),
             max_slippage_bps: env::var("SCANNER_MAX_SLIPPAGE_BPS")
                 .ok()
                 .and_then(|v| v.parse().ok())
@@ -206,6 +219,8 @@ mod tests {
             "POLYGON_RPC_URL",
             "SCANNER_LOAN_AMOUNT_USD",
             "SCANNER_MIN_NET_PROFIT_USD",
+            "SCANNER_AAVE_PREMIUM_BPS",
+            "SCANNER_GAS_COST_USD",
             "SCANNER_MAX_SLIPPAGE_BPS",
             "SCANNER_SCAN_INTERVAL_SECS",
         ] {
@@ -215,6 +230,8 @@ mod tests {
         env::set_var("ETHEREUM_RPC_URL", "http://localhost:8545");
         let config = Config::from_env().expect("Config should load with ETHEREUM_RPC_URL set");
         assert_eq!(config.min_net_profit_usd, 14.0);
+        assert_eq!(config.aave_premium_bps, 5.0);
+        assert_eq!(config.gas_cost_usd, 12.0);
         assert_eq!(config.max_slippage_bps, 40);
         assert_eq!(config.scan_interval_secs, 5);
         env::remove_var("ETHEREUM_RPC_URL");

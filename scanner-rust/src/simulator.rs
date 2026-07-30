@@ -169,6 +169,8 @@ mod tests {
             loan_amount_usd: 10_000.0,
             min_net_profit_usd: 14.0,
             min_spread_percent: 0.075,
+            aave_premium_bps: 5.0,
+            gas_cost_usd: 12.0,
             max_slippage_bps: 40,
             scan_interval_secs: 5,
             thegraph_api_key: None,

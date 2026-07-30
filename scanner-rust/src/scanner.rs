@@ -26,7 +26,47 @@ struct GraphEdge {
 #[derive(Debug, Clone)]
 pub struct ArbitrageCycle {
     pub edges: Vec<PoolEdge>,
+    /// Round-trip output/input ratio for the cycle. Because edge weights are
+    /// fee-aware (`-ln(price * (1 - fee))`), this ratio is already NET of every
+    /// per-hop DEX swap fee, but still GROSS of the fixed costs (Aave premium +
+    /// gas) that are applied later by [`compute_net_profit`].
     pub profit_ratio: f64,
+}
+
+/// Breakdown of a cycle's economics once the fixed costs that a per-hop
+/// multiplicative fee cannot capture are applied.
+#[derive(Debug, Clone, Copy)]
+pub struct NetProfitBreakdown {
+    /// Profit after per-hop DEX swap fees, before fixed costs (USD).
+    pub gross_after_swap_fees_usd: f64,
+    /// Aave flash-loan premium charged on the borrowed amount (USD).
+    pub aave_premium_usd: f64,
+    /// Estimated fixed gas cost (USD).
+    pub gas_cost_usd: f64,
+    /// Final net profit = gross_after_swap_fees - aave_premium - gas (USD).
+    pub net_profit_usd: f64,
+}
+
+/// Applies the fixed costs a per-hop swap fee cannot express — the Aave
+/// flash-loan premium (charged on the borrowed principal) and estimated gas —
+/// to a cycle whose `profit_ratio` is already net of swap fees.
+///
+/// `net = loan * (profit_ratio - 1) - loan * aave_premium_bps/10_000 - gas`.
+pub fn compute_net_profit(
+    profit_ratio: f64,
+    loan_usd: f64,
+    aave_premium_bps: f64,
+    gas_cost_usd: f64,
+) -> NetProfitBreakdown {
+    let gross_after_swap_fees_usd = loan_usd * (profit_ratio - 1.0);
+    let aave_premium_usd = loan_usd * (aave_premium_bps / 10_000.0);
+    let net_profit_usd = gross_after_swap_fees_usd - aave_premium_usd - gas_cost_usd;
+    NetProfitBreakdown {
+        gross_after_swap_fees_usd,
+        aave_premium_usd,
+        gas_cost_usd,
+        net_profit_usd,
+    }
 }
 
 pub struct Scanner {
@@ -120,12 +160,25 @@ impl Scanner {
             let token_b_decimals = infer_decimals(first.token_out);
 
             let loan_usd = self.config.loan_amount_usd;
-            let gross_profit_usd = loan_usd * (cycle.profit_ratio - 1.0);
-            let gas_cost_usd = 12.0;
-            let net_profit_usd = gross_profit_usd - gas_cost_usd;
+            // `profit_ratio` is already net of per-hop swap fees; apply the
+            // fixed costs (Aave premium on the borrowed principal + gas) here as
+            // the final net-profit gate before an opportunity is emitted.
+            let net = compute_net_profit(
+                cycle.profit_ratio,
+                loan_usd,
+                self.config.aave_premium_bps,
+                self.config.gas_cost_usd,
+            );
+            let gross_profit_usd = net.gross_after_swap_fees_usd;
+            let aave_premium_usd = net.aave_premium_usd;
+            let gas_cost_usd = net.gas_cost_usd;
+            let net_profit_usd = net.net_profit_usd;
 
-            if net_profit_usd < 0.0 {
-                debug!("Cycle discarded: net profit below zero");
+            if net_profit_usd <= 0.0 {
+                debug!(
+                    "Cycle discarded: net profit {:.4} <= 0 after swap fees, Aave premium ({:.4}) and gas ({:.4})",
+                    net_profit_usd, aave_premium_usd, gas_cost_usd
+                );
                 continue;
             }
 
@@ -281,11 +334,26 @@ pub fn bellman_ford_detect_cycles(pools: &[PoolEdge]) -> Vec<ArbitrageCycle> {
     let edges: Vec<GraphEdge> = pools
         .iter()
         .filter(|p| p.price.is_finite() && p.price > 0.0)
-        .map(|pool| GraphEdge {
-            from: *token_index.get(&<[u8; 20]>::from(pool.token_in)).expect("known token_in"),
-            to: *token_index.get(&<[u8; 20]>::from(pool.token_out)).expect("known token_out"),
-            weight: -pool.price.ln(),
-            pool: pool.clone(),
+        .filter_map(|pool| {
+            // Fee-aware edge weight: the effective output of a hop is
+            // `price * (1 - fee)`, so the log-weight becomes
+            // `-ln(price * (1 - fee))` (== `-ln(price) - ln(1 - fee)`).
+            // A negative cycle in this space is therefore gross-of-fixed-costs
+            // but already NET of every per-hop DEX swap fee.
+            let effective_price = pool.effective_price();
+            if !effective_price.is_finite() || effective_price <= 0.0 {
+                return None;
+            }
+            Some(GraphEdge {
+                from: *token_index
+                    .get(&<[u8; 20]>::from(pool.token_in))
+                    .expect("known token_in"),
+                to: *token_index
+                    .get(&<[u8; 20]>::from(pool.token_out))
+                    .expect("known token_out"),
+                weight: -effective_price.ln(),
+                pool: pool.clone(),
+            })
         })
         .collect();
 
@@ -539,5 +607,166 @@ mod tests {
         let b: Address = "0x0000000000000000000000000000000000000002".parse().unwrap();
         let pools = vec![make_edge(a, b, 2.0, "dex1")];
         assert!(bellman_ford_detect_cycles(&pools).is_empty());
+    }
+
+    // ---- Phase 2: fee-awareness tests ----
+
+    fn make_edge_fee(from: Address, to: Address, price: f64, fee: u32) -> PoolEdge {
+        PoolEdge {
+            token_in: from,
+            token_out: to,
+            price,
+            liquidity_usd: 1_000_000.0,
+            dex: format!("dex-{fee}"),
+            network: "ethereum".to_string(),
+            router: Address::zero(),
+            is_v3: false,
+            fee,
+        }
+    }
+
+    fn fee_test_config() -> Config {
+        Config {
+            networks: vec![],
+            scanner_private_key: "0x1".to_string(),
+            flashbots_signer_key: "0x1".to_string(),
+            flashbots_relay_url: "http://localhost".to_string(),
+            flashbots_max_priority_fee_gwei: 3,
+            flashbots_fee_multiplier: 1.15,
+            loan_amount_usd: 10_000.0,
+            min_net_profit_usd: 14.0,
+            min_spread_percent: 0.0,
+            aave_premium_bps: 5.0,
+            gas_cost_usd: 12.0,
+            max_slippage_bps: 40,
+            scan_interval_secs: 5,
+            thegraph_api_key: None,
+            enable_graph_polling: false,
+            enable_rpc_fallback: true,
+            log_level: "info".to_string(),
+            log_format: "json".to_string(),
+            prometheus_port: 9090,
+            enable_prometheus: false,
+            supabase_url: None,
+            supabase_service_role_key: None,
+            enable_supabase_telemetry: false,
+        }
+    }
+
+    fn addr(n: u8) -> Address {
+        let mut bytes = [0u8; 20];
+        bytes[19] = n;
+        Address::from(bytes)
+    }
+
+    #[test]
+    fn test_fee_fraction_conversion() {
+        // Uniswap-V3 style parts-per-million -> plain fraction.
+        assert!((make_edge_fee(addr(1), addr(2), 1.0, 3000).fee_fraction() - 0.003).abs() < 1e-12);
+        assert!((make_edge_fee(addr(1), addr(2), 1.0, 500).fee_fraction() - 0.0005).abs() < 1e-12);
+        assert!((make_edge_fee(addr(1), addr(2), 1.0, 0).fee_fraction()).abs() < 1e-12);
+        // effective_price applies (1 - fee).
+        let e = make_edge_fee(addr(1), addr(2), 2000.0, 3000);
+        assert!((e.effective_price() - 2000.0 * 0.997).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_compute_net_profit_math() {
+        // gross = 10_000 * (1.01 - 1) = 100; aave = 10_000 * 5/10_000 = 5; gas = 12.
+        let breakdown = compute_net_profit(1.01, 10_000.0, 5.0, 12.0);
+        assert!((breakdown.gross_after_swap_fees_usd - 100.0).abs() < 1e-9);
+        assert!((breakdown.aave_premium_usd - 5.0).abs() < 1e-9);
+        assert!((breakdown.gas_cost_usd - 12.0).abs() < 1e-9);
+        assert!((breakdown.net_profit_usd - 83.0).abs() < 1e-9);
+    }
+
+    /// (a) A cycle whose RAW/gross product > 1 but which becomes <= 1 after swap
+    /// fees must NOT be detected as a negative cycle.
+    #[test]
+    fn test_gross_positive_but_fee_negative_is_not_detected() {
+        let a = addr(1);
+        let b = addr(2);
+        // Raw round-trip product = 1.004 * 1.0 = 1.004 (> 1, a gross-positive lead).
+        let raw = 1.004_f64;
+        assert!(raw > 1.0, "precondition: raw product must be gross-positive");
+
+        // With 0.30% fee on each hop the effective product is
+        // 1.004 * 0.997 * 0.997 = 0.99798 < 1 -> no arbitrage.
+        let priced = vec![
+            make_edge_fee(a, b, 1.004, 3000),
+            make_edge_fee(b, a, 1.0, 3000),
+        ];
+        assert!(
+            bellman_ford_detect_cycles(&priced).is_empty(),
+            "fee-aware scanner must reject a cycle that is only gross-positive"
+        );
+
+        // Sanity check: the SAME prices with zero fees WOULD be detected,
+        // proving the rejection above is caused by the fee-aware weights.
+        let free = vec![
+            make_edge_fee(a, b, 1.004, 0),
+            make_edge_fee(b, a, 1.0, 0),
+        ];
+        let free_cycles = bellman_ford_detect_cycles(&free);
+        assert_eq!(free_cycles.len(), 1);
+        assert!(free_cycles[0].profit_ratio > 1.0);
+    }
+
+    /// (b) A cycle still positive after swap fees but negative after the Aave
+    /// premium + gas must NOT be reported as an opportunity.
+    #[test]
+    fn test_positive_after_fees_but_negative_after_fixed_costs_is_not_reported() {
+        let a = addr(1);
+        let b = addr(2);
+        // Zero-fee hops so the after-swap-fee ratio is exactly 1.001 (> 1, so it
+        // IS a detected cycle), but gross = 10_000 * 0.001 = $10, which is less
+        // than the $5 Aave premium + $12 gas = $17 fixed cost.
+        let pools = vec![
+            make_edge_fee(a, b, 1.001, 0),
+            make_edge_fee(b, a, 1.0, 0),
+        ];
+        let cycles = bellman_ford_detect_cycles(&pools);
+        assert_eq!(cycles.len(), 1, "cycle survives swap fees and is detected");
+        assert!((cycles[0].profit_ratio - 1.001).abs() < 1e-6);
+
+        let net = compute_net_profit(cycles[0].profit_ratio, 10_000.0, 5.0, 12.0);
+        assert!(net.gross_after_swap_fees_usd > 0.0, "gross-after-fees is positive");
+        assert!(net.net_profit_usd < 0.0, "net must be negative after Aave premium + gas");
+
+        // End-to-end: detect_arbitrage must emit no opportunity for this cycle.
+        let scanner = Scanner { config: fee_test_config() };
+        let opportunities = scanner.detect_arbitrage(&pools).expect("detect ok");
+        assert!(
+            opportunities.is_empty(),
+            "net-negative cycle must not be reported, got {} opportunities",
+            opportunities.len()
+        );
+    }
+
+    /// (c) A genuinely net-positive cycle IS reported as an Active opportunity.
+    #[test]
+    fn test_net_positive_cycle_is_reported() {
+        let a = addr(1);
+        let b = addr(2);
+        // After-swap-fee ratio 1.01 -> gross $100 - $5 Aave - $12 gas = $83 net.
+        let pools = vec![
+            make_edge_fee(a, b, 1.01, 0),
+            make_edge_fee(b, a, 1.0, 0),
+        ];
+        let cycles = bellman_ford_detect_cycles(&pools);
+        assert_eq!(cycles.len(), 1);
+        assert!((cycles[0].profit_ratio - 1.01).abs() < 1e-6);
+
+        let net = compute_net_profit(cycles[0].profit_ratio, 10_000.0, 5.0, 12.0);
+        assert!((net.net_profit_usd - 83.0).abs() < 1e-6);
+
+        let scanner = Scanner { config: fee_test_config() };
+        let opportunities = scanner.detect_arbitrage(&pools).expect("detect ok");
+        assert_eq!(opportunities.len(), 1, "net-positive cycle must be reported");
+        let opp = &opportunities[0];
+        assert!((opp.net_profit - 83.0).abs() < 1e-6);
+        assert!((opp.gross_profit - 100.0).abs() < 1e-6);
+        assert!((opp.gas_cost - 12.0).abs() < 1e-9);
+        assert_eq!(opp.status, OpportunityStatus::Active);
     }
 }

@@ -112,7 +112,26 @@ pub struct PoolEdge {
     pub network: String,
     pub router: Address,
     pub is_v3: bool,
+    /// Swap fee stored in Uniswap-V3 style hundredths-of-a-bip (parts per million).
+    /// Examples: 100 = 0.01%, 500 = 0.05%, 3000 = 0.30%, 10000 = 1.00%.
+    /// UniV2/Sushi style 0.30% pools use 3000; a zero-fee synthetic hop uses 0.
     pub fee: u32,
+}
+
+impl PoolEdge {
+    /// Returns the swap fee as a plain fraction of the traded amount
+    /// (e.g. `fee = 3000` -> `0.003`). The effective output of a hop is
+    /// `price * (1 - fee_fraction())`. Clamped to `[0, 1]` for safety.
+    pub fn fee_fraction(&self) -> f64 {
+        (self.fee as f64 / 1_000_000.0).clamp(0.0, 1.0)
+    }
+
+    /// Effective (fee-adjusted) exchange rate for this hop: the amount of
+    /// `token_out` actually received per unit of `token_in` after the pool's
+    /// swap fee is deducted.
+    pub fn effective_price(&self) -> f64 {
+        self.price * (1.0 - self.fee_fraction())
+    }
 }
 
 #[derive(Debug, Clone)]

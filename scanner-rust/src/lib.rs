@@ -7,6 +7,8 @@ pub mod telemetry;
 pub mod types;
 
 pub mod scanner_pub {
-    pub use crate::scanner::{bellman_ford_detect_cycles, ArbitrageCycle, Scanner};
+    pub use crate::scanner::{
+        bellman_ford_detect_cycles, compute_net_profit, ArbitrageCycle, NetProfitBreakdown, Scanner,
+    };
     pub use crate::types::PoolEdge;
 }

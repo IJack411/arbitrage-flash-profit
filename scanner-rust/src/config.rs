@@ -89,11 +89,11 @@ impl Config {
             }
         }
 
-        if let Some(rpc) = env::var("ARBITRUM_RPC_URL")
-            .ok()
-            .filter(|v| !v.is_empty())
-            .or_else(resolve_arbitrum_rpc_url)
-        {
+        // Single source of truth for the Arbitrum network URL: the documented
+        // precedence (SCANNER_RPC_URL > ARBITRUM_RPC_URL > ALCHEMY_API_KEY /
+        // VITE_ALCHEMY_API_KEY) lives in `resolve_arbitrum_rpc_url`, which also
+        // trims whitespace-only values.
+        if let Some(rpc) = resolve_arbitrum_rpc_url() {
             networks.push((
                 "arbitrum".to_string(),
                 NetworkConfig {

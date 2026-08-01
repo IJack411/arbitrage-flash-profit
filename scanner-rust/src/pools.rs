@@ -54,6 +54,11 @@ const SEL_BALANCE_OF: [u8; 4] = [0x70, 0xa0, 0x82, 0x31]; // balanceOf(address)
 /// Overridable via `SCANNER_MIN_POOL_LIQUIDITY_USD`.
 pub const DEFAULT_MIN_POOL_LIQUIDITY_USD: f64 = 5_000.0;
 
+/// If more than this fraction of a discovery or state/balance batch fails, the
+/// RPC is treated as degraded/throttled and the fetch fails closed rather than
+/// building a partial graph (which would let the dust guard go inert).
+pub const MAX_BATCH_FAILURE_FRACTION: f64 = 0.20;
+
 /// Uniswap V3 fee tiers we probe, in hundredths-of-a-bip (ppm).
 pub const V3_FEE_TIERS: [u32; 3] = [500, 3000, 10000];
 /// Canonical UniswapV2/SushiSwap swap fee in ppm (0.30%).
@@ -177,6 +182,34 @@ pub fn v2_price_token1_per_token0(reserve0: U256, reserve1: U256, dec0: u8, dec1
 /// (the exact class of bug that fabricates fake huge spreads).
 pub fn is_price_plausible(price: f64) -> bool {
     price.is_finite() && price > 1e-15 && price < 1e15
+}
+
+/// USD valuation of a pool's liquidity from whichever legs are USD-anchored.
+///
+/// A balanced AMM pool holds ~equal value per side, so when only one leg is
+/// priceable we double that leg's value as an estimate of the whole. When
+/// NEITHER leg is USD-anchored the pool is unvaluable and this returns `NaN`,
+/// which the fail-closed liquidity gate then rejects.
+fn value_pool_liquidity_usd(
+    usd0: Option<f64>,
+    usd1: Option<f64>,
+    human0: f64,
+    human1: f64,
+) -> f64 {
+    match (usd0, usd1) {
+        (Some(u0), Some(u1)) => human0 * u0 + human1 * u1,
+        (Some(u0), None) => human0 * u0 * 2.0,
+        (None, Some(u1)) => human1 * u1 * 2.0,
+        (None, None) => f64::NAN,
+    }
+}
+
+/// Fail-closed liquidity gate: a pool passes ONLY if its USD liquidity is
+/// provably finite and at or above the floor. `NaN` (unvaluable) and any
+/// sub-threshold value both fail, so a degraded/throttled RPC that cannot value
+/// pools produces "no data" rather than a dust-filled mirage graph.
+fn passes_liquidity_gate(liquidity_usd: f64, min_liquidity_usd: f64) -> bool {
+    liquidity_usd >= min_liquidity_usd
 }
 
 /// Static metadata shared by both directional edges of a pool.
@@ -530,7 +563,18 @@ pub async fn fetch_arbitrum_pools(rpc_url: &str) -> eyre::Result<Vec<PoolEdge>> 
         })
         .collect();
 
-    let discovery_results = batch_in_chunks(&client, &discovery_calls, 40).await;
+    let (discovery_results, discovery_failed) = batch_in_chunks(&client, &discovery_calls, 40).await;
+    if !discovery_calls.is_empty()
+        && discovery_failed as f64 / discovery_calls.len() as f64 > MAX_BATCH_FAILURE_FRACTION
+    {
+        return Err(eyre::eyre!(
+            "Aborting: {}/{} pool-discovery calls failed (> {:.0}%); RPC appears degraded/throttled. \
+             Refusing to build a partial pool graph.",
+            discovery_failed,
+            discovery_calls.len(),
+            MAX_BATCH_FAILURE_FRACTION * 100.0
+        ));
+    }
 
     // idx -> pool address
     let mut pools: Vec<(PoolCandidate, Address)> = Vec::new();
@@ -577,7 +621,19 @@ pub async fn fetch_arbitrum_pools(rpc_url: &str) -> eyre::Result<Vec<PoolEdge>> 
         });
     }
 
-    let state_results = batch_in_chunks(&client, &state_calls, 60).await;
+    let (state_results, state_failed) = batch_in_chunks(&client, &state_calls, 60).await;
+    if !state_calls.is_empty()
+        && state_failed as f64 / state_calls.len() as f64 > MAX_BATCH_FAILURE_FRACTION
+    {
+        return Err(eyre::eyre!(
+            "Aborting: {}/{} pool state/balance calls failed (> {:.0}%); RPC appears degraded/throttled. \
+             Refusing to build a partial pool graph (this is exactly the condition that let the dust \
+             guard go inert and surface mirage cycles).",
+            state_failed,
+            state_calls.len(),
+            MAX_BATCH_FAILURE_FRACTION * 100.0
+        ));
+    }
 
     // Fold results back per pool index.
     let mut price_bytes: std::collections::HashMap<usize, Vec<u8>> = std::collections::HashMap::new();
@@ -630,8 +686,18 @@ pub async fn fetch_arbitrum_pools(rpc_url: &str) -> eyre::Result<Vec<PoolEdge>> 
             );
             continue;
         }
-        let human0 = bal0.get(&idx).map(|v| to_human(*v, candidate.dec0)).unwrap_or(0.0);
-        let human1 = bal1.get(&idx).map(|v| to_human(*v, candidate.dec1)).unwrap_or(0.0);
+        // Require BOTH balance reads to have decoded. A dropped balanceOf on a
+        // degraded RPC must NOT be silently treated as a zero reserve — skip the
+        // pool so it can never be valued (and emitted) from partial data.
+        let (Some(raw0), Some(raw1)) = (bal0.get(&idx), bal1.get(&idx)) else {
+            debug!(
+                "Skipping {} pool {:#x}/{:#x}: missing balanceOf result(s) (degraded RPC)",
+                candidate.dex, candidate.token0, candidate.token1
+            );
+            continue;
+        };
+        let human0 = to_human(*raw0, candidate.dec0);
+        let human1 = to_human(*raw1, candidate.dec1);
         priced.push(PricedPool {
             candidate: candidate.clone(),
             pool_addr: *pool_addr,
@@ -663,23 +729,29 @@ pub async fn fetch_arbitrum_pools(rpc_url: &str) -> eyre::Result<Vec<PoolEdge>> 
     for p in &priced {
         let usd0 = usd_prices.get(&p.candidate.token0).copied();
         let usd1 = usd_prices.get(&p.candidate.token1).copied();
-        // Liquidity in USD from whichever legs we can value (x2 if only one leg
-        // is priceable, since a balanced pool holds ~equal value per side).
-        let liquidity_usd = match (usd0, usd1) {
-            (Some(u0), Some(u1)) => p.human0 * u0 + p.human1 * u1,
-            (Some(u0), None) => p.human0 * u0 * 2.0,
-            (None, Some(u1)) => p.human1 * u1 * 2.0,
-            (None, None) => {
-                unpriced_liquidity += 1;
-                f64::NAN // unknown; do not dust-filter what we cannot value
-            }
-        };
+        if usd0.is_none() && usd1.is_none() {
+            unpriced_liquidity += 1;
+        }
+        // Liquidity in USD from whichever legs we can value; NaN when neither
+        // leg is USD-anchored (cannot value -> must fail closed below).
+        let liquidity_usd = value_pool_liquidity_usd(usd0, usd1, p.human0, p.human1);
 
-        if liquidity_usd.is_finite() && liquidity_usd < min_liquidity_usd {
+        // FAIL CLOSED: skip anything not provably at or above the floor. NaN
+        // (unvaluable / no USD-anchored leg) and any sub-threshold value are
+        // both excluded, so a degraded RPC cannot let dust/mirage pools through.
+        if !passes_liquidity_gate(liquidity_usd, min_liquidity_usd) {
             skipped_dust += 1;
             debug!(
-                "Skipping dust {} pool {:#x}/{:#x}: liquidity ${:.2} < ${:.0}",
-                p.candidate.dex, p.candidate.token0, p.candidate.token1, liquidity_usd, min_liquidity_usd
+                "Skipping {} pool {:#x}/{:#x}: liquidity {} not >= ${:.0} (fail-closed)",
+                p.candidate.dex,
+                p.candidate.token0,
+                p.candidate.token1,
+                if liquidity_usd.is_finite() {
+                    format!("${liquidity_usd:.2}")
+                } else {
+                    "unvaluable".to_string()
+                },
+                min_liquidity_usd
             );
             continue;
         }
@@ -689,7 +761,7 @@ pub async fn fetch_arbitrum_pools(rpc_url: &str) -> eyre::Result<Vec<PoolEdge>> 
             p.candidate.token1,
             p.price1_per_0,
             &EdgeMeta {
-                liquidity_usd: if liquidity_usd.is_finite() { liquidity_usd } else { 0.0 },
+                liquidity_usd,
                 dex: &p.candidate.dex,
                 is_v3: p.candidate.is_v3,
                 fee: p.candidate.fee,
@@ -702,7 +774,7 @@ pub async fn fetch_arbitrum_pools(rpc_url: &str) -> eyre::Result<Vec<PoolEdge>> 
     }
 
     info!(
-        "Built {} directional edges from {} pools (skipped {} dust pools < ${:.0}; {} pools left unvalued for lack of a USD-anchored leg)",
+        "Built {} directional edges from {} pools (fail-closed: skipped {} dust/unvaluable pools not >= ${:.0}; {} of those had no USD-anchored leg)",
         edges.len(),
         priced_pools,
         skipped_dust,
@@ -716,19 +788,28 @@ pub async fn fetch_arbitrum_pools(rpc_url: &str) -> eyre::Result<Vec<PoolEdge>> 
 /// Split a large set of calls into fixed-size batches to stay friendly with
 /// rate limits and payload-size limits. Chunks run sequentially (modest
 /// concurrency) to avoid hammering a free RPC tier.
+///
+/// Returns the decoded results alongside the number of individual calls that
+/// belonged to a chunk that failed outright — callers use that count to detect
+/// a degraded/throttled RPC and fail closed rather than emitting a graph built
+/// from partial data.
 async fn batch_in_chunks(
     client: &RpcClient,
     calls: &[Call],
     chunk_size: usize,
-) -> Vec<(usize, Vec<u8>)> {
+) -> (Vec<(usize, Vec<u8>)>, usize) {
     let mut out = Vec::new();
+    let mut failed_calls = 0usize;
     for chunk in calls.chunks(chunk_size) {
         match client.batch_eth_call(chunk).await {
             Ok(mut results) => out.append(&mut results),
-            Err(e) => warn!("Batch chunk failed (skipping {} calls): {e}", chunk.len()),
+            Err(e) => {
+                failed_calls += chunk.len();
+                warn!("Batch chunk failed (skipping {} calls): {e}", chunk.len());
+            }
         }
     }
-    out
+    (out, failed_calls)
 }
 
 #[cfg(test)]
@@ -909,5 +990,48 @@ mod tests {
         assert_eq!(d("WETH"), 18);
         assert_eq!(d("DAI"), 18);
         assert_eq!(d("ARB"), 18);
+    }
+
+    #[test]
+    fn liquidity_gate_excludes_unvaluable_nan() {
+        // FAIL CLOSED: a pool we cannot value (no USD-anchored leg -> NaN) must
+        // be rejected, never passed. This is the degraded-RPC mirage guard.
+        let liq = value_pool_liquidity_usd(None, None, 1_000.0, 1_000.0);
+        assert!(liq.is_nan(), "no USD-anchored leg must yield NaN");
+        assert!(
+            !passes_liquidity_gate(liq, DEFAULT_MIN_POOL_LIQUIDITY_USD),
+            "unvaluable/NaN liquidity must be excluded (fail-closed)"
+        );
+        // Explicit NaN also fails the gate directly.
+        assert!(!passes_liquidity_gate(f64::NAN, DEFAULT_MIN_POOL_LIQUIDITY_USD));
+    }
+
+    #[test]
+    fn liquidity_gate_excludes_below_threshold() {
+        // A genuinely valued but sub-threshold (dust) pool is excluded.
+        let liq = value_pool_liquidity_usd(Some(1.0), Some(1.0), 10.0, 10.0);
+        assert!((liq - 20.0).abs() < 1e-9);
+        assert!(
+            !passes_liquidity_gate(liq, DEFAULT_MIN_POOL_LIQUIDITY_USD),
+            "finite liquidity below the floor must be excluded"
+        );
+    }
+
+    #[test]
+    fn liquidity_gate_admits_at_or_above_threshold() {
+        // At/above the floor a valuable pool passes; single-leg valuation doubles.
+        let both = value_pool_liquidity_usd(Some(1.0), Some(2000.0), 5_000.0, 5.0);
+        assert!((both - 15_000.0).abs() < 1e-9);
+        assert!(passes_liquidity_gate(both, DEFAULT_MIN_POOL_LIQUIDITY_USD));
+
+        let one_leg = value_pool_liquidity_usd(Some(1.0), None, 4_000.0, 1.5);
+        assert!((one_leg - 8_000.0).abs() < 1e-9, "single priceable leg doubles");
+        assert!(passes_liquidity_gate(one_leg, DEFAULT_MIN_POOL_LIQUIDITY_USD));
+
+        // Exactly at the floor passes (>=).
+        assert!(passes_liquidity_gate(
+            DEFAULT_MIN_POOL_LIQUIDITY_USD,
+            DEFAULT_MIN_POOL_LIQUIDITY_USD
+        ));
     }
 }

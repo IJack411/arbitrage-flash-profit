@@ -20,6 +20,7 @@ fn make_pool_edge(
         router,
         is_v3,
         fee,
+        swap_state: None,
     }
 }
 

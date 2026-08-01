@@ -3,6 +3,7 @@ pub mod executor;
 pub mod flashlight;
 pub mod pools;
 pub mod scanner;
+pub mod sim;
 pub mod simulator;
 pub mod telemetry;
 pub mod types;

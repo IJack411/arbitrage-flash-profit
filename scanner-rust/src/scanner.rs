@@ -127,6 +127,7 @@ impl Scanner {
                 router: uni_v3,
                 is_v3: true,
                 fee: 500,
+                swap_state: None,
             },
             PoolEdge {
                 token_in: usdc,
@@ -138,6 +139,7 @@ impl Scanner {
                 router: sushi_v2,
                 is_v3: false,
                 fee: 3000,
+                swap_state: None,
             },
             PoolEdge {
                 token_in: usdc,
@@ -149,6 +151,7 @@ impl Scanner {
                 router: uni_v3,
                 is_v3: true,
                 fee: 100,
+                swap_state: None,
             },
             PoolEdge {
                 token_in: usdt,
@@ -160,6 +163,7 @@ impl Scanner {
                 router: curve_router,
                 is_v3: false,
                 fee: 0,
+                swap_state: None,
             },
         ]
     }
@@ -590,6 +594,7 @@ mod tests {
             router: Address::zero(),
             is_v3: false,
             fee: 3000,
+            swap_state: None,
         }
     }
 
@@ -660,6 +665,7 @@ mod tests {
             router: Address::zero(),
             is_v3: false,
             fee,
+            swap_state: None,
         }
     }
 

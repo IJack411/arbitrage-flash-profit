@@ -55,7 +55,7 @@ impl Simulator {
             payload.amount_b_min.parse::<U256>().unwrap_or_default(),
         );
 
-        match self.run_local_simulation(&calldata, opportunity).await {
+        match self.run_local_simulation(&calldata).await {
             Ok(result) => Ok(result),
             Err(error) => {
                 warn!("Simulation error: {error}");
@@ -72,7 +72,6 @@ impl Simulator {
     async fn run_local_simulation(
         &self,
         calldata: &[u8],
-        opportunity: &CanonicalOpportunity,
     ) -> Result<SimulationResult> {
         let mut db = InMemoryDB::default();
         let contract_addr =
@@ -119,7 +118,15 @@ impl Simulator {
             ExecutionResult::Success { gas_used, .. } => Ok(SimulationResult {
                 success: true,
                 gas_used,
-                profit_usd: opportunity.net_profit,
+                // IMPORTANT: this revm harness only proves the calldata is
+                // *executable* (gas/plumbing); it does NOT execute the real DEX
+                // swaps and therefore cannot derive economic profit. Emitting
+                // `opportunity.net_profit` here would be a PASS-THROUGH of the
+                // detector's zero-impact prediction (a mirage). We report `0.0`
+                // so no unvalidated predicted profit can leak downstream — the
+                // ground-truth economic gate is the sequential price-impact
+                // simulation in `crate::sim` (Phase 4).
+                profit_usd: 0.0,
                 revert_reason: None,
             }),
             ExecutionResult::Revert { output, gas_used } => Ok(SimulationResult {
@@ -258,14 +265,17 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_simulation_validates_profit() {
+    async fn test_simulation_reports_no_passthrough_profit() {
+        // The revm harness proves executability only; it must NOT pass the
+        // detector's predicted profit through. On success, profit is reported as
+        // exactly 0.0 — economic validation is the analytic sim gate (crate::sim).
         let simulator = Simulator::new(make_test_config());
         let result = simulator
             .simulate(&make_test_opportunity())
             .await
             .expect("Simulation should not error");
         assert!(result.success);
-        assert!(result.profit_usd >= 0.0);
+        assert_eq!(result.profit_usd, 0.0);
     }
 
     #[tokio::test]

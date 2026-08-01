@@ -1,6 +1,7 @@
 pub mod config;
 pub mod executor;
 pub mod flashlight;
+pub mod payload;
 pub mod pools;
 pub mod scanner;
 pub mod sim;

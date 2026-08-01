@@ -151,4 +151,54 @@ mod tests {
     fn test_function_selector_known_value() {
         assert_eq!(function_selector("transfer(address,uint256)"), [0xa9, 0x05, 0x9c, 0xbb]);
     }
+
+    #[test]
+    fn test_encode_execute_arbitrage_nhop_abi_roundtrip() {
+        use ethers::abi::{decode, ParamType};
+
+        let asset: Address = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2".parse().unwrap();
+        let r1: Address = "0xE592427A0AEce92De3Edee1F18E0157C05861564".parse().unwrap();
+        let r2: Address = "0x1111111111111111111111111111111111111111".parse().unwrap();
+        let r3: Address = "0x2222222222222222222222222222222222222222".parse().unwrap();
+        let tb: Address = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48".parse().unwrap();
+        let tc: Address = "0x3333333333333333333333333333333333333333".parse().unwrap();
+
+        // 3-hop closed loop: asset -> tb -> tc -> asset.
+        let hops = vec![
+            Hop { router: r1, token_out: tb,    is_v3: true,  fee: 500,  amount_out_min: U256::from(111u64) },
+            Hop { router: r2, token_out: tc,    is_v3: false, fee: 0,    amount_out_min: U256::from(222u64) },
+            Hop { router: r3, token_out: asset, is_v3: true,  fee: 3000, amount_out_min: U256::from(333u64) },
+        ];
+        let amount = U256::from(10_u128.pow(18));
+        let calldata = FlashlightEncoder::encode_execute_arbitrage(asset, amount, &hops);
+
+        // Decode the parameter tail (after the 4-byte selector) back into tokens
+        // and assert every field survives the round-trip in the Solidity order
+        // (router, tokenOut, isV3, fee, amountOutMin).
+        let param_types = vec![
+            ParamType::Address,
+            ParamType::Uint(256),
+            ParamType::Array(Box::new(ParamType::Tuple(vec![
+                ParamType::Address,
+                ParamType::Address,
+                ParamType::Bool,
+                ParamType::Uint(24),
+                ParamType::Uint(256),
+            ]))),
+        ];
+        let decoded = decode(&param_types, &calldata[4..]).expect("decode calldata tail");
+
+        assert_eq!(decoded[0], Token::Address(asset));
+        assert_eq!(decoded[1], Token::Uint(amount));
+        let Token::Array(arr) = &decoded[2] else { panic!("expected Hop[] array") };
+        assert_eq!(arr.len(), hops.len());
+        for (tok, hop) in arr.iter().zip(hops.iter()) {
+            let Token::Tuple(fields) = tok else { panic!("expected Hop tuple") };
+            assert_eq!(fields[0], Token::Address(hop.router));
+            assert_eq!(fields[1], Token::Address(hop.token_out));
+            assert_eq!(fields[2], Token::Bool(hop.is_v3));
+            assert_eq!(fields[3], Token::Uint(U256::from(hop.fee)));
+            assert_eq!(fields[4], Token::Uint(hop.amount_out_min));
+        }
+    }
 }

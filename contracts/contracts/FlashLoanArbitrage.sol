@@ -57,18 +57,40 @@ interface IUniswapV3Router {
 /**
  * @title FlashLoanArbitrage
  * @notice Flash loan arbitrage receiver using Aave V3.
- *         Borrows a token, swaps A→B on one DEX, B→A on another, repays loan + fee, keeps profit.
+ *         Borrows a token, executes an arbitrary-length swap path (2..MAX_HOPS)
+ *         that must close back to the borrowed asset, repays loan + fee, keeps profit.
  * @dev Deploy once. Owner sets authorized callers (your bot wallet). Profit accumulates here; owner withdraws anytime.
+ *      Phase 5: generalized from a fixed 2-hop shape to an arbitrary multi-hop `Hop[]` path.
  */
 contract FlashLoanArbitrage is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
+
+    // ── Types ────────────────────────────────────────────────────────────────
+
+    /**
+     * @notice One swap leg of a multi-hop arbitrage path.
+     * @param router       DEX router used for this hop.
+     * @param tokenOut     Token received from this hop. The tokenIn is implicit:
+     *                     hop 0 spends the borrowed asset; hop i spends hop (i-1)'s tokenOut.
+     * @param isV3         true = Uniswap V3 style (exactInputSingle), false = V2 style.
+     * @param fee          V3 fee tier (ignored when isV3 == false).
+     * @param amountOutMin Per-hop slippage guard (minimum tokenOut for this hop).
+     */
+    struct Hop {
+        address router;
+        address tokenOut;
+        bool    isV3;
+        uint24  fee;
+        uint256 amountOutMin;
+    }
 
     // ── State ────────────────────────────────────────────────────────────────
 
     address public immutable POOL;
 
-    uint256 public maxSlippageBps = 300; // 3% default slippage cap
-    uint256 public constant BPS_DENOMINATOR = 10_000;
+    // Path-length bounds: at least 2 hops (a closed loop), capped to bound gas / abuse.
+    uint256 public constant MIN_HOPS = 2;
+    uint256 public constant MAX_HOPS = 5;
 
     mapping(address => bool) public authorizedCallers;
 
@@ -81,7 +103,6 @@ contract FlashLoanArbitrage is Ownable, ReentrancyGuard {
         address indexed initiator
     );
     event CallerUpdated(address indexed caller, bool authorized);
-    event SlippageUpdated(uint256 bps);
 
     // ── Modifiers ────────────────────────────────────────────────────────────
 
@@ -111,50 +132,40 @@ contract FlashLoanArbitrage is Ownable, ReentrancyGuard {
         emit CallerUpdated(caller, authorized);
     }
 
-    function setMaxSlippage(uint256 _bps) external onlyOwner {
-        require(_bps <= 1_000, "FlashLoanArbitrage: slippage > 10%");
-        maxSlippageBps = _bps;
-        emit SlippageUpdated(_bps);
-    }
-
     // ── Arbitrage Entry ──────────────────────────────────────────────────────
 
     /**
-     * @notice Kick off a flash loan arbitrage.
-     * @param asset       Token to borrow (e.g. USDC, WETH)
-     * @param amount      Amount to borrow (in token's native units)
-     * @param routerA     DEX router for the first swap (A → B)
-     * @param routerB     DEX router for the second swap (B → A)
-     * @param tokenB      Intermediate token address
-     * @param routerAisV3 true = Uniswap V3 style router, false = V2 style
-     * @param routerBisV3 true = Uniswap V3 style router, false = V2 style
-     * @param feeA        V3 fee tier for routerA (ignored if V2)
-     * @param feeB        V3 fee tier for routerB (ignored if V2)
-     * @param amountBMin  Minimum tokenB to receive from first swap (slippage guard)
+     * @notice Kick off a flash loan arbitrage over an arbitrary multi-hop path.
+     * @param asset  Token to borrow (e.g. USDC, WETH). This is the tokenIn of hop 0
+     *               and MUST equal the tokenOut of the final hop (the loop must close).
+     * @param amount Amount to borrow (in the asset's native units).
+     * @param hops   Ordered swap legs. `hops.length` must be within [MIN_HOPS, MAX_HOPS].
+     *               tokenIn of hop 0 = asset; tokenIn of hop i = hops[i-1].tokenOut.
      */
     function executeArbitrage(
         address asset,
         uint256 amount,
-        address routerA,
-        address routerB,
-        address tokenB,
-        bool routerAisV3,
-        bool routerBisV3,
-        uint24 feeA,
-        uint24 feeB,
-        uint256 amountBMin
+        Hop[] calldata hops
     ) external nonReentrant onlyAuthorized {
         require(asset != address(0), "FlashLoanArbitrage: zero asset");
         require(amount > 0, "FlashLoanArbitrage: zero amount");
-        require(routerA != address(0) && routerB != address(0), "FlashLoanArbitrage: zero router");
-        require(tokenB != address(0) && tokenB != asset, "FlashLoanArbitrage: invalid tokenB");
-
-        bytes memory params = abi.encode(
-            routerA, routerB, tokenB,
-            routerAisV3, routerBisV3,
-            feeA, feeB,
-            amountBMin
+        require(
+            hops.length >= MIN_HOPS && hops.length <= MAX_HOPS,
+            "FlashLoanArbitrage: bad path length"
         );
+
+        for (uint256 i = 0; i < hops.length; i++) {
+            require(hops[i].router != address(0), "FlashLoanArbitrage: zero router");
+            require(hops[i].tokenOut != address(0), "FlashLoanArbitrage: zero tokenOut");
+        }
+
+        // The path must close back to the borrowed asset.
+        require(
+            hops[hops.length - 1].tokenOut == asset,
+            "FlashLoanArbitrage: path must close to asset"
+        );
+
+        bytes memory params = abi.encode(hops);
 
         IPool(POOL).flashLoanSimple(address(this), asset, amount, params, 0);
     }
@@ -163,7 +174,9 @@ contract FlashLoanArbitrage is Ownable, ReentrancyGuard {
 
     /**
      * @notice Called by Aave pool after sending flash loan funds.
-     *         Must repay (amount + premium) before returning.
+     *         Executes the encoded multi-hop path and must repay (amount + premium)
+     *         before returning. All safety checks are re-enforced here (fail-closed),
+     *         since this is the code path that actually moves funds.
      */
     function executeOperation(
         address asset,
@@ -175,48 +188,57 @@ contract FlashLoanArbitrage is Ownable, ReentrancyGuard {
         require(msg.sender == POOL, "FlashLoanArbitrage: caller not Aave pool");
         require(initiator == address(this), "FlashLoanArbitrage: bad initiator");
 
-        (
-            address routerA,
-            address routerB,
-            address tokenB,
-            bool routerAisV3,
-            bool routerBisV3,
-            uint24 feeA,
-            uint24 feeB,
-            uint256 amountBMin
-        ) = abi.decode(params, (address, address, address, bool, bool, uint24, uint24, uint256));
+        Hop[] memory hops = abi.decode(params, (Hop[]));
+
+        // Re-enforce path bounds and closure inside the fund-moving path (fail-closed).
+        require(
+            hops.length >= MIN_HOPS && hops.length <= MAX_HOPS,
+            "FlashLoanArbitrage: bad path length"
+        );
+        require(
+            hops[hops.length - 1].tokenOut == asset,
+            "FlashLoanArbitrage: path must close to asset"
+        );
 
         uint256 repayAmount = amount + premium;
 
-        // ── Swap 1: asset → tokenB ────────────────────────────────────────
-        uint256 receivedB;
-        if (routerAisV3) {
-            receivedB = _swapV3(routerA, asset, tokenB, feeA, amount, amountBMin);
-        } else {
-            address[] memory pathAB = new address[](2);
-            pathAB[0] = asset;
-            pathAB[1] = tokenB;
-            receivedB = _swapV2(routerA, amount, pathAB, amountBMin);
+        // ── Execute each hop in sequence ──────────────────────────────────
+        address tokenIn = asset;
+        uint256 amountIn = amount;
+
+        for (uint256 i = 0; i < hops.length; i++) {
+            Hop memory hop = hops[i];
+
+            // Re-validate each hop inside the fund-moving path (fail-closed):
+            // the entry point checks these too, but the callback must be self-contained.
+            require(hop.router != address(0), "FlashLoanArbitrage: zero router");
+            require(hop.tokenOut != address(0), "FlashLoanArbitrage: zero tokenOut");
+
+            uint256 received;
+            if (hop.isV3) {
+                received = _swapV3(hop.router, tokenIn, hop.tokenOut, hop.fee, amountIn, hop.amountOutMin);
+            } else {
+                address[] memory path = new address[](2);
+                path[0] = tokenIn;
+                path[1] = hop.tokenOut;
+                received = _swapV2(hop.router, amountIn, path, hop.amountOutMin);
+            }
+
+            // Feed this hop's output into the next hop.
+            tokenIn = hop.tokenOut;
+            amountIn = received;
         }
 
-        // ── Swap 2: tokenB → asset (must cover repayAmount) ───────────────
-        uint256 receivedA;
-        if (routerBisV3) {
-            receivedA = _swapV3(routerB, tokenB, asset, feeB, receivedB, repayAmount);
-        } else {
-            address[] memory pathBA = new address[](2);
-            pathBA[0] = tokenB;
-            pathBA[1] = asset;
-            receivedA = _swapV2(routerB, receivedB, pathBA, repayAmount);
-        }
+        // After the loop, `amountIn` holds the final received amount, denominated in `asset`.
+        uint256 finalReceived = amountIn;
 
-        require(receivedA >= repayAmount, "FlashLoanArbitrage: trade unprofitable");
+        require(finalReceived >= repayAmount, "FlashLoanArbitrage: trade unprofitable");
 
         // ── Repay Aave ────────────────────────────────────────────────────
         IERC20(asset).forceApprove(POOL, repayAmount);
 
-        uint256 profit = receivedA - repayAmount;
-        emit ArbitrageExecuted(asset, amount, profit, tx.origin);
+        uint256 profit = finalReceived - repayAmount;
+        emit ArbitrageExecuted(asset, amount, profit, initiator);
 
         return true;
     }

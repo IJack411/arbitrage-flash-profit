@@ -1,5 +1,5 @@
 use mev_scanner::config::{Config, NetworkConfig};
-use mev_scanner::flashlight::FlashlightEncoder;
+use mev_scanner::flashlight::{FlashlightEncoder, Hop};
 use mev_scanner::scanner::Scanner;
 use mev_scanner::types::{CanonicalOpportunity, OpportunityStatus};
 
@@ -50,19 +50,24 @@ async fn test_scanner_produces_active_opportunity() {
 
 #[test]
 fn test_flashlight_encoding_length() {
-    let calldata = FlashlightEncoder::encode_execute_arbitrage(
-        "0x0000000000000000000000000000000000000001".parse().unwrap(),
-        1u64.into(),
-        "0x0000000000000000000000000000000000000002".parse().unwrap(),
-        "0x0000000000000000000000000000000000000003".parse().unwrap(),
-        "0x0000000000000000000000000000000000000004".parse().unwrap(),
-        true,
-        false,
-        500,
-        3000,
-        10u64.into(),
-    );
-    assert_eq!(calldata.len(), 324);
+    // Old encoder took a fixed 2-hop tuple; the Phase 5 contract takes a Hop[].
+    // Build the equivalent 2-hop path: asset -> tokenB (routerA/V3) -> asset (routerB/V2).
+    // The final hop's token_out MUST equal the borrowed asset so the loop closes.
+    let asset = "0x0000000000000000000000000000000000000001".parse().unwrap();
+    let token_b = "0x0000000000000000000000000000000000000004".parse().unwrap();
+    let router_a = "0x0000000000000000000000000000000000000002".parse().unwrap();
+    let router_b = "0x0000000000000000000000000000000000000003".parse().unwrap();
+    let hops = vec![
+        Hop { router: router_a, token_out: token_b, is_v3: true,  fee: 500,  amount_out_min: 10u64.into() },
+        Hop { router: router_b, token_out: asset,   is_v3: false, fee: 3000, amount_out_min: 0u64.into() },
+    ];
+    let calldata = FlashlightEncoder::encode_execute_arbitrage(asset, 1u64.into(), &hops);
+
+    // ABI size for executeArbitrage(address,uint256,(address,address,bool,uint24,uint256)[]):
+    // 4 (selector) + head[asset,amount,array-offset]=96 + array_len(32) + n tuples * (5 * 32).
+    assert_eq!(calldata.len(), 4 + 96 + 32 + 2 * 160);
+    // Selector must match the new Hop[] signature, not the old fixed-2-hop one.
+    assert_ne!(&calldata[0..4], &[0u8, 0, 0, 0]);
 }
 
 #[test]

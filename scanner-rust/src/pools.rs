@@ -27,7 +27,7 @@ use ethers::types::{Address, U256};
 use serde_json::Value;
 use tracing::{debug, info, warn};
 
-use crate::types::PoolEdge;
+use crate::types::{PoolEdge, PoolSwapState};
 
 /// A verified Arbitrum token with its canonical address and ERC-20 decimals.
 #[derive(Debug, Clone, Copy)]
@@ -48,6 +48,7 @@ const SEL_GET_PAIR: [u8; 4] = [0xe6, 0xa4, 0x39, 0x05]; // getPair(address,addre
 const SEL_SLOT0: [u8; 4] = [0x38, 0x50, 0xc7, 0xbd]; // slot0()
 const SEL_GET_RESERVES: [u8; 4] = [0x09, 0x02, 0xf1, 0xac]; // getReserves()
 const SEL_BALANCE_OF: [u8; 4] = [0x70, 0xa0, 0x82, 0x31]; // balanceOf(address)
+const SEL_LIQUIDITY: [u8; 4] = [0x1a, 0x68, 0x65, 0x02]; // liquidity()
 
 /// Default minimum pool liquidity (USD) below which a pool is treated as dust
 /// and skipped, so near-empty/stale pools cannot manufacture fake spreads.
@@ -212,13 +213,24 @@ fn passes_liquidity_gate(liquidity_usd: f64, min_liquidity_usd: f64) -> bool {
     liquidity_usd >= min_liquidity_usd
 }
 
-/// Static metadata shared by both directional edges of a pool.
+/// Static metadata shared by both directional edges of a pool, including the raw
+/// integer swap state the Phase 4 simulator needs to model price impact.
 struct EdgeMeta<'a> {
     liquidity_usd: f64,
     dex: &'a str,
     is_v3: bool,
     fee: u32,
     router: Address,
+    /// Decimals of `token0` / `token1` (the canonical, address-sorted ordering).
+    dec0: u8,
+    dec1: u8,
+    /// V2 raw reserves of `token0` / `token1`; zero for V3.
+    reserve0: U256,
+    reserve1: U256,
+    /// V3 concentrated-liquidity state; defaults for V2.
+    sqrt_price_x96: U256,
+    liquidity: u128,
+    tick: i32,
 }
 
 /// Build both directional edges for a pool given the `token1`-per-`token0`
@@ -229,7 +241,20 @@ fn build_bidirectional_edges(
     price1_per_0: f64,
     meta: &EdgeMeta<'_>,
 ) -> Option<[PoolEdge; 2]> {
-    let EdgeMeta { liquidity_usd, dex, is_v3, fee, router } = *meta;
+    let EdgeMeta {
+        liquidity_usd,
+        dex,
+        is_v3,
+        fee,
+        router,
+        dec0,
+        dec1,
+        reserve0,
+        reserve1,
+        sqrt_price_x96,
+        liquidity,
+        tick,
+    } = *meta;
     if !is_price_plausible(price1_per_0) {
         warn!(
             "Skipping {dex} pool {token0:#x}/{token1:#x}: implausible price {price1_per_0:e} (decimals/ordering guard)"
@@ -244,6 +269,29 @@ fn build_bidirectional_edges(
         return None;
     }
 
+    // Forward hop sells token0 for token1 (price DOWN) => zero_for_one = true.
+    let forward_state = PoolSwapState {
+        dec_in: dec0,
+        dec_out: dec1,
+        reserve_in: reserve0,
+        reserve_out: reserve1,
+        sqrt_price_x96,
+        liquidity,
+        tick,
+        zero_for_one: true,
+    };
+    // Backward hop sells token1 for token0 (price UP) => zero_for_one = false.
+    let backward_state = PoolSwapState {
+        dec_in: dec1,
+        dec_out: dec0,
+        reserve_in: reserve1,
+        reserve_out: reserve0,
+        sqrt_price_x96,
+        liquidity,
+        tick,
+        zero_for_one: false,
+    };
+
     let forward = PoolEdge {
         token_in: token0,
         token_out: token1,
@@ -254,6 +302,7 @@ fn build_bidirectional_edges(
         router,
         is_v3,
         fee,
+        swap_state: Some(forward_state),
     };
     let backward = PoolEdge {
         token_in: token1,
@@ -265,6 +314,7 @@ fn build_bidirectional_edges(
         router,
         is_v3,
         fee,
+        swap_state: Some(backward_state),
     };
     Some([forward, backward])
 }
@@ -462,12 +512,27 @@ fn decode_address(bytes: &[u8]) -> Option<Address> {
     Some(Address::from_slice(&bytes[12..32]))
 }
 
-/// Decode `slot0()` — the first 32-byte word is `sqrtPriceX96` (uint160).
-fn decode_slot0_sqrt_price(bytes: &[u8]) -> Option<U256> {
-    if bytes.len() < 32 {
+/// Decode `slot0()` into `(sqrtPriceX96, tick)`. The second 32-byte word holds
+/// the current `int24` tick, sign-extended to 256 bits, so we read the low three
+/// bytes and sign-extend from bit 23.
+fn decode_slot0_sqrt_price_and_tick(bytes: &[u8]) -> Option<(U256, i32)> {
+    if bytes.len() < 64 {
         return None;
     }
-    Some(U256::from_big_endian(&bytes[0..32]))
+    let sqrt = U256::from_big_endian(&bytes[0..32]);
+    let w1 = &bytes[32..64];
+    let mut tick =
+        ((w1[29] as i32) << 16) | ((w1[30] as i32) << 8) | (w1[31] as i32);
+    if tick & 0x0080_0000 != 0 {
+        // Negative int24: sign-extend into the upper bits of the i32.
+        tick |= !0x00FF_FFFFi32;
+    }
+    Some((sqrt, tick))
+}
+
+/// Decode a `uint128` return word (e.g. `liquidity()`), taking the low 128 bits.
+fn decode_uint128(bytes: &[u8]) -> Option<u128> {
+    decode_uint256(bytes).map(|v| v.low_u128())
 }
 
 /// Decode `getReserves()` -> (reserve0 uint112, reserve1 uint112, ...).
@@ -508,6 +573,16 @@ fn sorted_pair(a: TokenInfo, b: TokenInfo) -> (TokenInfo, TokenInfo) {
 /// Fetch a full set of live Arbitrum pool edges across Uniswap V3 (500/3000/
 /// 10000 tiers) and SushiSwap V2 for the registered token universe.
 pub async fn fetch_arbitrum_pools(rpc_url: &str) -> eyre::Result<Vec<PoolEdge>> {
+    Ok(fetch_arbitrum_pools_with_usd(rpc_url).await?.0)
+}
+
+/// Like [`fetch_arbitrum_pools`] but also returns the derived per-token USD price
+/// map (stablecoins anchored at $1, relaxed across observed edge prices). Phase 4
+/// uses this map to size a USD flash-loan into the start token's raw base units
+/// before running the price-impact simulator.
+pub async fn fetch_arbitrum_pools_with_usd(
+    rpc_url: &str,
+) -> eyre::Result<(Vec<PoolEdge>, std::collections::HashMap<Address, f64>)> {
     let client = RpcClient::new(rpc_url.to_string(), Duration::from_secs(15), 2)?;
 
     // Liveness check first so failures are clear and early.
@@ -596,12 +671,14 @@ pub async fn fetch_arbitrum_pools(rpc_url: &str) -> eyre::Result<Vec<PoolEdge>> 
     //      +0: price   (slot0 for V3, getReserves for V2)
     //      +1: balanceOf(pool) on token0  -> real on-chain reserve of token0
     //      +2: balanceOf(pool) on token1  -> real on-chain reserve of token1
+    //      +3: liquidity() (V3 only)      -> in-range L for concentrated swap math
     //    Balances let us value pool liquidity in USD and skip dust pools whose
-    //    stale marginal price would otherwise manufacture fake spreads.
-    let mut state_calls: Vec<Call> = Vec::with_capacity(pools.len() * 3);
+    //    stale marginal price would otherwise manufacture fake spreads. The
+    //    stride-4 keying leaves the +3 slot unused for V2 pools.
+    let mut state_calls: Vec<Call> = Vec::with_capacity(pools.len() * 4);
     for (idx, (c, pool_addr)) in pools.iter().enumerate() {
         state_calls.push(Call {
-            key: idx * 3,
+            key: idx * 4,
             to: *pool_addr,
             data: if c.is_v3 {
                 SEL_SLOT0.to_vec()
@@ -610,15 +687,22 @@ pub async fn fetch_arbitrum_pools(rpc_url: &str) -> eyre::Result<Vec<PoolEdge>> 
             },
         });
         state_calls.push(Call {
-            key: idx * 3 + 1,
+            key: idx * 4 + 1,
             to: c.token0,
             data: calldata_balance_of(*pool_addr),
         });
         state_calls.push(Call {
-            key: idx * 3 + 2,
+            key: idx * 4 + 2,
             to: c.token1,
             data: calldata_balance_of(*pool_addr),
         });
+        if c.is_v3 {
+            state_calls.push(Call {
+                key: idx * 4 + 3,
+                to: *pool_addr,
+                data: SEL_LIQUIDITY.to_vec(),
+            });
+        }
     }
 
     let (state_results, state_failed) = batch_in_chunks(&client, &state_calls, 60).await;
@@ -639,43 +723,81 @@ pub async fn fetch_arbitrum_pools(rpc_url: &str) -> eyre::Result<Vec<PoolEdge>> 
     let mut price_bytes: std::collections::HashMap<usize, Vec<u8>> = std::collections::HashMap::new();
     let mut bal0: std::collections::HashMap<usize, U256> = std::collections::HashMap::new();
     let mut bal1: std::collections::HashMap<usize, U256> = std::collections::HashMap::new();
+    let mut v3_liquidity: std::collections::HashMap<usize, u128> = std::collections::HashMap::new();
     for (key, bytes) in state_results {
-        match key % 3 {
+        match key % 4 {
             0 => {
-                price_bytes.insert(key / 3, bytes);
+                price_bytes.insert(key / 4, bytes);
             }
             1 => {
                 if let Some(v) = decode_uint256(&bytes) {
-                    bal0.insert(key / 3, v);
+                    bal0.insert(key / 4, v);
+                }
+            }
+            2 => {
+                if let Some(v) = decode_uint256(&bytes) {
+                    bal1.insert(key / 4, v);
                 }
             }
             _ => {
-                if let Some(v) = decode_uint256(&bytes) {
-                    bal1.insert(key / 3, v);
+                if let Some(v) = decode_uint128(&bytes) {
+                    v3_liquidity.insert(key / 4, v);
                 }
             }
         }
     }
 
-    // 4) Compute each pool's `token1_per_token0` price + human reserves.
+    // 4) Compute each pool's `token1_per_token0` price + human reserves + the raw
+    //    integer swap state (V2 reserves / V3 sqrtPrice+L+tick) the simulator needs.
     struct PricedPool {
         candidate: PoolCandidate,
         pool_addr: Address,
         price1_per_0: f64,
         human0: f64,
         human1: f64,
+        /// V2 raw reserves (reserve0, reserve1); zero for V3.
+        reserve0: U256,
+        reserve1: U256,
+        /// V3 concentrated-liquidity state; defaults for V2.
+        sqrt_price_x96: U256,
+        liquidity: u128,
+        tick: i32,
     }
     let mut priced: Vec<PricedPool> = Vec::new();
     for (idx, (candidate, pool_addr)) in pools.iter().enumerate() {
         let Some(bytes) = price_bytes.get(&idx) else { continue };
+        let mut reserve0 = U256::zero();
+        let mut reserve1 = U256::zero();
+        let mut sqrt_price_x96 = U256::zero();
+        let mut liquidity = 0u128;
+        let mut tick = 0i32;
         let price1_per_0 = if candidate.is_v3 {
-            match decode_slot0_sqrt_price(bytes) {
-                Some(sqrt) => v3_price_token1_per_token0(sqrt, candidate.dec0, candidate.dec1),
+            match decode_slot0_sqrt_price_and_tick(bytes) {
+                Some((sqrt, tk)) => {
+                    // A V3 pool with no in-range liquidity cannot be simulated; a
+                    // missing liquidity() read must NOT be treated as zero and let
+                    // through, so require it to have decoded.
+                    let Some(l) = v3_liquidity.get(&idx).copied() else {
+                        debug!(
+                            "Skipping {} pool {:#x}/{:#x}: missing liquidity() result (degraded RPC)",
+                            candidate.dex, candidate.token0, candidate.token1
+                        );
+                        continue;
+                    };
+                    sqrt_price_x96 = sqrt;
+                    liquidity = l;
+                    tick = tk;
+                    v3_price_token1_per_token0(sqrt, candidate.dec0, candidate.dec1)
+                }
                 None => continue,
             }
         } else {
             match decode_reserves(bytes) {
-                Some((r0, r1)) => v2_price_token1_per_token0(r0, r1, candidate.dec0, candidate.dec1),
+                Some((r0, r1)) => {
+                    reserve0 = r0;
+                    reserve1 = r1;
+                    v2_price_token1_per_token0(r0, r1, candidate.dec0, candidate.dec1)
+                }
                 None => continue,
             }
         };
@@ -704,6 +826,11 @@ pub async fn fetch_arbitrum_pools(rpc_url: &str) -> eyre::Result<Vec<PoolEdge>> 
             price1_per_0,
             human0,
             human1,
+            reserve0,
+            reserve1,
+            sqrt_price_x96,
+            liquidity,
+            tick,
         });
     }
 
@@ -766,6 +893,13 @@ pub async fn fetch_arbitrum_pools(rpc_url: &str) -> eyre::Result<Vec<PoolEdge>> 
                 is_v3: p.candidate.is_v3,
                 fee: p.candidate.fee,
                 router: p.pool_addr,
+                dec0: p.candidate.dec0,
+                dec1: p.candidate.dec1,
+                reserve0: p.reserve0,
+                reserve1: p.reserve1,
+                sqrt_price_x96: p.sqrt_price_x96,
+                liquidity: p.liquidity,
+                tick: p.tick,
             },
         ) {
             priced_pools += 1;
@@ -782,7 +916,7 @@ pub async fn fetch_arbitrum_pools(rpc_url: &str) -> eyre::Result<Vec<PoolEdge>> 
         unpriced_liquidity
     );
 
-    Ok(edges)
+    Ok((edges, usd_prices))
 }
 
 /// Split a large set of calls into fixed-size batches to stay friendly with
@@ -909,7 +1043,20 @@ mod tests {
             t0,
             t1,
             2000.0,
-            &EdgeMeta { liquidity_usd: 0.0, dex: "uniswap-v3", is_v3: true, fee: 500, router: Address::zero() },
+            &EdgeMeta {
+                liquidity_usd: 0.0,
+                dex: "uniswap-v3",
+                is_v3: true,
+                fee: 500,
+                router: Address::zero(),
+                dec0: 18,
+                dec1: 6,
+                reserve0: U256::zero(),
+                reserve1: U256::zero(),
+                sqrt_price_x96: U256::zero(),
+                liquidity: 0,
+                tick: 0,
+            },
         )
         .expect("plausible");
         assert_eq!(pair[0].token_in, t0);
@@ -918,6 +1065,13 @@ mod tests {
         assert_eq!(pair[1].token_in, t1);
         assert_eq!(pair[1].token_out, t0);
         assert!((pair[1].price - 1.0 / 2000.0).abs() < 1e-12);
+        // Swap state is populated and direction-correct.
+        let fwd = pair[0].swap_state.as_ref().unwrap();
+        let bwd = pair[1].swap_state.as_ref().unwrap();
+        assert!(fwd.zero_for_one);
+        assert!(!bwd.zero_for_one);
+        assert_eq!(fwd.dec_in, 18);
+        assert_eq!(bwd.dec_in, 6);
     }
 
     #[test]

@@ -1,4 +1,4 @@
-use ethers::types::Address;
+use ethers::types::{Address, U256};
 use serde::{Deserialize, Serialize};
 
 pub const CANONICAL_OPPORTUNITY_VERSION: &str = "scanner-opportunity-v1";
@@ -116,6 +116,38 @@ pub struct PoolEdge {
     /// Examples: 100 = 0.01%, 500 = 0.05%, 3000 = 0.30%, 10000 = 1.00%.
     /// UniV2/Sushi style 0.30% pools use 3000; a zero-fee synthetic hop uses 0.
     pub fee: u32,
+    /// Raw, integer on-chain pool state needed to SIMULATE a real swap through
+    /// this hop (constant-product for V2, concentrated-liquidity for V3). This is
+    /// what Phase 4's price-impact simulator consumes; the marginal [`price`]
+    /// above is only the zero-impact spot rate used by Bellman-Ford. `None` for
+    /// synthetic/demo pools that carry no executable state.
+    pub swap_state: Option<PoolSwapState>,
+}
+
+/// Raw integer pool state for one directional hop, captured at a single block.
+///
+/// All amounts are RAW base units (i.e. already scaled by the token's decimals),
+/// exactly as returned on-chain, so the simulator can do exact integer AMM math
+/// without floating-point drift. `dec_in`/`dec_out` are retained so a caller can
+/// convert to/from human units when sizing a loan.
+#[derive(Debug, Clone)]
+pub struct PoolSwapState {
+    /// ERC-20 decimals of `token_in` / `token_out`.
+    pub dec_in: u8,
+    pub dec_out: u8,
+    /// UniswapV2/Sushi: raw reserves of `token_in` and `token_out` in this pool
+    /// (constant-product `x*y=k`). Unused (zero) for V3.
+    pub reserve_in: U256,
+    pub reserve_out: U256,
+    /// Uniswap V3: current `slot0().sqrtPriceX96` (Q64.96, `token1` per `token0`),
+    /// in-range `liquidity()` (L), and current `slot0().tick`. Unused for V2.
+    pub sqrt_price_x96: U256,
+    pub liquidity: u128,
+    pub tick: i32,
+    /// True when this directional hop sells `token0` for `token1` (price moves
+    /// DOWN), i.e. `token_in` is the pool's lower-address token. Derived from the
+    /// canonical `token0 < token1` factory ordering.
+    pub zero_for_one: bool,
 }
 
 impl PoolEdge {

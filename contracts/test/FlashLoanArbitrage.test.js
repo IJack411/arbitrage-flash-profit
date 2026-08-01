@@ -75,11 +75,6 @@ describe("FlashLoanArbitrage — Unit Tests", function () {
       expect(await contract.owner()).to.equal(owner.address);
     });
 
-    it("defaults maxSlippageBps to 300", async function () {
-      const { contract } = await loadFixture(fixture);
-      expect(await contract.maxSlippageBps()).to.equal(300n);
-    });
-
     it("exposes MIN_HOPS = 2 and MAX_HOPS = 5", async function () {
       const { contract } = await loadFixture(fixture);
       expect(await contract.MIN_HOPS()).to.equal(2n);
@@ -128,41 +123,6 @@ describe("FlashLoanArbitrage — Unit Tests", function () {
       await expect(
         contract.connect(alice).setAuthorizedCaller(bob.address, true)
       ).to.be.revertedWithCustomError(contract, "OwnableUnauthorizedAccount");
-    });
-  });
-
-  // ── Slippage Setting ──────────────────────────────────────────────────────
-
-  describe("setMaxSlippage", function () {
-    it("owner can update slippage", async function () {
-      const { contract, owner } = await loadFixture(fixture);
-      await contract.connect(owner).setMaxSlippage(500);
-      expect(await contract.maxSlippageBps()).to.equal(500n);
-    });
-
-    it("emits SlippageUpdated event", async function () {
-      const { contract, owner } = await loadFixture(fixture);
-      await expect(contract.connect(owner).setMaxSlippage(200))
-        .to.emit(contract, "SlippageUpdated")
-        .withArgs(200n);
-    });
-
-    it("reverts if slippage > 10% (1000 bps)", async function () {
-      const { contract, owner } = await loadFixture(fixture);
-      await expect(contract.connect(owner).setMaxSlippage(1001))
-        .to.be.revertedWith("FlashLoanArbitrage: slippage > 10%");
-    });
-
-    it("allows exactly 1000 bps (10%)", async function () {
-      const { contract, owner } = await loadFixture(fixture);
-      await contract.connect(owner).setMaxSlippage(1000);
-      expect(await contract.maxSlippageBps()).to.equal(1000n);
-    });
-
-    it("non-owner cannot update slippage", async function () {
-      const { contract, alice } = await loadFixture(fixture);
-      await expect(contract.connect(alice).setMaxSlippage(100))
-        .to.be.revertedWithCustomError(contract, "OwnableUnauthorizedAccount");
     });
   });
 
@@ -596,6 +556,56 @@ describe("FlashLoanArbitrage — Multi-hop Mock Integration", function () {
     ).to.be.revertedWith("FlashLoanArbitrage: path must close to asset");
 
     await ethers.provider.send("hardhat_stopImpersonatingAccount", [poolAddr]);
+  });
+
+  it("reverts in the callback for a per-hop zero router (fail-closed re-check)", async function () {
+    // A path that closes to asset but contains a zero router must still revert
+    // inside executeOperation, proving the callback is self-contained.
+    const { asset, tokenB, pool, contract } = await loadFixture(mockFixture);
+    const AST = await asset.getAddress();
+    const B = await tokenB.getAddress();
+
+    const hopType = "tuple(address router,address tokenOut,bool isV3,uint24 fee,uint256 amountOutMin)[]";
+    const badParams = ethers.AbiCoder.defaultAbiCoder().encode(
+      [hopType],
+      [[ [ethers.ZeroAddress, B, true, 3000, 0], [ethers.ZeroAddress, AST, true, 3000, 0] ]]
+    );
+
+    const poolAddr = await pool.getAddress();
+    await ethers.provider.send("hardhat_impersonateAccount", [poolAddr]);
+    await ethers.provider.send("hardhat_setBalance", [poolAddr, "0x" + ethers.parseEther("1").toString(16)]);
+    const poolSigner = await ethers.getSigner(poolAddr);
+
+    await expect(
+      contract.connect(poolSigner).executeOperation(AST, AMOUNT, 0n, await contract.getAddress(), badParams)
+    ).to.be.revertedWith("FlashLoanArbitrage: zero router");
+
+    await ethers.provider.send("hardhat_stopImpersonatingAccount", [poolAddr]);
+  });
+
+  it("emits ArbitrageExecuted with the Aave initiator (address(this))", async function () {
+    const { owner, asset, tokenB, router, contract } = await loadFixture(mockFixture);
+    const R = await router.getAddress();
+    const AST = await asset.getAddress();
+    const B = await tokenB.getAddress();
+
+    await router.setRate(AST, B, 2, 1);
+    await router.setRate(B, AST, 6, 10);
+    await tokenB.mint(R, 10_000_000n * UNIT);
+    await asset.mint(R, 10_000_000n * UNIT);
+
+    const hops = [
+      hop(R, B,   { isV3: true, fee: 3000 }),
+      hop(R, AST, { isV3: true, fee: 3000 }),
+    ];
+
+    const premium = (AMOUNT * 5n) / 10_000n;
+    const expectedProfit = (AMOUNT * 12n) / 10n - (AMOUNT + premium);
+
+    // initiator is the Aave flash-loan initiator == the contract itself (not tx.origin).
+    await expect(contract.connect(owner).executeArbitrage(AST, AMOUNT, hops))
+      .to.emit(contract, "ArbitrageExecuted")
+      .withArgs(AST, AMOUNT, expectedProfit, await contract.getAddress());
   });
 });
 

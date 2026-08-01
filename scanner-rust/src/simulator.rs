@@ -43,8 +43,9 @@ impl Simulator {
         );
 
         // Represent the (currently 2-hop) canonical payload as a Hop[] path for
-        // the Phase 5 multi-hop contract ABI. Behavior is identical to the prior
-        // 2-hop encoding; the on-chain profit gate covers the closing leg's minimum.
+        // the Phase 5 multi-hop contract ABI. Net fund-safety is preserved via the
+        // on-chain profit gate (finalReceived >= amount + premium); the closing leg
+        // relies on that gate rather than a per-swap minimum (amount_out_min = 0).
         let asset = payload.asset.parse::<Address>().unwrap_or_default();
         let hops = vec![
             Hop {

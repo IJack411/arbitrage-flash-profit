@@ -88,9 +88,6 @@ contract FlashLoanArbitrage is Ownable, ReentrancyGuard {
 
     address public immutable POOL;
 
-    uint256 public maxSlippageBps = 300; // 3% default slippage cap
-    uint256 public constant BPS_DENOMINATOR = 10_000;
-
     // Path-length bounds: at least 2 hops (a closed loop), capped to bound gas / abuse.
     uint256 public constant MIN_HOPS = 2;
     uint256 public constant MAX_HOPS = 5;
@@ -106,7 +103,6 @@ contract FlashLoanArbitrage is Ownable, ReentrancyGuard {
         address indexed initiator
     );
     event CallerUpdated(address indexed caller, bool authorized);
-    event SlippageUpdated(uint256 bps);
 
     // ── Modifiers ────────────────────────────────────────────────────────────
 
@@ -134,12 +130,6 @@ contract FlashLoanArbitrage is Ownable, ReentrancyGuard {
         require(caller != address(0), "FlashLoanArbitrage: zero address");
         authorizedCallers[caller] = authorized;
         emit CallerUpdated(caller, authorized);
-    }
-
-    function setMaxSlippage(uint256 _bps) external onlyOwner {
-        require(_bps <= 1_000, "FlashLoanArbitrage: slippage > 10%");
-        maxSlippageBps = _bps;
-        emit SlippageUpdated(_bps);
     }
 
     // ── Arbitrage Entry ──────────────────────────────────────────────────────
@@ -219,6 +209,11 @@ contract FlashLoanArbitrage is Ownable, ReentrancyGuard {
         for (uint256 i = 0; i < hops.length; i++) {
             Hop memory hop = hops[i];
 
+            // Re-validate each hop inside the fund-moving path (fail-closed):
+            // the entry point checks these too, but the callback must be self-contained.
+            require(hop.router != address(0), "FlashLoanArbitrage: zero router");
+            require(hop.tokenOut != address(0), "FlashLoanArbitrage: zero tokenOut");
+
             uint256 received;
             if (hop.isV3) {
                 received = _swapV3(hop.router, tokenIn, hop.tokenOut, hop.fee, amountIn, hop.amountOutMin);
@@ -243,7 +238,7 @@ contract FlashLoanArbitrage is Ownable, ReentrancyGuard {
         IERC20(asset).forceApprove(POOL, repayAmount);
 
         uint256 profit = finalReceived - repayAmount;
-        emit ArbitrageExecuted(asset, amount, profit, tx.origin);
+        emit ArbitrageExecuted(asset, amount, profit, initiator);
 
         return true;
     }

@@ -3,14 +3,18 @@
     "inputs": [
       {"internalType": "address", "name": "asset", "type": "address"},
       {"internalType": "uint256", "name": "amount", "type": "uint256"},
-      {"internalType": "address", "name": "routerA", "type": "address"},
-      {"internalType": "address", "name": "routerB", "type": "address"},
-      {"internalType": "address", "name": "tokenB", "type": "address"},
-      {"internalType": "bool", "name": "routerAisV3", "type": "bool"},
-      {"internalType": "bool", "name": "routerBisV3", "type": "bool"},
-      {"internalType": "uint24", "name": "feeA", "type": "uint24"},
-      {"internalType": "uint24", "name": "feeB", "type": "uint24"},
-      {"internalType": "uint256", "name": "amountBMin", "type": "uint256"}
+      {
+        "components": [
+          {"internalType": "address", "name": "router", "type": "address"},
+          {"internalType": "address", "name": "tokenOut", "type": "address"},
+          {"internalType": "bool", "name": "isV3", "type": "bool"},
+          {"internalType": "uint24", "name": "fee", "type": "uint24"},
+          {"internalType": "uint256", "name": "amountOutMin", "type": "uint256"}
+        ],
+        "internalType": "struct FlashLoanArbitrage.Hop[]",
+        "name": "hops",
+        "type": "tuple[]"
+      }
     ],
     "name": "executeArbitrage",
     "outputs": [],

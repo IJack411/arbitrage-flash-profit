@@ -11,7 +11,7 @@ use revm::{
 use tracing::{debug, warn};
 
 use crate::config::Config;
-use crate::flashlight::FlashlightEncoder;
+use crate::flashlight::{FlashlightEncoder, Hop};
 use crate::types::{CanonicalOpportunity, SimulationResult};
 
 pub struct Simulator {
@@ -42,17 +42,31 @@ impl Simulator {
             self.config.min_net_profit_usd
         );
 
+        // Represent the (currently 2-hop) canonical payload as a Hop[] path for
+        // the Phase 5 multi-hop contract ABI. Behavior is identical to the prior
+        // 2-hop encoding; the on-chain profit gate covers the closing leg's minimum.
+        let asset = payload.asset.parse::<Address>().unwrap_or_default();
+        let hops = vec![
+            Hop {
+                router: payload.router_a.parse::<Address>().unwrap_or_default(),
+                token_out: payload.token_b.parse::<Address>().unwrap_or_default(),
+                is_v3: payload.router_a_is_v3,
+                fee: payload.fee_a,
+                amount_out_min: payload.amount_b_min.parse::<U256>().unwrap_or_default(),
+            },
+            Hop {
+                router: payload.router_b.parse::<Address>().unwrap_or_default(),
+                token_out: asset,
+                is_v3: payload.router_b_is_v3,
+                fee: payload.fee_b,
+                amount_out_min: U256::zero(),
+            },
+        ];
+
         let calldata = FlashlightEncoder::encode_execute_arbitrage(
-            payload.asset.parse::<Address>().unwrap_or_default(),
+            asset,
             payload.amount.parse::<U256>().unwrap_or_default(),
-            payload.router_a.parse::<Address>().unwrap_or_default(),
-            payload.router_b.parse::<Address>().unwrap_or_default(),
-            payload.token_b.parse::<Address>().unwrap_or_default(),
-            payload.router_a_is_v3,
-            payload.router_b_is_v3,
-            payload.fee_a,
-            payload.fee_b,
-            payload.amount_b_min.parse::<U256>().unwrap_or_default(),
+            &hops,
         );
 
         match self.run_local_simulation(&calldata).await {

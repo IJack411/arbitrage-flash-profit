@@ -6,7 +6,7 @@ use sha3::{Digest, Keccak256};
 use tracing::{info, warn};
 
 use crate::config::Config;
-use crate::flashlight::FlashlightEncoder;
+use crate::flashlight::{FlashlightEncoder, Hop};
 use crate::types::CanonicalOpportunity;
 
 #[derive(Debug, Serialize)]
@@ -69,17 +69,31 @@ impl Executor {
             opportunity.token_pair, opportunity.network, opportunity.net_profit
         );
 
+        // Represent the (currently 2-hop) canonical payload as a Hop[] path for
+        // the Phase 5 multi-hop contract ABI. Behavior is identical to the prior
+        // 2-hop encoding; the on-chain profit gate covers the closing leg's minimum.
+        let asset = payload.asset.parse::<Address>()?;
+        let hops = vec![
+            Hop {
+                router: payload.router_a.parse::<Address>()?,
+                token_out: payload.token_b.parse::<Address>()?,
+                is_v3: payload.router_a_is_v3,
+                fee: payload.fee_a,
+                amount_out_min: payload.amount_b_min.parse::<U256>()?,
+            },
+            Hop {
+                router: payload.router_b.parse::<Address>()?,
+                token_out: asset,
+                is_v3: payload.router_b_is_v3,
+                fee: payload.fee_b,
+                amount_out_min: U256::zero(),
+            },
+        ];
+
         let calldata = FlashlightEncoder::encode_execute_arbitrage(
-            payload.asset.parse::<Address>()?,
+            asset,
             payload.amount.parse::<U256>()?,
-            payload.router_a.parse::<Address>()?,
-            payload.router_b.parse::<Address>()?,
-            payload.token_b.parse::<Address>()?,
-            payload.router_a_is_v3,
-            payload.router_b_is_v3,
-            payload.fee_a,
-            payload.fee_b,
-            payload.amount_b_min.parse::<U256>()?,
+            &hops,
         );
 
         let network_config = self

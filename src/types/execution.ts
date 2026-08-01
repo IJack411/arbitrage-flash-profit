@@ -1,13 +1,20 @@
 /**
  * CANONICAL EXECUTION PAYLOAD SCHEMA
  * 
- * This type defines the exact parameters needed to call FlashLoanArbitrage.executeArbitrage()
- * on-chain. Every execution step (scanner → executor → contract) must agree on this schema.
+ * This type defines the parameters for a 2-hop arbitrage execution.
  * 
- * Maps directly to:
+ * NOTE (Phase 5): The on-chain contract `FlashLoanArbitrage.executeArbitrage` was
+ * generalized to an arbitrary multi-hop `Hop[]` path
+ * (`executeArbitrage(address asset, uint256 amount, Hop[] hops)`), where
+ * `Hop = { router, tokenOut, isV3, fee, amountOutMin }`. This 2-hop payload maps
+ * to a 2-element Hop[] (asset→tokenB via routerA, then tokenB→asset via routerB).
+ * Generalizing this off-chain payload/pipeline to N-hop is deferred to a follow-up
+ * (Phase 6 off-chain payload generalization); execution remains disabled here.
+ * 
+ * Maps to:
  * @see contracts/contracts/FlashLoanArbitrage.sol::executeArbitrage()
  * 
- * The 10-parameter signature is:
+ * The (legacy 2-hop) parameter set is:
  * executeArbitrage(
  *   address asset,
  *   uint256 amount,

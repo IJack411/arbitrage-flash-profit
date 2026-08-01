@@ -10,12 +10,15 @@ import {
   buildRouteKey,
   createDeterministicCandidateId,
   deriveAmountBMinFromQuote,
+  deriveUsdReferenceAnchor,
   evaluateReadinessGateDecision,
   evaluateSourceQualityPenalty,
   OPPORTUNITY_REASON_CODES,
   shouldPromoteOpportunity,
   type CanonicalExecutionPayload,
   type OpportunityReasonCode,
+  type UsdAnchorConfidence,
+  type UsdAnchorVenueQuote,
 } from '../_shared/opportunity-contract.ts';
 
 export {};
@@ -3620,6 +3623,7 @@ const buildExecutionPayload = (
   persistenceCount: number,
   minRequiredPersistence: number,
   quoteUsdPrice = 1, // 1 for stables (USDC/USDT); wethUsdPrice for WETH pairs
+  quoteUsdPriceConfidence: UsdAnchorConfidence = 'high', // 'high' for stables (=1); anchor confidence for WETH pairs
 ): {
   payload: CanonicalExecutionPayload | null;
   error?: string;
@@ -3733,6 +3737,7 @@ const buildExecutionPayload = (
         routeKey,
         quoteTimestamp,
         quoteTokenUsdPrice: safeQuoteUsdPrice,
+        quoteTokenUsdPriceConfidence: quoteUsdPriceConfidence,
         buyPrice,
         expectedBuyTokenAmount: expectedBuyTokenAmount.toString(),
         amountBMin: amountBMin.toString(),
@@ -4721,22 +4726,25 @@ const findSpreads = (
 
   // Normalize TOKEN/WETH prices from "WETH per TOKEN" to "USD per TOKEN" so the CPMM
   // simulation (which uses USD loan amounts and USD liquidity) computes correct slippage/profit.
-  // Step 1: derive WETH/USD price from existing WETH/USDC (or WETH/USDT) V3/V2/Sushi entries.
-  const wethUsdPriceArr: number[] = [];
-  for (const map of [uniV3Map, uniV2Map, sushiMap]) {
+  // Step 1: derive WETH/USD from ALL indexed WETH/stable pools using the
+  // deepest-venue anchor + >=3-venue consensus outlier guard, so a single thin
+  // or stale WETH/stable pool cannot mis-anchor every TOKEN/WETH USD price
+  // (the same failure mode that made a near-empty Uniswap pool misprice a token).
+  const wethUsdQuotes: UsdAnchorVenueQuote[] = [];
+  for (const map of [uniV3Map, uniV2Map, sushiMap, balancerMap, curveMap]) {
     for (const [k, entry] of map) {
       const baseKey = k.includes('@') ? k.split('@')[0] : k;
       if (baseKey.endsWith(':WETH/USDC') || baseKey.endsWith(':WETH/USDT') || baseKey.endsWith(':WETH/DAI')) {
-        if (entry.price > 100 && entry.price < 100_000) wethUsdPriceArr.push(entry.price);
+        if (entry.price > 100 && entry.price < 100_000) {
+          wethUsdQuotes.push({ price: entry.price, liquidityUsd: Number(entry.pool.reserveUSD || 0), venue: baseKey });
+        }
       }
     }
   }
-  const wethUsdPrice = (() => {
-    if (wethUsdPriceArr.length === 0) return 3500; // fallback if WETH/stable not yet indexed
-    const s = [...wethUsdPriceArr].sort((a, b) => a - b);
-    const mid = Math.floor(s.length / 2);
-    return s.length % 2 !== 0 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
-  })();
+  const wethUsdAnchor = deriveUsdReferenceAnchor(wethUsdQuotes);
+  const wethUsdPrice = wethUsdAnchor ? wethUsdAnchor.price : 3500; // fallback if WETH/stable not yet indexed
+  // 'low' when the anchor was not confirmed by a >=3-venue consensus (or absent).
+  const wethUsdPriceConfidence: UsdAnchorConfidence = wethUsdAnchor ? wethUsdAnchor.confidence : 'low';
   // Step 2: convert all TOKEN/WETH prices from "WETH per TOKEN" (quote per base) to "USD per TOKEN"
   // by multiplying by wethUsdPrice so the CPMM (USD loan amounts + USD liquidity) is correct.
   for (const map of [uniV3Map, uniV2Map, sushiMap, balancerMap, curveMap]) {
@@ -6381,6 +6389,8 @@ const findSpreads = (
       minRequiredPersistence,
       // For TOKEN/WETH pairs the loan is WETH; pass wethUsdPrice so the amount is correctly scaled.
       key.endsWith('/WETH') ? wethUsdPrice : 1,
+      // Stables are exact (=1, 'high'); WETH pairs inherit the deepest-venue anchor confidence.
+      key.endsWith('/WETH') ? wethUsdPriceConfidence : 'high',
     );
 
     if (!executionPayload) {

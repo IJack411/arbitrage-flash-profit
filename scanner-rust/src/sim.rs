@@ -281,13 +281,16 @@ pub fn v3_amount_out(state: &PoolSwapState, amount_in: U256, fee_ppm: u32) -> Op
     let (lower, upper) = interval_bounds(state.tick, spacing);
     if state.zero_for_one {
         // Price decreases; must not fall below the interval's lower sqrt bound.
-        let lower_sqrt = sqrt_ratio_at_tick_x96(lower)?;
+        // Round the LOWER threshold UP so any f64 error can only make the guardrail
+        // stricter (reject-leaning), never permissive.
+        let lower_sqrt = sqrt_ratio_at_tick_x96(lower, BoundRound::Up)?;
         if sqrt_next < lower_sqrt {
             return None;
         }
     } else {
         // Price increases; must not rise above the interval's upper sqrt bound.
-        let upper_sqrt = sqrt_ratio_at_tick_x96(upper)?;
+        // Round the UPPER threshold DOWN so any f64 error is likewise conservative.
+        let upper_sqrt = sqrt_ratio_at_tick_x96(upper, BoundRound::Down)?;
         if sqrt_next > upper_sqrt {
             return None;
         }
@@ -375,15 +378,36 @@ fn interval_bounds(tick: i32, spacing: i32) -> (i32, i32) {
     (lower, lower + spacing)
 }
 
+/// Rounding direction for the tick-interval guardrail threshold. We deliberately
+/// round the lower bound UP and the upper bound DOWN so the (approximate) f64
+/// boundary is always conservative — float error can only cause an over-rejection,
+/// never a permissive over-estimate of output.
+#[derive(Clone, Copy)]
+enum BoundRound {
+    Up,
+    Down,
+}
+
 /// `sqrt(1.0001^tick) · 2^96` as a Q64.96 `U256`. Uses an `f64` `1.0001^tick`
 /// approximation — this is used ONLY as the tick-interval guardrail threshold,
-/// never in the exact swap-output math, and its ~1e-15 relative error is
+/// never in the exact swap-output math, and its ~1e-12 relative error is
 /// negligible against the 1e-4 relative width of a single tick.
-fn sqrt_ratio_at_tick_x96(tick: i32) -> Option<U256> {
+///
+/// `round` biases the result one-sidedly: a small relative epsilon (comfortably
+/// larger than the f64 error, yet far below one tick's width) nudges the lower
+/// bound UP and the upper bound DOWN, guaranteeing the guardrail can only ever
+/// reject-lean, never over-estimate output.
+fn sqrt_ratio_at_tick_x96(tick: i32, round: BoundRound) -> Option<U256> {
     let ratio = 1.0001f64.powi(tick).sqrt();
     if !ratio.is_finite() || ratio <= 0.0 {
         return None;
     }
+    // 1e-9 >> f64 rounding error (~1e-12 rel) yet << one tick's 1e-4 width.
+    const EPS: f64 = 1e-9;
+    let ratio = match round {
+        BoundRound::Up => ratio * (1.0 + EPS),
+        BoundRound::Down => ratio * (1.0 - EPS),
+    };
     let x96 = ratio * 2f64.powi(96);
     u256_from_f64(x96)
 }
@@ -504,6 +528,39 @@ mod tests {
 
     fn e18(n: u128) -> U256 {
         U256::from(n) * U256::exp10(18)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn v3_edge(
+        token_in: u8,
+        token_out: u8,
+        sqrt_price_x96: U256,
+        liquidity: u128,
+        tick: i32,
+        zero_for_one: bool,
+        fee: u32,
+    ) -> PoolEdge {
+        PoolEdge {
+            token_in: addr(token_in),
+            token_out: addr(token_out),
+            price: 1.0,
+            liquidity_usd: 1_000_000.0,
+            dex: "uniswap_v3".to_string(),
+            network: "arbitrum".to_string(),
+            router: Address::zero(),
+            is_v3: true,
+            fee,
+            swap_state: Some(PoolSwapState {
+                dec_in: 18,
+                dec_out: 18,
+                reserve_in: U256::zero(),
+                reserve_out: U256::zero(),
+                sqrt_price_x96,
+                liquidity,
+                tick,
+                zero_for_one,
+            }),
+        }
     }
 
     // ---- V2 known-answer (independent Python reference) ----
@@ -644,6 +701,54 @@ mod tests {
             outcome.net.net_profit_usd
         );
         assert!(!outcome.survives(0.0), "mirage must NOT survive the gate");
+    }
+
+    // ---- THE V3 ANTI-MIRAGE TEST (within-tick price impact, not boundary reject) ----
+
+    #[test]
+    fn anti_mirage_v3_hop_dragged_net_negative_by_within_tick_impact() {
+        // A 2-hop cycle A->B->A that is spot-positive on marginal prices but is
+        // dragged NET-NEGATIVE once REAL within-tick V3 price impact is applied.
+        // Hop 1 is a UniswapV3 hop (fee 1%, price 1.0, tick 0, spacing 200 => the
+        // trade stays inside the [0,200] interval, so this exercises the exact V3
+        // swap MATH, not the boundary/zero-liquidity rejection paths). Hop 2 is a
+        // deep, fee-free V2 pool supplying a +1.5% marginal edge.
+        //
+        // Spot (zero-impact) marginal round trip ~ 0.99 * 1.015 = 1.00485 > 1 (mirage),
+        // but the V3 hop's within-tick impact on a ~0.5-token loan cuts its realized
+        // output enough that the realized loop returns LESS than it borrowed.
+        let q96 = q96();
+        // Hop 1: V3, one_for_zero (price up), price 1.0, L shallow enough to move.
+        let v3_hop = v3_edge(1, 2, q96, 6 * 10u128.pow(19), 0, false, 10000);
+        // Hop 2: V2, fee 0, deep pool, marginal A per B = 1.015.
+        let deep = U256::exp10(30);
+        let deep_plus = deep * U256::from(1015u64) / U256::from(1000u64);
+        let v2_hop = v2_edge(2, 1, 18, 18, deep, deep_plus, 0, true);
+
+        let cycle = ArbitrageCycle {
+            edges: vec![v3_hop, v2_hop],
+            profit_ratio: 1.00485, // detector's zero-impact (mirage) view
+        };
+        assert!(cycle.profit_ratio > 1.0, "spot view must look profitable");
+
+        // loan_usd 0.5, start_token_usd 1.0, dec 18 => 0.5e18 raw start amount.
+        let outcome = simulate_cycle(&cycle, 0.5, 1.0, 5.0, 0.0);
+        assert!(
+            outcome.simulable,
+            "V3 hop must stay INSIDE its tick interval (exercise the math, not reject): {:?}",
+            outcome.reject_reason
+        );
+        assert!(
+            outcome.realized_ratio < 1.0,
+            "within-tick V3 impact must drag realized ratio below 1.0, got {}",
+            outcome.realized_ratio
+        );
+        assert!(
+            outcome.net.net_profit_usd < 0.0,
+            "realized net must be negative, got {}",
+            outcome.net.net_profit_usd
+        );
+        assert!(!outcome.survives(0.0), "V3 mirage must NOT survive the gate");
     }
 
     #[test]

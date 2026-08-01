@@ -4,7 +4,7 @@ use chrono::Utc;
 use ethers::types::Address;
 use ethers::utils::to_checksum;
 use sha2::{Digest, Sha256};
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 use crate::config::Config;
@@ -79,9 +79,33 @@ impl Scanner {
         Ok(Self { config })
     }
 
+    /// Fetch the current pool graph. Phase 3 prefers a LIVE Arbitrum multi-DEX
+    /// feed whenever an RPC endpoint is resolvable (from the `arbitrum` network
+    /// config, or `SCANNER_RPC_URL` / `ARBITRUM_RPC_URL` / `ALCHEMY_API_KEY`).
+    /// When no endpoint is configured it falls back to clearly-labeled synthetic
+    /// demo pools rather than crashing — no RPC key is ever hardcoded.
     pub async fn fetch_pools(&self) -> eyre::Result<Vec<PoolEdge>> {
-        debug!("Fetching pool data");
-        Ok(self.fetch_synthetic_pools())
+        let rpc_url = self
+            .config
+            .networks
+            .iter()
+            .find(|(name, _)| name == "arbitrum")
+            .map(|(_, net)| net.rpc_url.clone())
+            .or_else(crate::config::resolve_arbitrum_rpc_url);
+
+        match rpc_url {
+            Some(url) => {
+                info!("Fetching LIVE Arbitrum pool state via configured RPC");
+                crate::pools::fetch_arbitrum_pools(&url).await
+            }
+            None => {
+                warn!(
+                    "No Arbitrum RPC configured (set SCANNER_RPC_URL, ARBITRUM_RPC_URL, or ALCHEMY_API_KEY); \
+                     falling back to SYNTHETIC demo pools — this is NOT live data"
+                );
+                Ok(self.fetch_synthetic_pools())
+            }
+        }
     }
 
     fn fetch_synthetic_pools(&self) -> Vec<PoolEdge> {
@@ -511,18 +535,32 @@ fn build_candidate_id(token_pair: &str, buy_dex: &str, sell_dex: &str, network: 
 }
 
 fn infer_usd_price(token: Address) -> f64 {
+    // Stablecoins (both mainnet and Arbitrum) are ~$1. Non-stable tokens fall
+    // back to 1.0 — this only sizes the (detection-only) execution payload and
+    // does NOT feed the Bellman-Ford cycle math, which uses PoolEdge.price.
     match format!("{token:#x}").to_lowercase().as_str() {
-        "0xc02aa39b223fe8d0a0e5c4f27ead9083c756cc2" => 2000.0,
-        "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" => 1.0,
-        "0xdac17f958d2ee523a2206206994597c13d831ec7" => 1.0,
+        // Ethereum mainnet
+        "0xc02aa39b223fe8d0a0e5c4f27ead9083c756cc2" => 2000.0, // WETH (mainnet demo)
+        "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" => 1.0,   // USDC (mainnet)
+        "0xdac17f958d2ee523a2206206994597c13d831ec7" => 1.0,   // USDT (mainnet)
+        // Arbitrum stablecoins
+        "0xaf88d065e77c8cc2239327c5edb3a432268e5831" => 1.0, // USDC (native)
+        "0xff970a61a04b1ca14834a43f5de4533ebddb5cc8" => 1.0, // USDC.e
+        "0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9" => 1.0, // USDT
+        "0xda10009cbd5d07dd0cecc66161fc93d7c9000da1" => 1.0, // DAI
         _ => 1.0,
     }
 }
 
 fn infer_decimals(token: Address) -> u8 {
+    // Prefer the verified Arbitrum registry; fall back to mainnet stablecoins
+    // and a sane 18-decimal default.
+    if let Some(d) = crate::pools::decimals_of(token, &crate::pools::arbitrum_tokens()) {
+        return d;
+    }
     match format!("{token:#x}").to_lowercase().as_str() {
-        "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" => 6,
-        "0xdac17f958d2ee523a2206206994597c13d831ec7" => 6,
+        "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" => 6, // USDC (mainnet)
+        "0xdac17f958d2ee523a2206206994597c13d831ec7" => 6, // USDT (mainnet)
         _ => 18,
     }
 }

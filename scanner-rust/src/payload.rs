@@ -37,6 +37,12 @@ pub const DEFAULT_DRYRUN_SLIPPAGE_BPS: u32 = 50;
 pub enum DryRunError {
     /// `hops.length` outside `[MIN_HOPS, MAX_HOPS]`.
     BadHopCount { got: usize, min: usize, max: usize },
+    /// The cycle's sim trace was not a clean, complete simulation, so no payload
+    /// may be built from it (a non-simulable cycle is not profitable).
+    NotSimulable,
+    /// The cycle's edge count and the sim trace's recorded per-hop outputs
+    /// disagree — the trace does not correspond to this cycle.
+    TraceLengthMismatch { edges: usize, outputs: usize },
     /// Borrowed `amount` is zero.
     ZeroAmount,
     /// Borrowed `asset` is the zero address.
@@ -58,6 +64,13 @@ impl std::fmt::Display for DryRunError {
             DryRunError::BadHopCount { got, min, max } => {
                 write!(f, "bad path length: got {got}, expected [{min},{max}]")
             }
+            DryRunError::NotSimulable => {
+                write!(f, "cycle did not simulate cleanly; refusing to build payload")
+            }
+            DryRunError::TraceLengthMismatch { edges, outputs } => write!(
+                f,
+                "sim trace length mismatch: {edges} edge(s) but {outputs} recorded hop output(s)"
+            ),
             DryRunError::ZeroAmount => write!(f, "zero borrow amount"),
             DryRunError::ZeroAsset => write!(f, "zero borrow asset"),
             DryRunError::ZeroRouter { hop } => write!(f, "hop {hop}: zero router"),
@@ -125,17 +138,12 @@ pub fn build_hops_from_cycle(
 ) -> Result<ExecutionPayload, DryRunError> {
     if !trace.outcome.simulable {
         // A non-simulable cycle is not profitable by definition; refuse to build.
-        return Err(DryRunError::BadHopCount {
-            got: trace.hop_outputs.len(),
-            min: cycle.edges.len(),
-            max: cycle.edges.len(),
-        });
+        return Err(DryRunError::NotSimulable);
     }
     if cycle.edges.len() != trace.hop_outputs.len() {
-        return Err(DryRunError::BadHopCount {
-            got: trace.hop_outputs.len(),
-            min: cycle.edges.len(),
-            max: cycle.edges.len(),
+        return Err(DryRunError::TraceLengthMismatch {
+            edges: cycle.edges.len(),
+            outputs: trace.hop_outputs.len(),
         });
     }
 
@@ -457,7 +465,28 @@ mod tests {
         };
         let trace = trace_for(&cycle);
         assert!(!trace.outcome.simulable);
-        assert!(build_hops_from_cycle(&cycle, &trace, DEFAULT_DRYRUN_SLIPPAGE_BPS).is_err());
+        assert!(matches!(
+            build_hops_from_cycle(&cycle, &trace, DEFAULT_DRYRUN_SLIPPAGE_BPS),
+            Err(DryRunError::NotSimulable)
+        ));
+    }
+
+    #[test]
+    fn refuses_to_build_on_trace_length_mismatch() {
+        // A clean 3-hop sim trace paired with a different-length cycle must be
+        // rejected as a trace/cycle mismatch, not a hop-count error.
+        let cycle = synthetic_surviving_cycle();
+        let trace = trace_for(&cycle);
+        assert!(trace.outcome.simulable);
+        let mut shorter = cycle.clone();
+        shorter.edges.truncate(2);
+        assert!(matches!(
+            build_hops_from_cycle(&shorter, &trace, DEFAULT_DRYRUN_SLIPPAGE_BPS),
+            Err(DryRunError::TraceLengthMismatch {
+                edges: 2,
+                outputs: 3
+            })
+        ));
     }
 
     #[test]

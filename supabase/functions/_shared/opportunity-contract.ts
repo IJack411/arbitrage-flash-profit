@@ -104,6 +104,20 @@ export interface CanonicalHop {
 export const MIN_HOPS = 2;
 export const MAX_HOPS = 5;
 
+/**
+ * Aave V3 flash-loan premium (bps) the on-chain contract charges on the borrowed
+ * principal. The closing leg must return at least principal + premium, so a
+ * genuine per-hop floor for the closing leg is `amount·(10_000 + premium)/10_000`.
+ */
+export const AAVE_PREMIUM_BPS = 5;
+
+/**
+ * Default per-hop slippage tolerance (bps), mirroring the Rust
+ * `payload::DEFAULT_DRYRUN_SLIPPAGE_BPS`, applied when deriving a per-hop
+ * `amountOutMin` from an expected leg output.
+ */
+export const DEFAULT_DRYRUN_SLIPPAGE_BPS = 50;
+
 export interface CanonicalOpportunity {
   tokenPair: string;
   buyDex: string;
@@ -418,15 +432,44 @@ const isPositiveUintString = (value: unknown): boolean => {
 };
 
 /**
+ * Derive a genuine, positive closing-leg `amountOutMin` for a payload that
+ * borrows `amount`. The closing leg returns the borrowed asset and must at least
+ * repay principal + Aave premium (the on-chain terminal profit gate), so the
+ * floor is `amount·(10_000 + AAVE_PREMIUM_BPS)/10_000` (rounded up so the guard
+ * never sits below the true repay obligation). Returns `'0'` only when `amount`
+ * is not a positive uint — such a payload is independently invalid.
+ */
+export const deriveClosingLegMin = (amount: string): string => {
+  if (!isPositiveUintString(amount)) return '0';
+  const principal = BigInt(amount);
+  const scale = BigInt(10_000 + AAVE_PREMIUM_BPS);
+  // Round UP so the floor is >= principal + premium.
+  return ((principal * scale + 9_999n) / 10_000n).toString();
+};
+
+/**
  * Map the legacy 2-hop canonical payload to a 2-element N-hop `CanonicalHop[]`:
  * asset→tokenB via routerA, then tokenB→asset via routerB. Field order/types
- * mirror the Solidity `Hop[]` and the Rust encoder. This is a pure representation
- * change — it never executes anything.
+ * mirror the Solidity `Hop[]` and the Rust encoder. Like the Rust
+ * `build_hops_from_cycle`, this NEVER emits a zero per-hop `amountOutMin`: the
+ * buy leg carries the quote/sim-derived `amountBMin`, and the closing leg gets a
+ * genuine positive floor (principal + Aave premium) so the result passes
+ * `validateHopPath`. This is a pure representation change — it never executes
+ * anything.
  */
 export const buildHopsFromLegacyPayload = (
   payload: Pick<
     CanonicalExecutionPayload,
-    'asset' | 'routerA' | 'routerB' | 'tokenB' | 'routerAisV3' | 'routerBisV3' | 'feeA' | 'feeB' | 'amountBMin'
+    | 'asset'
+    | 'amount'
+    | 'routerA'
+    | 'routerB'
+    | 'tokenB'
+    | 'routerAisV3'
+    | 'routerBisV3'
+    | 'feeA'
+    | 'feeB'
+    | 'amountBMin'
   >,
 ): CanonicalHop[] => [
   {
@@ -442,9 +485,10 @@ export const buildHopsFromLegacyPayload = (
     tokenOut: payload.asset,
     isV3: payload.routerBisV3,
     fee: payload.feeB,
-    // Closing leg min is carried separately by N-hop producers; legacy 2-hop
-    // payloads leave it to the on-chain terminal profit gate ("0").
-    amountOutMin: '0',
+    // Closing leg floor = principal + Aave premium (a genuine >0 min consistent
+    // with the on-chain terminal profit gate), mirroring the Rust builder which
+    // never emits a zero per-hop min.
+    amountOutMin: deriveClosingLegMin(payload.amount),
   },
 ];
 

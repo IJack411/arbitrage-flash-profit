@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import {
   buildHopsFromLegacyPayload,
+  deriveClosingLegMin,
   validateHopPath,
   MIN_HOPS,
   MAX_HOPS,
@@ -46,6 +47,7 @@ test.describe('Phase 6 N-hop off-chain payload contract', () => {
   test('legacy 2-hop payload maps to a 2-element Hop[] closing back to the asset', () => {
     const hops = buildHopsFromLegacyPayload({
       asset: ASSET,
+      amount: '1000000000',
       routerA: ROUTER_A,
       routerB: ROUTER_B,
       tokenB: TOKEN_B,
@@ -68,6 +70,36 @@ test.describe('Phase 6 N-hop off-chain payload contract', () => {
     expect(hops[1].tokenOut).toBe(ASSET);
     expect(hops[1].router).toBe(ROUTER_B);
     expect(hops[1].isV3).toBe(false);
+    // Closing leg carries a genuine positive floor (principal + Aave premium),
+    // never a zero min.
+    expect(BigInt(hops[1].amountOutMin) > 0n).toBe(true);
+  });
+
+  test('legacy-built payload PASSES its own validateHopPath (no self-rejecting zero min)', () => {
+    const amount = '1000000000';
+    const hops = buildHopsFromLegacyPayload({
+      asset: ASSET,
+      amount,
+      routerA: ROUTER_A,
+      routerB: ROUTER_B,
+      tokenB: TOKEN_B,
+      routerAisV3: true,
+      routerBisV3: false,
+      feeA: 500,
+      feeB: 0,
+      amountBMin: '487804878000000000000',
+    });
+    // Regression pin: the legacy builder must produce a payload its OWN module
+    // validator accepts (closing-leg min > 0, loop closes to asset).
+    expect(validateHopPath({ asset: ASSET, amount, hops })).toEqual({ ok: true });
+  });
+
+  test('deriveClosingLegMin floors at principal + Aave premium (>0)', () => {
+    const min = deriveClosingLegMin('1000000000');
+    // 1_000_000_000 * (10_000 + 5) / 10_000, rounded up = 1_000_500_000.
+    expect(min).toBe('1000500000');
+    expect(BigInt(min) > BigInt('1000000000')).toBe(true);
+    expect(deriveClosingLegMin('0')).toBe('0');
   });
 
   test('validateHopPath accepts a well-formed 3-hop route', () => {

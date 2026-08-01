@@ -13,6 +13,8 @@ use ethers::types::{Address, U256};
 
 use mev_scanner::payload::fixtures::synthetic_detectable_edges;
 use mev_scanner::pipeline::{run_sample, PipelineParams};
+use mev_scanner::scanner::bellman_ford_detect_cycles;
+use mev_scanner::sim::simulate_cycle_hops;
 use mev_scanner::types::{PoolEdge, PoolSwapState};
 
 /// Phase 5 multi-hop selector for `executeArbitrage(address,uint256,Hop[])`.
@@ -104,10 +106,26 @@ fn whole_pipeline_surfaces_encodable_survivor_over_synthetic_fixture() {
     let expected_len = 4 + 96 + 32 + s.hops * 160;
     assert_eq!(s.calldata_len, expected_len);
 
-    // Every per-hop min is present (non-zero).
+    // Every per-hop min is present (non-zero) AND at/below the ground-truth sim
+    // output for that hop (apply_slippage rounds down, so the guard can never
+    // exceed the simulated output). Reconstruct the surviving cycle's trace
+    // deterministically from the same detector + sim to compare against.
     assert_eq!(s.amount_out_mins.len(), s.hops);
     for min in &s.amount_out_mins {
         assert!(!min.is_zero(), "per-hop amountOutMin must be present");
+    }
+    let cycle = bellman_ford_detect_cycles(&edges)
+        .into_iter()
+        .find(|c| c.edges.first().map(|e| e.token_in) == Some(s.asset))
+        .expect("the surviving cycle must be re-detectable");
+    let trace = simulate_cycle_hops(&cycle, s.best_loan_usd, 1.0, 5.0, 4.0 * s.hops as f64);
+    assert!(trace.outcome.simulable);
+    assert_eq!(trace.hop_outputs.len(), s.amount_out_mins.len());
+    for (min, out) in s.amount_out_mins.iter().zip(trace.hop_outputs.iter()) {
+        assert!(
+            min <= out,
+            "per-hop amountOutMin ({min}) must be <= sim output ({out})"
+        );
     }
 
     // Coverage: the priced start token is reflected honestly.
@@ -117,8 +135,10 @@ fn whole_pipeline_surfaces_encodable_survivor_over_synthetic_fixture() {
 
 #[test]
 fn all_negative_snapshot_yields_zero_survivors() {
-    // A closed 2-hop loop with symmetric reserves: after both 0.30% fees the
-    // round trip is a guaranteed loss, so nothing may survive the sim gate.
+    // A closed 2-hop loop with symmetric reserves. Even though each hop's fee is
+    // tiny (30 ppm = 0.003%), the round trip is a guaranteed loss once price
+    // impact, per-hop gas, and the Aave premium are applied, so nothing may
+    // survive the sim gate.
     let asset = a(1);
     let token_b = a(2);
     let edges = vec![

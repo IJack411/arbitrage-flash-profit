@@ -1,6 +1,34 @@
 use eyre::{eyre, Result};
 use std::env;
 
+/// Resolve the Arbitrum RPC URL the live pool feed should use, in priority
+/// order:
+///   1. `SCANNER_RPC_URL`  — an explicit full RPC URL (any provider).
+///   2. `ARBITRUM_RPC_URL` — the existing per-network override.
+///   3. `ALCHEMY_API_KEY` / `VITE_ALCHEMY_API_KEY` — used to build
+///      `https://arb-mainnet.g.alchemy.com/v2/<key>`.
+///
+/// Returns `None` when no source is configured so callers can fail gracefully
+/// with a clear message. No key is ever hardcoded.
+pub fn resolve_arbitrum_rpc_url() -> Option<String> {
+    for var in ["SCANNER_RPC_URL", "ARBITRUM_RPC_URL"] {
+        if let Ok(v) = env::var(var) {
+            if !v.trim().is_empty() {
+                return Some(v);
+            }
+        }
+    }
+    for var in ["ALCHEMY_API_KEY", "VITE_ALCHEMY_API_KEY"] {
+        if let Ok(key) = env::var(var) {
+            let key = key.trim();
+            if !key.is_empty() {
+                return Some(format!("https://arb-mainnet.g.alchemy.com/v2/{key}"));
+            }
+        }
+    }
+    None
+}
+
 #[derive(Debug, Clone)]
 pub struct NetworkConfig {
     pub rpc_url: String,
@@ -61,20 +89,22 @@ impl Config {
             }
         }
 
-        if let Ok(rpc) = env::var("ARBITRUM_RPC_URL") {
-            if !rpc.is_empty() {
-                networks.push((
-                    "arbitrum".to_string(),
-                    NetworkConfig {
-                        rpc_url: rpc,
-                        flashlight_address: env::var("FLASHLIGHT_CONTRACT_ADDRESS_ARBITRUM")
-                            .unwrap_or_default(),
-                        aave_pool_address: env::var("AAVE_POOL_ADDRESS_ARBITRUM")
-                            .unwrap_or_default(),
-                        chain_id: 42_161,
-                    },
-                ));
-            }
+        // Single source of truth for the Arbitrum network URL: the documented
+        // precedence (SCANNER_RPC_URL > ARBITRUM_RPC_URL > ALCHEMY_API_KEY /
+        // VITE_ALCHEMY_API_KEY) lives in `resolve_arbitrum_rpc_url`, which also
+        // trims whitespace-only values.
+        if let Some(rpc) = resolve_arbitrum_rpc_url() {
+            networks.push((
+                "arbitrum".to_string(),
+                NetworkConfig {
+                    rpc_url: rpc,
+                    flashlight_address: env::var("FLASHLIGHT_CONTRACT_ADDRESS_ARBITRUM")
+                        .unwrap_or_default(),
+                    aave_pool_address: env::var("AAVE_POOL_ADDRESS_ARBITRUM")
+                        .unwrap_or_default(),
+                    chain_id: 42_161,
+                },
+            ));
         }
 
         if let Ok(rpc) = env::var("BASE_RPC_URL") {

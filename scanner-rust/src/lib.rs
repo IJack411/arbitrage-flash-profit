@@ -1,6 +1,7 @@
 pub mod config;
 pub mod executor;
 pub mod flashlight;
+pub mod pools;
 pub mod scanner;
 pub mod simulator;
 pub mod telemetry;

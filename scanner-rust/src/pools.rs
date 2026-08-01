@@ -583,6 +583,17 @@ pub async fn fetch_arbitrum_pools(rpc_url: &str) -> eyre::Result<Vec<PoolEdge>> 
 pub async fn fetch_arbitrum_pools_with_usd(
     rpc_url: &str,
 ) -> eyre::Result<(Vec<PoolEdge>, std::collections::HashMap<Address, f64>)> {
+    let (edges, usd_prices, _block) = fetch_arbitrum_pools_with_usd_at_block(rpc_url).await?;
+    Ok((edges, usd_prices))
+}
+
+/// Like [`fetch_arbitrum_pools_with_usd`] but also returns the Arbitrum block
+/// number the pool state was read at, so a caller (e.g. the Phase 7 multi-block
+/// sampler) can report each sample's block honestly. This is the canonical
+/// implementation; the two-tuple variant above simply drops the block.
+pub async fn fetch_arbitrum_pools_with_usd_at_block(
+    rpc_url: &str,
+) -> eyre::Result<(Vec<PoolEdge>, std::collections::HashMap<Address, f64>, u64)> {
     let client = RpcClient::new(rpc_url.to_string(), Duration::from_secs(15), 2)?;
 
     // Liveness check first so failures are clear and early.
@@ -916,7 +927,7 @@ pub async fn fetch_arbitrum_pools_with_usd(
         unpriced_liquidity
     );
 
-    Ok((edges, usd_prices))
+    Ok((edges, usd_prices, block))
 }
 
 /// Split a large set of calls into fixed-size batches to stay friendly with

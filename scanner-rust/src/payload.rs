@@ -243,10 +243,25 @@ pub mod fixtures {
         reserve_out: U256,
         fee: u32,
     ) -> PoolEdge {
+        v2_edge_priced(token_in, token_out, router, reserve_in, reserve_out, 1.0, fee)
+    }
+
+    /// Like [`v2_edge`] but with an explicit spot `price` (token_out per token_in)
+    /// so a fixture can present a Bellman-Ford-detectable spot rate consistent
+    /// with its reserves.
+    fn v2_edge_priced(
+        token_in: Address,
+        token_out: Address,
+        router: Address,
+        reserve_in: U256,
+        reserve_out: U256,
+        price: f64,
+        fee: u32,
+    ) -> PoolEdge {
         PoolEdge {
             token_in,
             token_out,
-            price: 1.0,
+            price,
             liquidity_usd: 5_000_000.0,
             dex: "synthetic-fixture".to_string(),
             network: "fixture".to_string(),
@@ -282,6 +297,30 @@ pub mod fixtures {
             edges,
             profit_ratio: 1.02,
         }
+    }
+
+    /// A synthetic 3-hop loop (asset -> B -> C -> asset) whose SPOT prices form a
+    /// Bellman-Ford negative cycle (each hop quotes a ~2% favourable rate,
+    /// consistent with its reserves) AND whose deep reserves let a modest loan
+    /// realize positive net through the price-impact sim. Unlike
+    /// [`synthetic_surviving_cycle`] (spot-neutral, only sim-positive), this edge
+    /// SET is DETECTABLE, so it exercises the full detect -> sim -> build ->
+    /// encode path via `pipeline::run_sample`. SYNTHETIC — never live data.
+    pub fn synthetic_detectable_edges() -> Vec<PoolEdge> {
+        let asset = a(1);
+        let token_b = a(2);
+        let token_c = a(3);
+        // reserve_out/reserve_in = 1.02 => spot price 1.02/hop; product 1.02^3 > 1
+        // even after three 0.30% (3000 ppm) fees, so it is a genuine negative cycle
+        // whose realized net stays positive for a small loan against deep reserves.
+        let mk = |ti, to, router| {
+            v2_edge_priced(ti, to, router, e18(1_000_000), e18(1_020_000), 1.02, 3000)
+        };
+        vec![
+            mk(asset, token_b, a(11)),
+            mk(token_b, token_c, a(12)),
+            mk(token_c, asset, a(13)),
+        ]
     }
 }
 

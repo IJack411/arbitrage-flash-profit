@@ -42,8 +42,53 @@ Run a detection-only live dry run (no execution, no broadcast):
 ```bash
 # key is read from the environment; it is never hardcoded or printed
 export ALCHEMY_API_KEY=...   # or SCANNER_RPC_URL=https://...
-cargo run --example live_dry_run
+cargo run --example sim_gate_scan
 ```
+
+## Multi-hop pipeline (Phases 1–7)
+
+The scanner pivoted from simple 2-DEX arbitrage (no fee-aware edge on liquid
+pairs) to **multi-hop / triangular** arbitrage via a Bellman-Ford negative-cycle
+scanner. The full chain is **detection + simulation + payload build ONLY** —
+nothing signs, broadcasts, or flips a live flag; execution stays disabled.
+
+```
+live pools @ block N            (pools.rs, Phase 3)
+  -> fee-aware Bellman-Ford      (scanner.rs, Phases 1–2)
+  -> price-impact SIM gate       (sim.rs, Phase 4: V2 exact; V3 exact within-tick,
+                                  boundary => reject; realized net from the sim)
+  -> build Hop[] payload         (payload.rs, Phase 6: per-hop amountOutMin = sim
+                                  output - slippage)
+  -> DRY-RUN validate            (payload.rs: hop count [2,5], nonzero router/
+                                  tokenOut, per-hop min>0, loop closes to asset)
+  -> ABI-encode executeArbitrage (flashlight.rs, Phase 5 contract)  -> STOP
+```
+
+`pipeline::run_sample` runs steps 2–6 over one snapshot and returns honest
+per-stage metrics (edges loaded, USD-priceable coverage, cycles proposed,
+survived, rejected_negative, rejected_unsimulable, and each survivor's route +
+realized net + encoded calldata).
+
+### Run the capstone dry run
+The capstone example samples the whole pipeline across several live blocks, then
+always runs a clearly-labeled **synthetic fixture** pass (works with no RPC):
+```bash
+# LIVE + SYNTHETIC. Key is read from env, never printed/committed. Set it INLINE
+# in the same command (env vars don't persist across shells on Windows):
+#   PowerShell:  $env:ALCHEMY_API_KEY='<key>'; cargo run --example multi_hop_pipeline
+#   bash:        ALCHEMY_API_KEY=<key> cargo run --example multi_hop_pipeline
+cargo run --example multi_hop_pipeline           # no RPC => LIVE pass auto-skips
+```
+Sampling and economics are env-tunable:
+- `SCANNER_LIVE_SAMPLES` (default 3) — number of live block samples.
+- `SCANNER_LIVE_SAMPLE_DELAY_SECS` (default 5) — delay between samples.
+- `SCANNER_SIM_LOAN_SIZES_USD`, `SCANNER_SIM_GAS_USD_PER_HOP`,
+  `SCANNER_DRYRUN_SLIPPAGE_BPS` — loan sweep, per-hop gas, slippage guard.
+
+**ZERO surviving cycles is a valid, expected, honest outcome** — spot spreads on
+liquid Arbitrum pairs are mirages that price impact erases. The pipeline never
+weakens a gate to manufacture a survivor. `tests/pipeline_integration_tests.rs`
+proves the whole path deterministically over a synthetic fixture (no RPC).
 
 ## Environment
 Set at least one RPC URL and the matching contract address for live execution.
@@ -51,4 +96,7 @@ For the Arbitrum pool feed set one of `SCANNER_RPC_URL`, `ARBITRUM_RPC_URL`, or
 `ALCHEMY_API_KEY` / `VITE_ALCHEMY_API_KEY` (see `.env.example`).
 
 ## Contract integration
-`FlashlightEncoder` encodes `executeArbitrage(address,uint256,address,address,address,bool,bool,uint24,uint24,uint256)` exactly as required by `FlashLoanArbitrage.sol`.
+`FlashlightEncoder::encode_execute_arbitrage` encodes
+`executeArbitrage(address,uint256,(address,address,bool,uint24,uint256)[])`
+(the Phase 5 N-hop `Hop[]` signature, selector `0xcfaa9316`) exactly as required
+by `FlashLoanArbitrage.sol`.

@@ -1,0 +1,11 @@
+version: "3.9"
+services:
+  mev-scanner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    ports:
+      - "9090:9090"
+    restart: unless-stopped

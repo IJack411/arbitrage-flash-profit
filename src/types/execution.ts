@@ -8,8 +8,12 @@
  * (`executeArbitrage(address asset, uint256 amount, Hop[] hops)`), where
  * `Hop = { router, tokenOut, isV3, fee, amountOutMin }`. This 2-hop payload maps
  * to a 2-element Hop[] (asset→tokenB via routerA, then tokenB→asset via routerB).
- * Generalizing this off-chain payload/pipeline to N-hop is deferred to a follow-up
- * (Phase 6 off-chain payload generalization); execution remains disabled here.
+ *
+ * Phase 6: the off-chain payload now also carries an OPTIONAL N-hop
+ * `hops?: ExecutionHop[]` representation (see below) that mirrors the Solidity
+ * `Hop[]` field order/types and the Rust encoder. When present it is the
+ * authoritative executable path; the 2-hop fields remain for backward
+ * compatibility. Execution remains disabled here.
  * 
  * Maps to:
  * @see contracts/contracts/FlashLoanArbitrage.sol::executeArbitrage()
@@ -101,6 +105,34 @@ export interface ExecutionPayload {
    * Known to evaluateExecutionCandidate; scanner should include as safety margin
    */
   amountBMin: string; // numeric string for uint256 compatibility
+
+  /**
+   * Phase 6 (optional): N-hop route mirroring the on-chain Solidity `Hop[]` and
+   * the Rust ABI encoder. When present it is the authoritative executable path;
+   * the 2-hop fields above map to a 2-element `hops[]`. Execution stays disabled.
+   */
+  hops?: ExecutionHop[];
+}
+
+/**
+ * One swap leg of a multi-hop arbitrage path. Field names, order, and types
+ * mirror the Solidity struct
+ * `FlashLoanArbitrage.Hop { address router; address tokenOut; bool isV3; uint24 fee; uint256 amountOutMin; }`
+ * and the Rust `flashlight::Hop`. `tokenIn` is implicit: hop 0 spends the
+ * borrowed asset; hop i spends hop (i-1)'s `tokenOut`; the final hop's `tokenOut`
+ * MUST equal the borrowed asset (enforced on-chain).
+ */
+export interface ExecutionHop {
+  /** DEX router used for this hop. */
+  router: string; // EIP-55 checksummed address
+  /** Token received from this hop. */
+  tokenOut: string; // EIP-55 checksummed address
+  /** true = Uniswap V3 style (exactInputSingle); false = V2 style. */
+  isV3: boolean;
+  /** V3 fee tier (uint24). Ignored when isV3 === false. */
+  fee: number;
+  /** Per-hop slippage guard (minimum tokenOut), as a uint256 string. */
+  amountOutMin: string; // numeric string for uint256 compatibility
 }
 
 /**

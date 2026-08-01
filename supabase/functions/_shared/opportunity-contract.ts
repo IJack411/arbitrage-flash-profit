@@ -69,7 +69,54 @@ export interface CanonicalExecutionPayload {
   scanTimestamp: string;
   confidenceScore: number;
   quote: QuoteParityPayload;
+  /**
+   * Phase 6: N-hop route representation, mirroring the on-chain Solidity
+   * `FlashLoanArbitrage.Hop[]` and the Rust ABI encoder. When present it is the
+   * authoritative executable path; the legacy 2-hop fields above are retained for
+   * backward compatibility and map 1:1 to a 2-element `hops[]`
+   * (asset→tokenB via routerA, then tokenB→asset via routerB).
+   */
+  hops?: CanonicalHop[];
 }
+
+/**
+ * One swap leg of a multi-hop arbitrage path. Field names, order, and types
+ * mirror the on-chain Solidity struct
+ * `FlashLoanArbitrage.Hop { address router; address tokenOut; bool isV3; uint24 fee; uint256 amountOutMin; }`
+ * and the Rust `flashlight::Hop`. `tokenIn` is implicit: hop 0 spends the
+ * borrowed asset; hop i spends hop (i-1)'s `tokenOut`. The final hop's `tokenOut`
+ * MUST equal the borrowed asset (the loop must close), enforced on-chain.
+ */
+export interface CanonicalHop {
+  /** DEX router used for this hop. */
+  router: string;
+  /** Token received from this hop (the implicit tokenIn is the prior hop's tokenOut). */
+  tokenOut: string;
+  /** true = Uniswap V3 style (exactInputSingle); false = V2 style. */
+  isV3: boolean;
+  /** V3 fee tier (uint24). Ignored when isV3 === false. */
+  fee: number;
+  /** Per-hop slippage guard (minimum tokenOut for this hop), as a uint256 string. */
+  amountOutMin: string;
+}
+
+/** Contract path-length bounds, mirroring `FlashLoanArbitrage.MIN_HOPS`/`MAX_HOPS`. */
+export const MIN_HOPS = 2;
+export const MAX_HOPS = 5;
+
+/**
+ * Aave V3 flash-loan premium (bps) the on-chain contract charges on the borrowed
+ * principal. The closing leg must return at least principal + premium, so a
+ * genuine per-hop floor for the closing leg is `amount·(10_000 + premium)/10_000`.
+ */
+export const AAVE_PREMIUM_BPS = 5;
+
+/**
+ * Default per-hop slippage tolerance (bps), mirroring the Rust
+ * `payload::DEFAULT_DRYRUN_SLIPPAGE_BPS`, applied when deriving a per-hop
+ * `amountOutMin` from an expected leg output.
+ */
+export const DEFAULT_DRYRUN_SLIPPAGE_BPS = 50;
 
 export interface CanonicalOpportunity {
   tokenPair: string;
@@ -368,4 +415,133 @@ export const classifySimulationGate = (simulationResult: Record<string, unknown>
     };
   }
   return { reject: false, reason: 'simulation_ok', detail: null };
+};
+
+// ── Phase 6: N-hop route helpers ────────────────────────────────────────────
+
+const isZeroAddress = (value: string): boolean =>
+  !value || /^0x0{40}$/i.test(String(value).trim());
+
+const isPositiveUintString = (value: unknown): boolean => {
+  if (typeof value !== 'string' || value.trim() === '') return false;
+  try {
+    return BigInt(value) > 0n;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Derive a genuine, positive closing-leg `amountOutMin` for a payload that
+ * borrows `amount`. The closing leg returns the borrowed asset and must at least
+ * repay principal + Aave premium (the on-chain terminal profit gate), so the
+ * floor is `amount·(10_000 + AAVE_PREMIUM_BPS)/10_000` (rounded up so the guard
+ * never sits below the true repay obligation). Returns `'0'` only when `amount`
+ * is not a positive uint — such a payload is independently invalid.
+ */
+export const deriveClosingLegMin = (amount: string): string => {
+  if (!isPositiveUintString(amount)) return '0';
+  const principal = BigInt(amount);
+  const scale = BigInt(10_000 + AAVE_PREMIUM_BPS);
+  // Round UP so the floor is >= principal + premium.
+  return ((principal * scale + 9_999n) / 10_000n).toString();
+};
+
+/**
+ * Map the legacy 2-hop canonical payload to a 2-element N-hop `CanonicalHop[]`:
+ * asset→tokenB via routerA, then tokenB→asset via routerB. Field order/types
+ * mirror the Solidity `Hop[]` and the Rust encoder. Like the Rust
+ * `build_hops_from_cycle`, this NEVER emits a zero per-hop `amountOutMin`: the
+ * buy leg carries the quote/sim-derived `amountBMin`, and the closing leg gets a
+ * genuine positive floor (principal + Aave premium) so the result passes
+ * `validateHopPath`. This is a pure representation change — it never executes
+ * anything.
+ */
+export const buildHopsFromLegacyPayload = (
+  payload: Pick<
+    CanonicalExecutionPayload,
+    | 'asset'
+    | 'amount'
+    | 'routerA'
+    | 'routerB'
+    | 'tokenB'
+    | 'routerAisV3'
+    | 'routerBisV3'
+    | 'feeA'
+    | 'feeB'
+    | 'amountBMin'
+  >,
+): CanonicalHop[] => [
+  {
+    router: payload.routerA,
+    tokenOut: payload.tokenB,
+    isV3: payload.routerAisV3,
+    fee: payload.feeA,
+    // Buy leg carries the sim/quote-derived per-hop minimum.
+    amountOutMin: payload.amountBMin,
+  },
+  {
+    router: payload.routerB,
+    tokenOut: payload.asset,
+    isV3: payload.routerBisV3,
+    fee: payload.feeB,
+    // Closing leg floor = principal + Aave premium (a genuine >0 min consistent
+    // with the on-chain terminal profit gate), mirroring the Rust builder which
+    // never emits a zero per-hop min.
+    amountOutMin: deriveClosingLegMin(payload.amount),
+  },
+];
+
+export interface HopPathValidationInput {
+  asset: string;
+  amount: string;
+  hops: CanonicalHop[];
+}
+
+/**
+ * DRY-RUN validator for an N-hop route, mirroring the Rust
+ * `payload::validate_execution_payload` and the on-chain `FlashLoanArbitrage`
+ * invariants: hop count within [minHops, maxHops], non-zero borrow amount,
+ * per-hop non-zero router/tokenOut AND a present (> 0) per-hop `amountOutMin`,
+ * and loop-closure (final `tokenOut` === borrowed `asset`). Validation only; it
+ * never signs or broadcasts.
+ */
+export const validateHopPath = (
+  input: HopPathValidationInput,
+  options?: { minHops?: number; maxHops?: number },
+): { ok: true } | { ok: false; errors: string[] } => {
+  const minHops = options?.minHops ?? MIN_HOPS;
+  const maxHops = options?.maxHops ?? MAX_HOPS;
+  const errors: string[] = [];
+
+  if (!input || typeof input !== 'object') {
+    return { ok: false, errors: ['payload must be an object'] };
+  }
+  if (isZeroAddress(input.asset)) errors.push('zero borrow asset');
+  if (!isPositiveUintString(input.amount)) errors.push('zero borrow amount');
+
+  const hops = Array.isArray(input.hops) ? input.hops : [];
+  if (hops.length < minHops || hops.length > maxHops) {
+    errors.push(`bad path length: got ${hops.length}, expected [${minHops},${maxHops}]`);
+  }
+
+  hops.forEach((hop, i) => {
+    if (!hop || typeof hop !== 'object') {
+      errors.push(`hop ${i}: malformed`);
+      return;
+    }
+    if (isZeroAddress(hop.router)) errors.push(`hop ${i}: zero router`);
+    if (isZeroAddress(hop.tokenOut)) errors.push(`hop ${i}: zero tokenOut`);
+    if (!isPositiveUintString(hop.amountOutMin)) errors.push(`hop ${i}: missing per-hop amountOutMin`);
+  });
+
+  if (hops.length > 0) {
+    const finalTokenOut = hops[hops.length - 1]?.tokenOut;
+    if (!isZeroAddress(input.asset) && String(finalTokenOut).toLowerCase() !== String(input.asset).toLowerCase()) {
+      errors.push(`path does not close: final tokenOut ${finalTokenOut} != borrowed asset ${input.asset}`);
+    }
+  }
+
+  if (errors.length > 0) return { ok: false, errors };
+  return { ok: true };
 };

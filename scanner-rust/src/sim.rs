@@ -143,6 +143,23 @@ pub fn simulate_cycle_best(
     best
 }
 
+/// Full per-hop trace of simulating one cycle at one loan size. Carries the raw
+/// input the loop started with and each hop's raw output (so a caller can derive
+/// per-hop `amountOutMin` guards from the ground-truth simulation), plus the
+/// economic [`HopSimOutcome`]. On any reject, `hop_outputs` holds only the hops
+/// that simulated cleanly before the failure and `outcome.simulable == false`.
+#[derive(Debug, Clone)]
+pub struct HopSimTrace {
+    /// Raw base-unit amount fed into hop 0 (the borrowed asset / loan size).
+    pub start_amount: U256,
+    /// Raw base-unit output of each successfully simulated hop, in order. The
+    /// last entry (when the whole loop simulated) is the final loop output,
+    /// denominated back in the start token.
+    pub hop_outputs: Vec<U256>,
+    /// Economic outcome derived from the realized loop ratio.
+    pub outcome: HopSimOutcome,
+}
+
 /// Simulate one cycle at one loan size against the real captured pool state.
 pub fn simulate_cycle(
     cycle: &ArbitrageCycle,
@@ -151,39 +168,80 @@ pub fn simulate_cycle(
     aave_premium_bps: f64,
     gas_cost_usd: f64,
 ) -> HopSimOutcome {
-    let reject = |reason: String| HopSimOutcome {
-        loan_usd,
-        realized_ratio: 0.0,
-        net: compute_net_profit(0.0, loan_usd, aave_premium_bps, gas_cost_usd),
-        simulable: false,
-        reject_reason: Some(reason),
+    simulate_cycle_hops(cycle, loan_usd, start_token_usd, aave_premium_bps, gas_cost_usd).outcome
+}
+
+/// Simulate one cycle at one loan size and return the full per-hop [`HopSimTrace`].
+///
+/// This is the ground-truth executor: the realized ratio (and therefore the
+/// surviving net) comes ONLY from the executed swaps, and the per-hop outputs it
+/// records are what Phase 6's payload builder turns into per-hop `amountOutMin`
+/// guards. It is SIMULATION ONLY — nothing here signs or broadcasts.
+pub fn simulate_cycle_hops(
+    cycle: &ArbitrageCycle,
+    loan_usd: f64,
+    start_token_usd: f64,
+    aave_premium_bps: f64,
+    gas_cost_usd: f64,
+) -> HopSimTrace {
+    let reject = |start: U256, outputs: Vec<U256>, reason: String| HopSimTrace {
+        start_amount: start,
+        hop_outputs: outputs,
+        outcome: HopSimOutcome {
+            loan_usd,
+            realized_ratio: 0.0,
+            net: compute_net_profit(0.0, loan_usd, aave_premium_bps, gas_cost_usd),
+            simulable: false,
+            reject_reason: Some(reason),
+        },
     };
 
     let Some(first) = cycle.edges.first() else {
-        return reject("empty cycle".to_string());
+        return reject(U256::zero(), Vec::new(), "empty cycle".to_string());
     };
     let Some(first_state) = first.swap_state.as_ref() else {
-        return reject("start hop has no on-chain swap state (synthetic pool)".to_string());
+        return reject(
+            U256::zero(),
+            Vec::new(),
+            "start hop has no on-chain swap state (synthetic pool)".to_string(),
+        );
     };
     if !(start_token_usd.is_finite() && start_token_usd > 0.0) {
-        return reject(format!("no USD price for start token {:#x}", first.token_in));
+        return reject(
+            U256::zero(),
+            Vec::new(),
+            format!("no USD price for start token {:#x}", first.token_in),
+        );
     }
 
     // Size the USD loan into the start token's raw base units.
     let dec_in = first_state.dec_in;
     let amount_in_human = loan_usd / start_token_usd;
     let Some(mut amount) = human_to_raw(amount_in_human, dec_in) else {
-        return reject("loan size overflows start-token base units".to_string());
+        return reject(
+            U256::zero(),
+            Vec::new(),
+            "loan size overflows start-token base units".to_string(),
+        );
     };
     if amount.is_zero() {
-        return reject("loan rounds to zero start-token base units".to_string());
+        return reject(
+            U256::zero(),
+            Vec::new(),
+            "loan rounds to zero start-token base units".to_string(),
+        );
     }
     let start_amount = amount;
+    let mut hop_outputs: Vec<U256> = Vec::with_capacity(cycle.edges.len());
 
     // Execute each hop sequentially; each output feeds the next input.
     for (i, edge) in cycle.edges.iter().enumerate() {
         let Some(state) = edge.swap_state.as_ref() else {
-            return reject(format!("hop {i} ({}) has no on-chain swap state", edge.dex));
+            return reject(
+                start_amount,
+                hop_outputs,
+                format!("hop {i} ({}) has no on-chain swap state", edge.dex),
+            );
         };
         let out = if edge.is_v3 {
             v3_amount_out(state, amount, edge.fee)
@@ -191,13 +249,26 @@ pub fn simulate_cycle(
             v2_amount_out(amount, state.reserve_in, state.reserve_out, edge.fee)
         };
         match out {
-            Some(o) if !o.is_zero() => amount = o,
-            Some(_) => return reject(format!("hop {i} ({}) produced zero output", edge.dex)),
+            Some(o) if !o.is_zero() => {
+                amount = o;
+                hop_outputs.push(o);
+            }
+            Some(_) => {
+                return reject(
+                    start_amount,
+                    hop_outputs,
+                    format!("hop {i} ({}) produced zero output", edge.dex),
+                )
+            }
             None => {
-                return reject(format!(
-                    "hop {i} ({}) unsimulable/rejected (V3 tick-interval exceeded or overflow)",
-                    edge.dex
-                ))
+                return reject(
+                    start_amount,
+                    hop_outputs,
+                    format!(
+                        "hop {i} ({}) unsimulable/rejected (V3 tick-interval exceeded or overflow)",
+                        edge.dex
+                    ),
+                )
             }
         }
     }
@@ -212,12 +283,16 @@ pub fn simulate_cycle(
         realized_ratio,
         net.net_profit_usd
     );
-    HopSimOutcome {
-        loan_usd,
-        realized_ratio,
-        net,
-        simulable: true,
-        reject_reason: None,
+    HopSimTrace {
+        start_amount,
+        hop_outputs,
+        outcome: HopSimOutcome {
+            loan_usd,
+            realized_ratio,
+            net,
+            simulable: true,
+            reject_reason: None,
+        },
     }
 }
 

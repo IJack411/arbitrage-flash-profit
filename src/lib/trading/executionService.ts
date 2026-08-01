@@ -1,5 +1,19 @@
 import { supabase } from '@/lib/supabase';
 
+/**
+ * One swap leg of a multi-hop arbitrage path. Field names, order, and types
+ * mirror the on-chain Solidity struct
+ * `FlashLoanArbitrage.Hop { address router; address tokenOut; bool isV3; uint24 fee; uint256 amountOutMin; }`
+ * and the Rust `flashlight::Hop`. Phase 6 N-hop representation.
+ */
+export interface CanonicalHop {
+  router: string;
+  tokenOut: string;
+  isV3: boolean;
+  fee: number;
+  amountOutMin: string;
+}
+
 export interface CanonicalExecutionPayload {
   version: 'v1';
   network: string;
@@ -15,6 +29,12 @@ export interface CanonicalExecutionPayload {
     feeA: number;
     feeB: number;
     amountBMin: string;
+    /**
+     * Phase 6 (optional): N-hop route mirroring the on-chain `Hop[]` and the Rust
+     * encoder. When present it is the authoritative executable path; the 2-hop
+     * fields above map to a 2-element `hops[]`. Execution remains disabled.
+     */
+    hops?: CanonicalHop[];
   };
   metadata?: Record<string, unknown>;
 }

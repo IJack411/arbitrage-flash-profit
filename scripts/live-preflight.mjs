@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { isPlaceholder, isEvmAddress, KNOWN_DEV_CONTRACT_ADDRESSES } from './lib/address-safety.mjs';
 
 const ROOT = process.cwd();
 const ENV_PATH = path.join(ROOT, '.env');
@@ -12,19 +13,6 @@ const REQUIRED_ENV = [
   'VITE_ARBITRAGE_CONTRACT_ADDRESS',
   'VITE_FLASH_LOAN_PROVIDER_ADDRESS',
 ];
-
-const PLACEHOLDER_PATTERNS = [
-  'your-',
-  'replace-me',
-  'changeme',
-  'example',
-  '0xyour',
-];
-
-const KNOWN_DEV_CONTRACT_ADDRESSES = new Set([
-  '0xe7f1725e7734ce288f8367e1bb143e90bb3f0512',
-  '0x5fbdb2315678afecb367f032d93f642f64180aa3',
-]);
 
 function parseDotEnv(fileText) {
   const result = {};
@@ -47,15 +35,6 @@ function parseDotEnv(fileText) {
   }
 
   return result;
-}
-
-function isPlaceholder(value) {
-  const lower = String(value || '').toLowerCase();
-  return PLACEHOLDER_PATTERNS.some((pattern) => lower.includes(pattern));
-}
-
-function isEvmAddress(value) {
-  return /^0x[a-fA-F0-9]{40}$/.test(String(value || ''));
 }
 
 function printSection(title) {

@@ -1,5 +1,6 @@
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+import { resolveContractAddress, assertLiveContractAddress } from './lib/address-safety.mjs';
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const parseNumber = (value, fallback) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
@@ -25,7 +26,10 @@ const maxSlippageBps = parseNumber(process.env.AUTO_MAX_SLIPPAGE_BPS, 65);
 const estimatedGasUsd = parseNumber(process.env.AUTO_ESTIMATED_GAS_USD, 8);
 const loanAmountUsd = parseNumber(process.env.AUTO_LOAN_USD, 20_000);
 const networks = parseList(process.env.AUTO_NETWORKS, ['ethereum', 'base']);
-const contractAddress = process.env.AUTO_CONTRACT_ADDRESS || process.env.VITE_ARBITRAGE_CONTRACT_ADDRESS || '';
+const contractAddress = resolveContractAddress(
+  process.env.AUTO_CONTRACT_ADDRESS,
+  process.env.VITE_ARBITRAGE_CONTRACT_ADDRESS,
+);
 const walletAddress = process.env.AUTO_WALLET_ADDRESS || '';
 
 const seenCandidates = new Map();
@@ -121,9 +125,13 @@ const executeOpportunity = async (opportunity) => {
 const logPrefix = () => new Date().toISOString();
 
 const main = async () => {
-  if (mode === 'live' && !contractAddress) {
-    console.error(`[${logPrefix()}] AUTO_TRADE_MODE=live requires AUTO_CONTRACT_ADDRESS or VITE_ARBITRAGE_CONTRACT_ADDRESS.`);
-    process.exit(1);
+  if (mode === 'live') {
+    try {
+      assertLiveContractAddress(contractAddress, { mode });
+    } catch (error) {
+      console.error(`[${logPrefix()}] ${error.message}`);
+      process.exit(1);
+    }
   }
 
   console.log(`[${logPrefix()}] Auto trade loop started. mode=${mode} intervalMs=${intervalMs} networks=${networks.join(',')}`);

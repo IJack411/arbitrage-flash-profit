@@ -178,6 +178,22 @@ const coarseBucketForReasonCode = (code) => {
   return 'other';
 };
 
+// Resolve a canonical reasonCode for a watchlist entry, with defensive fallbacks:
+//   1. explicit top-level reasonCode (preferred)
+//   2. mathDiagnostics.passReason normalized to snake_case \u2014 some scan-fn paths only
+//      set passReason (e.g. 'watchlist-net-profit-below-threshold') and omit reasonCode
+//   3. 'other'
+const resolveReasonCode = (entry, knownReasonCodes) => {
+  const known = knownReasonCodes instanceof Set ? knownReasonCodes : new Set(knownReasonCodes || []);
+  const direct = entry && typeof entry.reasonCode === 'string' ? entry.reasonCode.trim() : '';
+  if (direct) return direct;
+  const passReason = entry && entry.mathDiagnostics && typeof entry.mathDiagnostics.passReason === 'string'
+    ? entry.mathDiagnostics.passReason.trim().toLowerCase().replace(/-/g, '_')
+    : '';
+  if (passReason && (known.size === 0 || known.has(passReason))) return passReason;
+  return 'other';
+};
+
 // Build a per-run gating breakdown from a full watchlist array.
 const buildGatingBreakdown = (watchlist, knownReasonCodes) => {
   const byReasonCode = {};
@@ -185,9 +201,7 @@ const buildGatingBreakdown = (watchlist, knownReasonCodes) => {
   const unknownReasonCodes = new Set();
   const known = knownReasonCodes instanceof Set ? knownReasonCodes : new Set(knownReasonCodes || []);
   for (const entry of Array.isArray(watchlist) ? watchlist : []) {
-    const rawCode = entry && typeof entry.reasonCode === 'string' && entry.reasonCode.trim()
-      ? entry.reasonCode.trim()
-      : 'other';
+    const rawCode = resolveReasonCode(entry, known);
     byReasonCode[rawCode] = (byReasonCode[rawCode] || 0) + 1;
     if (rawCode !== 'other' && known.size > 0 && !known.has(rawCode)) {
       unknownReasonCodes.add(rawCode);
@@ -204,7 +218,7 @@ const buildGatingBreakdown = (watchlist, knownReasonCodes) => {
 };
 
 // Compact record for a single near-miss watchlist candidate.
-const toWatchCandidateRecord = (entry) => {
+const toWatchCandidateRecord = (entry, knownReasonCodes) => {
   if (!entry || typeof entry !== 'object') return null;
   const route = entry.tokenPair
     ? `${entry.tokenPair}${entry.buyDex && entry.sellDex ? ` ${entry.buyDex}->${entry.sellDex}` : ''}`
@@ -214,7 +228,7 @@ const toWatchCandidateRecord = (entry) => {
     network: entry.network ?? 'unknown',
     netProfit: Number(entry.netProfit ?? Number.NaN),
     distanceToExecutableUsd: Number(entry.distanceToExecutableUsd ?? Number.NaN),
-    reasonCode: typeof entry.reasonCode === 'string' && entry.reasonCode.trim() ? entry.reasonCode.trim() : 'other',
+    reasonCode: resolveReasonCode(entry, knownReasonCodes),
   };
 };
 
@@ -379,7 +393,7 @@ const evaluateProfile = async ({ endpoint, anonKey, profile, iterations, delayMs
   const gatingBreakdown = aggregateGatingBreakdowns(runs.map((r) => r.gatingBreakdown));
   const topWatchCandidates = runs
     .flatMap((r) => (Array.isArray(r.watchlist) ? r.watchlist : []))
-    .map(toWatchCandidateRecord)
+    .map((entry) => toWatchCandidateRecord(entry, knownReasonCodes))
     .filter(Boolean)
     .sort((a, b) => Number(b.netProfit ?? -Infinity) - Number(a.netProfit ?? -Infinity))
     .slice(0, 3);

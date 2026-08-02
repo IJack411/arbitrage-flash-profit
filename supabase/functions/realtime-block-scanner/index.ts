@@ -22,6 +22,17 @@ const TELEGRAM_CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID') || '';
 const MIN_NET_PROFIT_USD = parseFloat(Deno.env.get('REALTIME_MIN_NET_PROFIT_USD') || '3');
 const ARBITRAGE_CONTRACT = '0x1aF90750615653db3b800f960aDAA79Ce2A25963';
 
+// ---- Live-trade safety gate (default-off; mirrors the rest of the system) ----
+function parseBool(value: string | undefined | null, dflt: boolean): boolean {
+  if (value === undefined || value === null || value.trim() === '') return dflt;
+  return /^(1|true|yes|on)$/i.test(value.trim());
+}
+// DRY_RUN defaults TRUE (safe). Live execution requires BOTH flags flipped explicitly.
+const DRY_RUN = parseBool(Deno.env.get('EXP_DRY_RUN'), true);
+const LIVE_TRADING_ENABLED = !DRY_RUN && parseBool(Deno.env.get('EXP_ALLOW_LIVE_TRADING'), false);
+// Only these venues are ever eligible for live submission (matches experimental server + bridge allowlist).
+const LIVE_SAFE_DEXES = new Set(['uniV3', 'sushiswap']);
+
 // ---- DEX Routers on Arbitrum ----
 const DEXES = {
   uniV3: {
@@ -389,6 +400,9 @@ async function scanAllRoutes(provider: ethers.JsonRpcProvider): Promise<{
 
 // ---- Execute ----
 async function executeOpportunity(opp: VerifiedOpportunity, provider: ethers.JsonRpcProvider): Promise<{ success: boolean; txHash?: string; error?: string }> {
+  if (!LIVE_TRADING_ENABLED) {
+    return { success: false, error: 'dry-run: live trading disabled (set EXP_DRY_RUN=false and EXP_ALLOW_LIVE_TRADING=true to enable)' };
+  }
   if (!PRIVATE_KEY) return { success: false, error: 'No private key' };
   if (opp.path.length !== 2) return { success: false, error: 'Only 2-hop execution supported by contract' };
 
@@ -401,6 +415,9 @@ async function executeOpportunity(opp: VerifiedOpportunity, provider: ethers.Jso
   const dex1 = DEXES[hop1.dex as keyof typeof DEXES];
   const dex2 = DEXES[hop2.dex as keyof typeof DEXES];
   if (!dex1 || !dex2) return { success: false, error: 'Unknown DEX' };
+  if (!LIVE_SAFE_DEXES.has(hop1.dex) || !LIVE_SAFE_DEXES.has(hop2.dex)) {
+    return { success: false, error: `venue not allowlisted for live execution: ${hop1.dex}/${hop2.dex}` };
+  }
 
   const loanTokenAddr = TOKENS[opp.loanToken]?.address;
   const intermediateToken = TOKENS[hop1.tokenOut]?.address;

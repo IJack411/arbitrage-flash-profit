@@ -43,6 +43,15 @@ const CONTRACT_ADDRESS = '0x1aF90750615653db3b800f960aDAA79Ce2A25963';
 const MIN_PROFIT_USD = 2;
 const MAX_GAS_USD = 0.10;
 
+// ---- Live-trade safety gate (default-off; mirrors realtime-server-experimental.cjs) ----
+function parseBool(value, dflt) {
+  if (value === undefined || value === null || String(value).trim() === '') return dflt;
+  return /^(1|true|yes|on)$/i.test(String(value).trim());
+}
+// DRY_RUN defaults TRUE (safe). Live execution requires BOTH flags flipped explicitly.
+const DRY_RUN = parseBool(process.env.EXP_DRY_RUN, true);
+const LIVE_TRADING_ENABLED = !DRY_RUN && parseBool(process.env.EXP_ALLOW_LIVE_TRADING, false);
+
 const EXPECTED_CHAIN_ID = Number(process.env.SCANNER_CHAIN_ID || 42161);
 const EXPECTED_SIGNER_ADDRESS = (process.env.SCANNER_SIGNER_ADDRESS || process.env.AUTO_WALLET_ADDRESS || '').trim();
 const BASE_SCAN_BLOCK_MODULO = Math.max(1, Number(process.env.SCANNER_SCAN_BLOCK_MODULO || 4));
@@ -518,6 +527,14 @@ async function evaluateRoute(route, provider) {
 
 // ---- Trade execution ----
 async function executeTrade(route, result) {
+  if (!LIVE_TRADING_ENABLED) {
+    stats.skippedObserveOnly++;
+    return {
+      success: false,
+      skipped: true,
+      error: 'live trading disabled (set EXP_DRY_RUN=false and EXP_ALLOW_LIVE_TRADING=true to enable)',
+    };
+  }
   if (runtime.observeOnly) {
     stats.skippedObserveOnly++;
     return { success: false, skipped: true, error: `observe-only: ${runtime.observeReason}` };
@@ -825,6 +842,10 @@ async function verifyStartupContext() {
       stats.healthFailures++;
       setObserveOnly(`signer mismatch expected=${expected} got=${signerAddress}`);
     }
+  }
+
+  if (!LIVE_TRADING_ENABLED) {
+    setObserveOnly('live trading disabled (require EXP_DRY_RUN=false and EXP_ALLOW_LIVE_TRADING=true)');
   }
 
   const block = await rpcCall('startup:getBlockNumber', () => httpProvider.getBlockNumber(), { critical: true });

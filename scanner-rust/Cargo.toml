@@ -1,0 +1,62 @@
+[package]
+name = "mev-scanner"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "mev_scanner"
+path = "src/lib.rs"
+
+[[bin]]
+name = "mev-scanner"
+path = "src/main.rs"
+
+[dependencies]
+# Ethereum
+ethers = { version = "2.0", features = ["abigen", "ws"] }
+# Local simulation
+# default-features disabled to drop the EIP-4844 `c-kzg` precompile, whose
+# `bindgen` build step requires libclang and is irrelevant to DEX arbitrage
+# simulation. `secp256k1` is kept for the ecrecover precompile.
+revm = { version = "3.5", default-features = false, features = ["std", "secp256k1"] }
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Config
+dotenv = "0.15"
+# IDs/timestamps
+uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+# HTTP
+reqwest = { version = "0.11", features = ["json"] }
+# Metrics
+prometheus = { version = "0.13", features = ["process"] }
+# Crypto helpers
+hex = "0.4"
+sha2 = "0.10"
+sha3 = "0.10"
+# Error handling
+thiserror = "1"
+eyre = "0.6"
+# Math
+ordered-float = "3"
+
+[dev-dependencies]
+tokio-test = "0.4"
+
+[[test]]
+name = "bellman_ford_tests"
+path = "tests/bellman_ford_tests.rs"
+
+[[test]]
+name = "simulation_tests"
+path = "tests/simulation_tests.rs"
+
+[[test]]
+name = "integration_tests"
+path = "tests/integration_tests.rs"

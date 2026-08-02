@@ -8,6 +8,7 @@ import {
   classifySimulationGate,
   createDeterministicCandidateId,
   deriveAmountBMinFromQuote,
+  deriveUsdReferenceAnchor,
   evaluateReadinessGateDecision,
   evaluateSourceQualityPenalty,
   validateOpportunityParity,
@@ -201,5 +202,55 @@ test.describe('scanner opportunity contract hardening', () => {
       expect(script).toContain(reasonCode);
     }
     expect(script).toContain('reason_code=');
+  });
+
+  test('USD anchor drops a thin/stale single-venue outlier and anchors on the deepest venue', () => {
+    // Live-evidence shape: a near-empty Uniswap GRAIL pool quotes ~$1.55 while the
+    // deepest venue (Camelot V3) quotes ~$43. With >=3 venues the outlier must be
+    // dropped by the median consensus guard and the anchor taken from the deepest pool.
+    const anchor = deriveUsdReferenceAnchor([
+      { price: 1.55, liquidityUsd: 800, venue: 'UniswapV3' }, // thin/stale outlier
+      { price: 43, liquidityUsd: 900_000, venue: 'CamelotV3' }, // deepest / real price
+      { price: 43.4, liquidityUsd: 120_000, venue: 'SushiSwap' },
+      { price: 42.6, liquidityUsd: 60_000, venue: 'Balancer' },
+    ]);
+
+    expect(anchor).not.toBeNull();
+    expect(anchor?.confidence).toBe('high');
+    expect(anchor?.droppedOutliers).toBe(1);
+    expect(anchor?.anchorVenue).toBe('CamelotV3');
+    expect(anchor?.price).toBeCloseTo(43, 5); // NOT the $1.55 mirage
+  });
+
+  test('USD anchor preserves the stablecoin case (~1 stays ~1)', () => {
+    const anchor = deriveUsdReferenceAnchor([
+      { price: 1.0, liquidityUsd: 5_000_000, venue: 'UniswapV3' },
+      { price: 1.0002, liquidityUsd: 3_000_000, venue: 'Curve' },
+      { price: 0.9998, liquidityUsd: 2_000_000, venue: 'Balancer' },
+    ]);
+
+    expect(anchor).not.toBeNull();
+    expect(anchor?.confidence).toBe('high');
+    expect(anchor?.droppedOutliers).toBe(0);
+    expect(anchor?.price).toBeCloseTo(1, 3);
+  });
+
+  test('USD anchor flags low confidence when fewer than 3 venues quote', () => {
+    const twoVenues = deriveUsdReferenceAnchor([
+      { price: 3500, liquidityUsd: 10_000, venue: 'UniswapV3' },
+      { price: 3510, liquidityUsd: 900_000, venue: 'CamelotV3' },
+    ]);
+    expect(twoVenues?.confidence).toBe('low');
+    // With <3 venues no consensus drop happens, but the deepest venue still anchors.
+    expect(twoVenues?.droppedOutliers).toBe(0);
+    expect(twoVenues?.anchorVenue).toBe('CamelotV3');
+    expect(twoVenues?.price).toBe(3510);
+
+    const oneVenue = deriveUsdReferenceAnchor([{ price: 42, liquidityUsd: 1000 }]);
+    expect(oneVenue?.confidence).toBe('low');
+    expect(oneVenue?.price).toBe(42);
+
+    expect(deriveUsdReferenceAnchor([])).toBeNull();
+    expect(deriveUsdReferenceAnchor([{ price: 0 }, { price: -1 }])).toBeNull();
   });
 });

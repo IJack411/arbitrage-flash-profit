@@ -104,6 +104,123 @@ const MAX_PLAUSIBLE_DECIMALS: u64 = 36;
 /// building a partial graph (which would let the dust guard go inert).
 pub const MAX_BATCH_FAILURE_FRACTION: f64 = 0.20;
 
+/// Batch-failure fraction (%) above which coverage is flagged as possibly
+/// throttle-affected. Well below the hard [`MAX_BATCH_FAILURE_FRACTION`] abort
+/// bar: a run can complete "successfully" yet still have lost enough calls that a
+/// small/zero edge set is suspect rather than an honest result.
+pub const THROTTLE_WARN_PCT: f64 = 5.0;
+
+/// Honest per-fetch discovery telemetry (Phase 9). Lets a caller (and a reviewer)
+/// distinguish an HONEST-ZERO outcome — probes succeeded and candidates were
+/// removed by real economic / safety gates — from an RPC THROTTLE-COLLAPSE, where
+/// probes or state reads silently failed and the universe shrank for the wrong
+/// reason. This is a REPORTING artifact only: it is populated by
+/// [`fetch_arbitrum_pools_with_usd_at_block`] and never influences any gating
+/// decision. Counts are per single fetch (one block).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct DiscoveryTelemetry {
+    /// Block the snapshot was read at.
+    pub block: u64,
+    /// Tokens in the full registry before capping.
+    pub registry_tokens: usize,
+    /// Effective tokens fed into pair discovery (blue-chip + long-tail).
+    pub tokens_loaded: usize,
+    /// Blue-chips among `tokens_loaded`.
+    pub bluechip_loaded: usize,
+    /// Long-tail tokens among `tokens_loaded`.
+    pub longtail_loaded: usize,
+    /// Long-tail tokens dropped because on-chain `decimals()` was unreadable.
+    pub tokens_dropped_no_decimals: usize,
+    /// Tokens dropped by the fee-on-transfer / non-standard denylist.
+    pub tokens_dropped_denylist: usize,
+    /// Factory getPool/getPair probes attempted.
+    pub discovery_probes: usize,
+    /// Discovery probes that belonged to a FAILED batch (RPC throttle signal).
+    pub discovery_probes_failed: usize,
+    /// Live pools discovered (non-zero factory addresses).
+    pub pools_discovered: usize,
+    /// Pool state/balance calls attempted.
+    pub state_calls: usize,
+    /// State/balance calls that belonged to a FAILED batch (RPC throttle signal).
+    pub state_calls_failed: usize,
+    /// Pools dropped because a required state read (price/liquidity/balance) was
+    /// missing — throttle-sensitive, NOT an honest economic rejection.
+    pub pools_dropped_incomplete_state: usize,
+    /// Pools dropped because price bytes were undecodable or implausible (a
+    /// decimals/ordering data-integrity guard).
+    pub pools_dropped_bad_price: usize,
+    /// Pools dropped for touching a token flagged non-standard by the V2
+    /// reserves-vs-balanceOf check (fee-on-transfer / rebasing guard).
+    pub pools_dropped_nonstandard: usize,
+    /// Pools dropped by the USD liquidity floor (dust / unvaluable).
+    pub pools_dropped_liquidity: usize,
+    /// Of the liquidity drops, how many had NO USD-anchored leg (un-priceable) —
+    /// informational subset of `pools_dropped_liquidity`.
+    pub pools_unpriced_leg: usize,
+    /// Pools trimmed by the `SCANNER_MAX_POOLS` depth cap (a bound, not a reject).
+    pub pools_capped: usize,
+    /// Pools that survived every gate and produced edges.
+    pub pools_kept: usize,
+    /// Directional edges built from the kept pools.
+    pub edges_loaded: usize,
+}
+
+impl DiscoveryTelemetry {
+    /// Candidates lost to RPC degradation (failed probes + failed state calls +
+    /// pools dropped for missing reads). A large value means a small edge set is
+    /// a THROTTLE artifact, not an honest result.
+    pub fn throttle_drops(&self) -> usize {
+        self.discovery_probes_failed + self.state_calls_failed + self.pools_dropped_incomplete_state
+    }
+
+    /// Candidates removed by real economic / safety / data-integrity gates
+    /// (decimals, denylist, bad price, non-standard, liquidity). A large value
+    /// with `throttle_suspected() == false` is an HONEST filtering result.
+    pub fn gate_drops(&self) -> usize {
+        self.tokens_dropped_no_decimals
+            + self.tokens_dropped_denylist
+            + self.pools_dropped_bad_price
+            + self.pools_dropped_nonstandard
+            + self.pools_dropped_liquidity
+    }
+
+    /// Percentage of discovery probes that failed.
+    pub fn discovery_fail_pct(&self) -> f64 {
+        if self.discovery_probes == 0 {
+            0.0
+        } else {
+            100.0 * self.discovery_probes_failed as f64 / self.discovery_probes as f64
+        }
+    }
+
+    /// Percentage of state/balance calls that failed.
+    pub fn state_fail_pct(&self) -> f64 {
+        if self.state_calls == 0 {
+            0.0
+        } else {
+            100.0 * self.state_calls_failed as f64 / self.state_calls as f64
+        }
+    }
+
+    /// Percentage of discovered pools dropped for incomplete state reads.
+    pub fn incomplete_state_pct(&self) -> f64 {
+        if self.pools_discovered == 0 {
+            0.0
+        } else {
+            100.0 * self.pools_dropped_incomplete_state as f64 / self.pools_discovered as f64
+        }
+    }
+
+    /// True when the RPC lost enough calls that this fetch's coverage (and hence a
+    /// small/zero edge set) should be treated as THROTTLE-affected rather than an
+    /// honest result: any of the failure rates exceeds [`THROTTLE_WARN_PCT`].
+    pub fn throttle_suspected(&self) -> bool {
+        self.discovery_fail_pct() > THROTTLE_WARN_PCT
+            || self.state_fail_pct() > THROTTLE_WARN_PCT
+            || self.incomplete_state_pct() > THROTTLE_WARN_PCT
+    }
+}
+
 /// Uniswap V3 fee tiers we probe, in hundredths-of-a-bip (ppm).
 pub const V3_FEE_TIERS: [u32; 3] = [500, 3000, 10000];
 /// Canonical UniswapV2/SushiSwap swap fee in ppm (0.30%).
@@ -984,7 +1101,7 @@ pub async fn fetch_arbitrum_pools(rpc_url: &str) -> eyre::Result<Vec<PoolEdge>> 
 pub async fn fetch_arbitrum_pools_with_usd(
     rpc_url: &str,
 ) -> eyre::Result<(Vec<PoolEdge>, std::collections::HashMap<Address, f64>)> {
-    let (edges, usd_prices, _block) = fetch_arbitrum_pools_with_usd_at_block(rpc_url).await?;
+    let (edges, usd_prices, _block, _tele) = fetch_arbitrum_pools_with_usd_at_block(rpc_url).await?;
     Ok((edges, usd_prices))
 }
 
@@ -994,12 +1111,21 @@ pub async fn fetch_arbitrum_pools_with_usd(
 /// implementation; the two-tuple variant above simply drops the block.
 pub async fn fetch_arbitrum_pools_with_usd_at_block(
     rpc_url: &str,
-) -> eyre::Result<(Vec<PoolEdge>, std::collections::HashMap<Address, f64>, u64)> {
+) -> eyre::Result<(
+    Vec<PoolEdge>,
+    std::collections::HashMap<Address, f64>,
+    u64,
+    DiscoveryTelemetry,
+)> {
     let client = RpcClient::new(rpc_url.to_string(), Duration::from_secs(15), 2)?;
 
     // Liveness check first so failures are clear and early.
     let block = client.block_number().await?;
     info!("Connected to Arbitrum RPC at block {block}");
+
+    // Honest throttle-vs-gate telemetry for this fetch (reporting only; never
+    // influences a gating decision). Populated as the pipeline progresses.
+    let mut tele = DiscoveryTelemetry { block, ..Default::default() };
 
     // 0) Assemble the EFFECTIVE token universe (Phase 9).
     //    0a) Cap the registry (blue-chips always kept) to bound O(N^2) discovery.
@@ -1015,7 +1141,14 @@ pub async fn fetch_arbitrum_pools_with_usd_at_block(
     let (mut tokens, dropped_no_decimals) =
         resolve_effective_tokens(&registry_capped, &onchain_decimals);
     let denylist = fee_on_transfer_denylist();
+    let before_denylist = tokens.len();
     tokens.retain(|t| !is_denylisted(t.address, denylist));
+    tele.registry_tokens = registry_all.len();
+    tele.tokens_loaded = tokens.len();
+    tele.bluechip_loaded = tokens.iter().filter(|t| t.blue_chip).count();
+    tele.longtail_loaded = tokens.iter().filter(|t| !t.blue_chip).count();
+    tele.tokens_dropped_no_decimals = dropped_no_decimals.len();
+    tele.tokens_dropped_denylist = before_denylist - tokens.len();
     info!(
         "Token universe: {} effective ({} blue-chip + {} long-tail) from {} registered; \
          dropped {} long-tail with unreadable on-chain decimals (fail-closed), cap={}",
@@ -1075,6 +1208,16 @@ pub async fn fetch_arbitrum_pools_with_usd_at_block(
         .collect();
 
     let (discovery_results, discovery_failed) = batch_in_chunks(&client, &discovery_calls, 40).await;
+    tele.discovery_probes = discovery_calls.len();
+    tele.discovery_probes_failed = discovery_failed;
+    if !discovery_calls.is_empty() {
+        info!(
+            "Discovery batch: {}/{} probe call(s) failed ({:.1}%)",
+            discovery_failed,
+            discovery_calls.len(),
+            tele.discovery_fail_pct()
+        );
+    }
     if !discovery_calls.is_empty()
         && discovery_failed as f64 / discovery_calls.len() as f64 > MAX_BATCH_FAILURE_FRACTION
     {
@@ -1096,6 +1239,7 @@ pub async fn fetch_arbitrum_pools_with_usd_at_block(
             }
         }
     }
+    tele.pools_discovered = pools.len();
     info!(
         "Discovered {} live pools out of {} probed pair/venue combinations",
         pools.len(),
@@ -1142,6 +1286,16 @@ pub async fn fetch_arbitrum_pools_with_usd_at_block(
     }
 
     let (state_results, state_failed) = batch_in_chunks(&client, &state_calls, 60).await;
+    tele.state_calls = state_calls.len();
+    tele.state_calls_failed = state_failed;
+    if !state_calls.is_empty() {
+        info!(
+            "State batch: {}/{} state/balance call(s) failed ({:.1}%)",
+            state_failed,
+            state_calls.len(),
+            tele.state_fail_pct()
+        );
+    }
     if !state_calls.is_empty()
         && state_failed as f64 / state_calls.len() as f64 > MAX_BATCH_FAILURE_FRACTION
     {
@@ -1216,7 +1370,10 @@ pub async fn fetch_arbitrum_pools_with_usd_at_block(
     let mut nonstandard: std::collections::HashSet<Address> = std::collections::HashSet::new();
     let mut priced: Vec<PricedPool> = Vec::new();
     for (idx, (candidate, pool_addr)) in pools.iter().enumerate() {
-        let Some(bytes) = price_bytes.get(&idx) else { continue };
+        let Some(bytes) = price_bytes.get(&idx) else {
+            tele.pools_dropped_incomplete_state += 1;
+            continue;
+        };
         let mut reserve0 = U256::zero();
         let mut reserve1 = U256::zero();
         let mut sqrt_price_x96 = U256::zero();
@@ -1229,6 +1386,7 @@ pub async fn fetch_arbitrum_pools_with_usd_at_block(
                     // missing liquidity() read must NOT be treated as zero and let
                     // through, so require it to have decoded.
                     let Some(l) = v3_liquidity.get(&idx).copied() else {
+                        tele.pools_dropped_incomplete_state += 1;
                         debug!(
                             "Skipping {} pool {:#x}/{:#x}: missing liquidity() result (degraded RPC)",
                             candidate.dex, candidate.token0, candidate.token1
@@ -1240,7 +1398,10 @@ pub async fn fetch_arbitrum_pools_with_usd_at_block(
                     tick = tk;
                     v3_price_token1_per_token0(sqrt, candidate.dec0, candidate.dec1)
                 }
-                None => continue,
+                None => {
+                    tele.pools_dropped_bad_price += 1;
+                    continue;
+                }
             }
         } else {
             match decode_reserves(bytes) {
@@ -1249,10 +1410,14 @@ pub async fn fetch_arbitrum_pools_with_usd_at_block(
                     reserve1 = r1;
                     v2_price_token1_per_token0(r0, r1, candidate.dec0, candidate.dec1)
                 }
-                None => continue,
+                None => {
+                    tele.pools_dropped_bad_price += 1;
+                    continue;
+                }
             }
         };
         if !is_price_plausible(price1_per_0) {
+            tele.pools_dropped_bad_price += 1;
             warn!(
                 "Skipping {} pool {:#x}/{:#x}: implausible price {price1_per_0:e} (decimals/ordering guard)",
                 candidate.dex, candidate.token0, candidate.token1
@@ -1263,6 +1428,7 @@ pub async fn fetch_arbitrum_pools_with_usd_at_block(
         // degraded RPC must NOT be silently treated as a zero reserve — skip the
         // pool so it can never be valued (and emitted) from partial data.
         let (Some(raw0), Some(raw1)) = (bal0.get(&idx), bal1.get(&idx)) else {
+            tele.pools_dropped_incomplete_state += 1;
             debug!(
                 "Skipping {} pool {:#x}/{:#x}: missing balanceOf result(s) (degraded RPC)",
                 candidate.dex, candidate.token0, candidate.token1
@@ -1306,6 +1472,7 @@ pub async fn fetch_arbitrum_pools_with_usd_at_block(
             !nonstandard.contains(&p.candidate.token0)
                 && !nonstandard.contains(&p.candidate.token1)
         });
+        tele.pools_dropped_nonstandard = before - priced.len();
         info!(
             "Dropped {} pool(s) touching {} non-standard token(s) (V2 reserves-vs-balanceOf divergence > {:.2}%)",
             before - priced.len(),
@@ -1370,10 +1537,13 @@ pub async fn fetch_arbitrum_pools_with_usd_at_block(
         }
         passing.push((idx, liquidity_usd));
     }
+    tele.pools_dropped_liquidity = skipped_dust;
+    tele.pools_unpriced_leg = unpriced_liquidity;
 
     // 6b) Cap to the deepest SCANNER_MAX_POOLS pools to bound edge/cross-tick RPC.
     let before_cap = passing.len();
     let passing = cap_by_depth(passing, max_pools);
+    tele.pools_capped = before_cap - passing.len();
     if passing.len() < before_cap {
         info!(
             "Capped pool set {} -> {} (kept deepest by USD liquidity, SCANNER_MAX_POOLS={})",
@@ -1446,8 +1616,31 @@ pub async fn fetch_arbitrum_pools_with_usd_at_block(
         blue_chip_floor,
         longtail_floor
     );
+    tele.pools_kept = priced_pools;
+    tele.edges_loaded = edges.len();
+    info!(
+        "Discovery telemetry @ block {}: tokens_loaded={} edges_loaded={} | throttle_drops={} \
+         (discovery_failed={}/{} state_failed={}/{} incomplete_state={}) | gate_drops={} \
+         (no_decimals={} denylist={} bad_price={} nonstandard={} liquidity={}) | throttle_suspected={}",
+        tele.block,
+        tele.tokens_loaded,
+        tele.edges_loaded,
+        tele.throttle_drops(),
+        tele.discovery_probes_failed,
+        tele.discovery_probes,
+        tele.state_calls_failed,
+        tele.state_calls,
+        tele.pools_dropped_incomplete_state,
+        tele.gate_drops(),
+        tele.tokens_dropped_no_decimals,
+        tele.tokens_dropped_denylist,
+        tele.pools_dropped_bad_price,
+        tele.pools_dropped_nonstandard,
+        tele.pools_dropped_liquidity,
+        tele.throttle_suspected()
+    );
 
-    Ok((edges, usd_prices, block))
+    Ok((edges, usd_prices, block, tele))
 }
 
 /// Split a large set of calls into fixed-size batches to stay friendly with
@@ -1880,6 +2073,27 @@ mod tests {
     }
 
     #[test]
+    fn only_four_canonical_stables_are_hard_pinned() {
+        // Phase 9 honesty invariant: NO new $1 pin. Only the four canonical
+        // stablecoins are anchored at $1; every other token — including real
+        // long-tail stables that can depeg (FRAX/LUSD/MIM/USDS) — must be priced
+        // via the consensus anchor, never hard-pinned.
+        assert_eq!(stable_symbols().len(), 4);
+        for depeggable in ["FRAX", "LUSD", "MIM", "USDS"] {
+            assert!(
+                !is_stable(depeggable),
+                "{depeggable} must NOT be hard-pinned to $1 (it can depeg; price it via consensus)"
+            );
+        }
+        // And these long-tail stables really are in the registry (so the guard matters).
+        let syms: std::collections::HashSet<&str> =
+            arbitrum_tokens().iter().map(|t| t.symbol).collect();
+        for depeggable in ["FRAX", "LUSD", "MIM", "USDS"] {
+            assert!(syms.contains(depeggable), "{depeggable} should be a registered long-tail token");
+        }
+    }
+
+    #[test]
     fn registry_has_expected_decimals() {
         let t = arbitrum_tokens();
         let d = |sym: &str| t.iter().find(|x| x.symbol == sym).unwrap().decimals;
@@ -2260,5 +2474,92 @@ mod tests {
         // max >= len returns all (still sorted desc).
         let all = cap_by_depth(vec![("x", 1.0), ("y", 2.0)], 9);
         assert_eq!(all, vec![("y", 2.0), ("x", 1.0)]);
+    }
+
+    // ---- (e) throttle-vs-gate discovery telemetry ----
+    #[test]
+    fn telemetry_honest_zero_is_not_throttle_suspected() {
+        // Every probe/state call succeeded; a small edge set here is HONEST: the
+        // universe shrank only via real gates (decimals/liquidity/etc.), so a
+        // reviewer must NOT read it as a throttle collapse.
+        let t = DiscoveryTelemetry {
+            block: 100,
+            registry_tokens: 43,
+            tokens_loaded: 43,
+            bluechip_loaded: 11,
+            longtail_loaded: 32,
+            tokens_dropped_no_decimals: 0,
+            tokens_dropped_denylist: 0,
+            discovery_probes: 3600,
+            discovery_probes_failed: 0,
+            pools_discovered: 300,
+            state_calls: 1000,
+            state_calls_failed: 0,
+            pools_dropped_incomplete_state: 0,
+            pools_dropped_bad_price: 2,
+            pools_dropped_nonstandard: 4,
+            pools_dropped_liquidity: 250,
+            pools_unpriced_leg: 40,
+            pools_capped: 0,
+            pools_kept: 44,
+            edges_loaded: 88,
+        };
+        assert!(!t.throttle_suspected(), "clean batches must not be flagged as throttle");
+        assert_eq!(t.throttle_drops(), 0);
+        // gate_drops = no_decimals(0)+denylist(0)+bad_price(2)+nonstandard(4)+liquidity(250).
+        assert_eq!(t.gate_drops(), 256);
+        assert_eq!(t.discovery_fail_pct(), 0.0);
+        assert_eq!(t.state_fail_pct(), 0.0);
+    }
+
+    #[test]
+    fn telemetry_flags_throttle_on_failed_discovery_probes() {
+        // 10% of discovery probes failed (> THROTTLE_WARN_PCT 5%): a shrunken
+        // universe here is a THROTTLE artifact and must be flagged as such, even
+        // though it stays under the hard MAX_BATCH_FAILURE_FRACTION abort bar.
+        let t = DiscoveryTelemetry {
+            discovery_probes: 1000,
+            discovery_probes_failed: 100,
+            state_calls: 500,
+            state_calls_failed: 0,
+            pools_discovered: 50,
+            ..Default::default()
+        };
+        assert!(t.discovery_fail_pct() > THROTTLE_WARN_PCT);
+        assert!(t.throttle_suspected(), "high discovery failure must flag throttle");
+        assert_eq!(t.throttle_drops(), 100);
+    }
+
+    #[test]
+    fn telemetry_flags_throttle_on_incomplete_state_reads() {
+        // Batches "passed" but a large share of discovered pools lost a required
+        // state read (missing balanceOf/liquidity) — a partial-graph throttle
+        // symptom that must be flagged, not silently treated as honest zero.
+        let t = DiscoveryTelemetry {
+            discovery_probes: 1000,
+            discovery_probes_failed: 0,
+            state_calls: 400,
+            state_calls_failed: 0,
+            pools_discovered: 100,
+            pools_dropped_incomplete_state: 20, // 20% of discovered pools
+            ..Default::default()
+        };
+        assert_eq!(t.discovery_fail_pct(), 0.0);
+        assert_eq!(t.state_fail_pct(), 0.0);
+        assert!(t.incomplete_state_pct() > THROTTLE_WARN_PCT);
+        assert!(t.throttle_suspected(), "high incomplete-state rate must flag throttle");
+        assert_eq!(t.throttle_drops(), 20);
+    }
+
+    #[test]
+    fn telemetry_percentages_are_zero_safe() {
+        // An all-empty snapshot must not divide by zero.
+        let t = DiscoveryTelemetry::default();
+        assert_eq!(t.discovery_fail_pct(), 0.0);
+        assert_eq!(t.state_fail_pct(), 0.0);
+        assert_eq!(t.incomplete_state_pct(), 0.0);
+        assert!(!t.throttle_suspected());
+        assert_eq!(t.throttle_drops(), 0);
+        assert_eq!(t.gate_drops(), 0);
     }
 }

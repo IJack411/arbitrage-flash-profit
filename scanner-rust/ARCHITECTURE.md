@@ -94,6 +94,14 @@ in `pools.rs::fetch_arbitrum_pools_with_usd_at_block` and its helpers.
   guard; a degraded batch shrinks the long-tail toward the safe blue-chip baseline
   rather than fabricating state. Blue-chips, venue math, and all downstream gates
   are unchanged.
+- **Throttle-vs-gate telemetry (`DiscoveryTelemetry`).** `fetch_arbitrum_pools_with_usd_at_block`
+  returns a per-fetch, reporting-only telemetry record (it never influences gating):
+  probes attempted/failed, state calls attempted/failed, pools dropped for
+  *incomplete state* (throttle-sensitive) vs *honest gates*
+  (`no_decimals`/`denylist`/`bad_price`/`nonstandard`/`liquidity`), and
+  `throttle_suspected()` (any failure rate above `THROTTLE_WARN_PCT`). This lets a
+  reviewer distinguish an HONEST-ZERO edge set from a silent RPC throttle-collapse;
+  the capstone example prints it per block and an aggregate baseline-vs-expanded line.
 
 ## Legacy single-shot flow
 1. Load config and logging.

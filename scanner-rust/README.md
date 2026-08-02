@@ -147,7 +147,12 @@ survivors is still a valid outcome.
   batches all flow through the existing batched `eth_call` + fail-closed
   `MAX_BATCH_FAILURE_FRACTION` guard; cross-tick data is fetched only for pools that
   survive the gate + cap. Any degraded/partial batch drops the affected candidate,
-  never fabricates state.
+  never fabricates state. Each fetch returns a `DiscoveryTelemetry` **throttle-vs-gate
+  proof** — probes attempted vs failed, pools dropped for *incomplete state* (RPC
+  throttle) vs *honest gates* (decimals/denylist/bad-price/non-standard/liquidity),
+  and `throttle_suspected()` (flags when a batch failure rate exceeds
+  `THROTTLE_WARN_PCT`) — so a small/zero edge set can be told apart from a silent
+  throttle collapse. The capstone prints it per block.
 - **(f) Preserved behavior.** All 11 blue-chips stay in with unchanged
   addresses/decimals; V3 (incl. Phase 8 cross-tick) + Sushi V2 math is unchanged;
   the detection/sim/payload pipeline is reused as-is on the bigger edge set.

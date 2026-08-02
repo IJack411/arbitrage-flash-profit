@@ -1083,16 +1083,16 @@ async function executeTrade(candidate) {
   const step2 = route.steps[1];
   const loanToken = TOKENS[route.loan];
   const intermediateToken = TOKENS[step1.tokenOut]?.address;
-  const wallet = new ethers.Wallet(PRIVATE_KEY, runtime.provider);
-  const contract = new ethers.Contract(CONTRACT_ADDRESS, FLASH_LOAN_ABI, wallet);
-
   // Phase 1.2: amountBMin must be in buy-token (step1.tokenOut) units, not loan-token units.
   // The contract checks: amount received from swap-A >= amountBMin before proceeding to swap-B.
   // Using loanAmount (loan-token denomination) here would be unit-unsafe when decimals differ
-  // (e.g. USDC=6 dec for loan but WETH=18 dec for buy token).
-  // Correct base: quoted step-1 output (step1AmountOut) * 98.5% slippage floor.
-  const step1Base = candidate.step1AmountOut != null ? candidate.step1AmountOut : loanAmount;
-  const amountBMin = step1Base * 985n / 1000n;
+  // (e.g. USDC=6 dec for loan but WETH=18 dec for buy token). We therefore REQUIRE the quoted
+  // step-1 output (buy-token units) and refuse the candidate rather than fall back to a
+  // unit-unsafe loan-denominated value.
+  if (candidate.step1AmountOut == null) {
+    return { success: false, error: `missing step1AmountOut for ${route.name} — cannot derive amountBMin in buy-token units` };
+  }
+  const amountBMin = candidate.step1AmountOut * 985n / 1000n;
 
   const payload = {
     asset: loanToken.address,
@@ -1142,6 +1142,10 @@ async function executeTrade(candidate) {
   if (!isLiveSafeRoute(route)) {
     throw new Error(`[safety] route ${route.name} uses non-allowlisted venue — live submit blocked`);
   }
+
+  // Construct signer/contract only on the confirmed-live path; keyless dry-run must never reach here.
+  const wallet = new ethers.Wallet(PRIVATE_KEY, runtime.provider);
+  const contract = new ethers.Contract(CONTRACT_ADDRESS, FLASH_LOAN_ABI, wallet);
 
   await contract.executeArbitrage.estimateGas(
     payload.asset, payload.amount, payload.routerA, payload.routerB, payload.tokenB,

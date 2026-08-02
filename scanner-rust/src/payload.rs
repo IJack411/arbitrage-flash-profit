@@ -277,6 +277,7 @@ pub mod fixtures {
                 liquidity: 0,
                 tick: 0,
                 zero_for_one: false,
+                cross_tick: None,
             }),
         }
     }
@@ -487,6 +488,7 @@ mod tests {
                     liquidity: 0,
                     tick: 0,
                     zero_for_one: false,
+                    cross_tick: None,
                 })
             } else {
                 None

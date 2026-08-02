@@ -27,7 +27,7 @@ use ethers::types::{Address, U256};
 use serde_json::Value;
 use tracing::{debug, info, warn};
 
-use crate::types::{PoolEdge, PoolSwapState};
+use crate::types::{PoolEdge, PoolSwapState, V3CrossTickData, V3Tick};
 
 /// A verified Arbitrum token with its canonical address and ERC-20 decimals.
 #[derive(Debug, Clone, Copy)]
@@ -49,6 +49,8 @@ const SEL_SLOT0: [u8; 4] = [0x38, 0x50, 0xc7, 0xbd]; // slot0()
 const SEL_GET_RESERVES: [u8; 4] = [0x09, 0x02, 0xf1, 0xac]; // getReserves()
 const SEL_BALANCE_OF: [u8; 4] = [0x70, 0xa0, 0x82, 0x31]; // balanceOf(address)
 const SEL_LIQUIDITY: [u8; 4] = [0x1a, 0x68, 0x65, 0x02]; // liquidity()
+const SEL_TICK_BITMAP: [u8; 4] = [0x53, 0x39, 0xc2, 0x96]; // tickBitmap(int16)
+const SEL_TICKS: [u8; 4] = [0xf3, 0x0d, 0xba, 0x93]; // ticks(int24)
 
 /// Default minimum pool liquidity (USD) below which a pool is treated as dust
 /// and skipped, so near-empty/stale pools cannot manufacture fake spreads.
@@ -231,6 +233,9 @@ struct EdgeMeta<'a> {
     sqrt_price_x96: U256,
     liquidity: u128,
     tick: i32,
+    /// V3 cross-tick data (initialized ticks + fetched window) enabling the full
+    /// tick-by-tick swap walk; `None` for V2 or when no ticks were fetched.
+    cross_tick: Option<V3CrossTickData>,
 }
 
 /// Build both directional edges for a pool given the `token1`-per-`token0`
@@ -241,7 +246,7 @@ fn build_bidirectional_edges(
     price1_per_0: f64,
     meta: &EdgeMeta<'_>,
 ) -> Option<[PoolEdge; 2]> {
-    let EdgeMeta {
+    let &EdgeMeta {
         liquidity_usd,
         dex,
         is_v3,
@@ -254,7 +259,8 @@ fn build_bidirectional_edges(
         sqrt_price_x96,
         liquidity,
         tick,
-    } = *meta;
+        ref cross_tick,
+    } = meta;
     if !is_price_plausible(price1_per_0) {
         warn!(
             "Skipping {dex} pool {token0:#x}/{token1:#x}: implausible price {price1_per_0:e} (decimals/ordering guard)"
@@ -279,6 +285,7 @@ fn build_bidirectional_edges(
         liquidity,
         tick,
         zero_for_one: true,
+        cross_tick: cross_tick.clone(),
     };
     // Backward hop sells token1 for token0 (price UP) => zero_for_one = false.
     let backward_state = PoolSwapState {
@@ -290,6 +297,7 @@ fn build_bidirectional_edges(
         liquidity,
         tick,
         zero_for_one: false,
+        cross_tick: cross_tick.clone(),
     };
 
     let forward = PoolEdge {
@@ -472,6 +480,28 @@ fn encode_uint24(v: u32) -> [u8; 32] {
     out
 }
 
+/// Encode a signed integer as a 32-byte big-endian two's-complement ABI word
+/// (sign-extended), for `int16` / `int24` parameters.
+fn encode_int256(v: i64) -> [u8; 32] {
+    let mut out = if v < 0 { [0xFFu8; 32] } else { [0u8; 32] };
+    out[24..32].copy_from_slice(&v.to_be_bytes());
+    out
+}
+
+fn calldata_tick_bitmap(word_pos: i16) -> Vec<u8> {
+    let mut data = Vec::with_capacity(4 + 32);
+    data.extend_from_slice(&SEL_TICK_BITMAP);
+    data.extend_from_slice(&encode_int256(word_pos as i64));
+    data
+}
+
+fn calldata_ticks(tick: i32) -> Vec<u8> {
+    let mut data = Vec::with_capacity(4 + 32);
+    data.extend_from_slice(&SEL_TICKS);
+    data.extend_from_slice(&encode_int256(tick as i64));
+    data
+}
+
 fn calldata_get_pool(token_a: Address, token_b: Address, fee: u32) -> Vec<u8> {
     let mut data = Vec::with_capacity(4 + 96);
     data.extend_from_slice(&SEL_GET_POOL);
@@ -533,6 +563,25 @@ fn decode_slot0_sqrt_price_and_tick(bytes: &[u8]) -> Option<(U256, i32)> {
 /// Decode a `uint128` return word (e.g. `liquidity()`), taking the low 128 bits.
 fn decode_uint128(bytes: &[u8]) -> Option<u128> {
     decode_uint256(bytes).map(|v| v.low_u128())
+}
+
+/// Decode the `int128 liquidityNet` (the 2nd field) from a `ticks(int24)` return.
+/// It is ABI-encoded as an int128 sign-extended to 256 bits; we validate the sign
+/// extension and return `None` (fail closed) on any malformed word.
+fn decode_liquidity_net(bytes: &[u8]) -> Option<i128> {
+    if bytes.len() < 64 {
+        return None;
+    }
+    let word = &bytes[32..64];
+    let low = &word[16..32];
+    let negative = low[0] & 0x80 != 0;
+    let fill = if negative { 0xFFu8 } else { 0x00u8 };
+    if word[0..16].iter().any(|&b| b != fill) {
+        return None; // sign extension inconsistent => not a clean int128
+    }
+    let mut buf = [0u8; 16];
+    buf.copy_from_slice(low);
+    Some(i128::from_be_bytes(buf))
 }
 
 /// Decode `getReserves()` -> (reserve0 uint112, reserve1 uint112, ...).
@@ -773,6 +822,8 @@ pub async fn fetch_arbitrum_pools_with_usd_at_block(
         sqrt_price_x96: U256,
         liquidity: u128,
         tick: i32,
+        /// V3 cross-tick data (initialized ticks + fetched window); `None` for V2.
+        cross_tick: Option<V3CrossTickData>,
     }
     let mut priced: Vec<PricedPool> = Vec::new();
     for (idx, (candidate, pool_addr)) in pools.iter().enumerate() {
@@ -842,8 +893,34 @@ pub async fn fetch_arbitrum_pools_with_usd_at_block(
             sqrt_price_x96,
             liquidity,
             tick,
+            cross_tick: None,
         });
     }
+
+    // 4.5) Fetch bounded V3 cross-tick data so the simulator can walk swaps across
+    //      initialized-tick boundaries (Phase 8) instead of fail-closing on them.
+    //      Fail-closed: any pool without complete, in-bounds data keeps `None` and
+    //      is simulated exactly within its current interval (Phase-4 behaviour).
+    let v3_refs: Vec<Option<V3PoolRef>> = priced
+        .iter()
+        .map(|p| {
+            if p.candidate.is_v3 {
+                Some(V3PoolRef { pool_addr: p.pool_addr, fee: p.candidate.fee, tick: p.tick })
+            } else {
+                None
+            }
+        })
+        .collect();
+    let cross_tick_data = fetch_cross_tick_data(&client, &v3_refs).await;
+    let cross_tick_pools = cross_tick_data.iter().filter(|c| c.is_some()).count();
+    for (p, ct) in priced.iter_mut().zip(cross_tick_data) {
+        p.cross_tick = ct;
+    }
+    info!(
+        "Fetched V3 cross-tick data for {}/{} V3 pools (others fall back to within-interval sim)",
+        cross_tick_pools,
+        v3_refs.iter().filter(|r| r.is_some()).count()
+    );
 
     // 5) Derive live USD prices for every token from stablecoin anchors, using
     //    the observed edge prices (both directions).
@@ -911,6 +988,7 @@ pub async fn fetch_arbitrum_pools_with_usd_at_block(
                 sqrt_price_x96: p.sqrt_price_x96,
                 liquidity: p.liquidity,
                 tick: p.tick,
+                cross_tick: p.cross_tick.clone(),
             },
         ) {
             priced_pools += 1;
@@ -955,6 +1033,192 @@ async fn batch_in_chunks(
         }
     }
     (out, failed_calls)
+}
+
+/// Phase 8 cross-tick fetch bounds. We read `2*V3_WORD_RADIUS+1` tick-bitmap words
+/// centred on each V3 pool's current word, decode the initialized ticks in that
+/// range, and fetch their `liquidityNet`. A pool with more than
+/// `V3_MAX_TICKS_PER_POOL` initialized ticks in range, any decode gap, or a
+/// degraded RPC gets NO cross-tick data and falls back to exact within-interval
+/// simulation (fail-closed — never a guess). One word spans 256 spacing-intervals,
+/// so even a single word each side covers a very wide price range for the
+/// canonical 10 / 60 / 200 tick spacings.
+const V3_WORD_RADIUS: i32 = 1;
+const V3_MAX_TICKS_PER_POOL: usize = 256;
+const V3_MIN_TICK: i32 = -887272;
+const V3_MAX_TICK: i32 = 887272;
+
+/// Canonical Uniswap V3 tick spacing for a fee tier (ppm); unknown tiers => `None`.
+fn spacing_for_fee(fee_ppm: u32) -> Option<i32> {
+    match fee_ppm {
+        100 => Some(1),
+        500 => Some(10),
+        3000 => Some(60),
+        10000 => Some(200),
+        _ => None,
+    }
+}
+
+/// A discovered V3 pool needing cross-tick data, aligned to a `priced` index.
+struct V3PoolRef {
+    pool_addr: Address,
+    fee: u32,
+    tick: i32,
+}
+
+/// Per-pool cross-tick fetch plan: derived spacing, the lowest bitmap word we
+/// fetch, and the tick window that fetch fully covers.
+struct CtPlan {
+    spacing: i32,
+    lo_word: i32,
+    window: (i32, i32),
+}
+
+/// Bounded bitmap-word plan + fully-covered tick window for a pool at `tick`.
+fn cross_tick_plan(tick: i32, spacing: i32) -> CtPlan {
+    let compressed = tick.div_euclid(spacing);
+    let word_pos = compressed.div_euclid(256);
+    let lo_word = word_pos - V3_WORD_RADIUS;
+    let hi_word = word_pos + V3_WORD_RADIUS;
+    let window_lo = (lo_word * 256 * spacing).max(V3_MIN_TICK);
+    let window_hi = ((hi_word * 256 + 255) * spacing).min(V3_MAX_TICK);
+    CtPlan { spacing, lo_word, window: (window_lo, window_hi) }
+}
+
+/// Fetch bounded Uniswap V3 cross-tick data (initialized ticks + `liquidityNet`)
+/// for each V3 pool, aligned to `refs` (V2 entries are `None`). Every failure mode
+/// — degraded RPC, a decode gap, an over-cap pool, an unknown fee tier — yields
+/// `None` for that pool (fail-closed to within-interval sim), never a partial or
+/// guessed result.
+async fn fetch_cross_tick_data(
+    client: &RpcClient,
+    refs: &[Option<V3PoolRef>],
+) -> Vec<Option<V3CrossTickData>> {
+    const NWORDS: usize = (2 * V3_WORD_RADIUS + 1) as usize;
+    let mut out: Vec<Option<V3CrossTickData>> = (0..refs.len()).map(|_| None).collect();
+
+    // Stage A: one tick-bitmap word per (pool, word offset).
+    let mut plans: std::collections::HashMap<usize, CtPlan> = std::collections::HashMap::new();
+    let mut bitmap_calls: Vec<Call> = Vec::new();
+    for (pi, r) in refs.iter().enumerate() {
+        let Some(r) = r else { continue };
+        let Some(spacing) = spacing_for_fee(r.fee) else { continue };
+        let plan = cross_tick_plan(r.tick, spacing);
+        for wi in 0..NWORDS {
+            let word = plan.lo_word + wi as i32;
+            bitmap_calls.push(Call {
+                key: pi * NWORDS + wi,
+                to: r.pool_addr,
+                data: calldata_tick_bitmap(word as i16),
+            });
+        }
+        plans.insert(pi, plan);
+    }
+    if bitmap_calls.is_empty() {
+        return out;
+    }
+    let (bitmap_results, bitmap_failed) = batch_in_chunks(client, &bitmap_calls, 60).await;
+    if bitmap_failed as f64 / bitmap_calls.len() as f64 > MAX_BATCH_FAILURE_FRACTION {
+        warn!(
+            "Skipping V3 cross-tick data: {}/{} tick-bitmap calls failed (> {:.0}%); \
+             falling back to within-interval simulation.",
+            bitmap_failed,
+            bitmap_calls.len(),
+            MAX_BATCH_FAILURE_FRACTION * 100.0
+        );
+        return out;
+    }
+
+    // Decode bitmaps -> initialized tick indices per pool; count decoded words so a
+    // pool missing any word is failed closed (incomplete coverage).
+    let mut words_ok: std::collections::HashMap<usize, usize> = std::collections::HashMap::new();
+    let mut ticks_found: std::collections::HashMap<usize, Vec<i32>> = std::collections::HashMap::new();
+    for (key, bytes) in &bitmap_results {
+        let pi = key / NWORDS;
+        let wi = key % NWORDS;
+        let Some(plan) = plans.get(&pi) else { continue };
+        let Some(bitmap) = decode_uint256(bytes) else { continue };
+        *words_ok.entry(pi).or_insert(0) += 1;
+        if bitmap.is_zero() {
+            continue;
+        }
+        let word = plan.lo_word + wi as i32;
+        for b in 0..256usize {
+            if bitmap.bit(b) {
+                let compressed = word * 256 + b as i32;
+                ticks_found.entry(pi).or_default().push(compressed * plan.spacing);
+            }
+        }
+    }
+
+    // Stage B: fetch liquidityNet for each initialized tick of pools that have both
+    // COMPLETE bitmap coverage and a tick count within the per-pool cap.
+    let mut tick_calls: Vec<Call> = Vec::new();
+    let mut tick_keys: Vec<(usize, i32)> = Vec::new(); // key index -> (pi, tick)
+    let mut eligible: std::collections::HashSet<usize> = std::collections::HashSet::new();
+    for &pi in plans.keys() {
+        if words_ok.get(&pi).copied().unwrap_or(0) != NWORDS {
+            continue; // incomplete coverage => fail closed for this pool
+        }
+        let ticks = ticks_found.get(&pi).cloned().unwrap_or_default();
+        if ticks.len() > V3_MAX_TICKS_PER_POOL {
+            continue; // too many ticks => fail closed (bounded frontier)
+        }
+        eligible.insert(pi);
+        let pool_addr = refs[pi].as_ref().unwrap().pool_addr;
+        for t in ticks {
+            tick_keys.push((pi, t));
+            tick_calls.push(Call {
+                key: tick_keys.len() - 1,
+                to: pool_addr,
+                data: calldata_ticks(t),
+            });
+        }
+    }
+
+    let mut net_by: std::collections::HashMap<(usize, i32), i128> = std::collections::HashMap::new();
+    if !tick_calls.is_empty() {
+        let (tick_results, tick_failed) = batch_in_chunks(client, &tick_calls, 60).await;
+        if tick_failed as f64 / tick_calls.len() as f64 > MAX_BATCH_FAILURE_FRACTION {
+            warn!(
+                "Skipping V3 cross-tick data: {}/{} ticks() calls failed (> {:.0}%); \
+                 falling back to within-interval simulation.",
+                tick_failed,
+                tick_calls.len(),
+                MAX_BATCH_FAILURE_FRACTION * 100.0
+            );
+            return out;
+        }
+        for (key, bytes) in &tick_results {
+            if let Some((pi, t)) = tick_keys.get(*key).copied() {
+                if let Some(net) = decode_liquidity_net(bytes) {
+                    net_by.insert((pi, t), net);
+                }
+            }
+        }
+    }
+
+    // Assemble per-pool cross-tick data. A pool is included ONLY if every one of its
+    // initialized ticks decoded a liquidityNet; otherwise it stays `None`.
+    for pi in eligible {
+        let plan = &plans[&pi];
+        let ticks = ticks_found.get(&pi).cloned().unwrap_or_default();
+        let mut v3ticks: Vec<V3Tick> = Vec::with_capacity(ticks.len());
+        let mut complete = true;
+        for t in &ticks {
+            match net_by.get(&(pi, *t)) {
+                Some(net) => v3ticks.push(V3Tick { index: *t, liquidity_net: *net }),
+                None => {
+                    complete = false;
+                    break;
+                }
+            }
+        }
+        if complete {
+            out[pi] = Some(V3CrossTickData { ticks: v3ticks, window: plan.window });
+        }
+    }
+    out
 }
 
 #[cfg(test)]
@@ -1067,6 +1331,7 @@ mod tests {
                 sqrt_price_x96: U256::zero(),
                 liquidity: 0,
                 tick: 0,
+                cross_tick: None,
             },
         )
         .expect("plausible");
@@ -1198,5 +1463,89 @@ mod tests {
             DEFAULT_MIN_POOL_LIQUIDITY_USD,
             DEFAULT_MIN_POOL_LIQUIDITY_USD
         ));
+    }
+
+    #[test]
+    fn v3_cross_tick_selectors_match_signatures() {
+        // The Phase-8 selectors must be the real first-4-bytes of keccak256 of the
+        // Uniswap V3 pool signatures, or every cross-tick fetch would read garbage.
+        let bitmap = ethers::utils::keccak256(b"tickBitmap(int16)");
+        assert_eq!(SEL_TICK_BITMAP, bitmap[..4], "tickBitmap selector mismatch");
+        let ticks = ethers::utils::keccak256(b"ticks(int24)");
+        assert_eq!(SEL_TICKS, ticks[..4], "ticks selector mismatch");
+    }
+
+    #[test]
+    fn encode_int256_sign_extends() {
+        // Positive int16 word position: zero-padded.
+        let p = encode_int256(5);
+        assert!(p[..31].iter().all(|&b| b == 0));
+        assert_eq!(p[31], 5);
+        // Negative int16 word position: sign-extended with 0xFF (two's complement).
+        let n = encode_int256(-1);
+        assert!(n.iter().all(|&b| b == 0xFF));
+        // -256 as a 32-byte two's-complement word.
+        let m = encode_int256(-256);
+        assert!(m[..30].iter().all(|&b| b == 0xFF));
+        assert_eq!(m[30], 0xFF);
+        assert_eq!(m[31], 0x00);
+    }
+
+    #[test]
+    fn decode_liquidity_net_handles_sign() {
+        // Build a ticks() return: 8 words; liquidityNet is word index 1 (an int128
+        // sign-extended to 256 bits). We only need the first two words present.
+        let mk = |net: i128| -> Vec<u8> {
+            let mut buf = vec![0u8; 64];
+            // word 0 (liquidityGross) left zero; word 1 = int128 net sign-extended.
+            let neg = net < 0;
+            if neg {
+                for b in buf[32..48].iter_mut() {
+                    *b = 0xFF;
+                }
+            }
+            buf[48..64].copy_from_slice(&net.to_be_bytes());
+            buf
+        };
+        assert_eq!(decode_liquidity_net(&mk(0)), Some(0));
+        assert_eq!(decode_liquidity_net(&mk(123_456_789)), Some(123_456_789));
+        assert_eq!(decode_liquidity_net(&mk(-987_654_321)), Some(-987_654_321));
+        assert_eq!(
+            decode_liquidity_net(&mk(i128::MIN)),
+            Some(i128::MIN),
+            "extreme negative round-trips"
+        );
+        assert_eq!(decode_liquidity_net(&mk(i128::MAX)), Some(i128::MAX));
+        // Too-short return => fail closed.
+        assert_eq!(decode_liquidity_net(&[0u8; 40]), None);
+        // Inconsistent sign extension (high word not all-fill) => fail closed.
+        let mut bad = mk(-1);
+        bad[40] = 0x00; // corrupt the sign-extension region
+        assert_eq!(decode_liquidity_net(&bad), None);
+    }
+
+    #[test]
+    fn cross_tick_plan_window_covers_current_tick() {
+        // The fetched window must always contain the current tick, for every spacing,
+        // otherwise the sim's window guard would fail-close a swap that hasn't moved.
+        for &(tick, spacing) in &[
+            (0i32, 60i32),
+            (12_345, 60),
+            (-12_345, 60),
+            (100_000, 200),
+            (-100_000, 200),
+            (7, 1),
+            (-7, 10),
+        ] {
+            let plan = cross_tick_plan(tick, spacing);
+            let (lo, hi) = plan.window;
+            assert!(lo <= tick && tick <= hi, "window {lo}..{hi} excludes tick {tick} (spacing {spacing})");
+            assert_eq!(plan.spacing, spacing);
+            // Window is clamped to the valid tick range.
+            assert!(lo >= V3_MIN_TICK && hi <= V3_MAX_TICK);
+        }
+        // Near the min tick the window clamps rather than underflowing.
+        let plan = cross_tick_plan(V3_MIN_TICK + 1, 200);
+        assert_eq!(plan.window.0, V3_MIN_TICK);
     }
 }

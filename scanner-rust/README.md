@@ -53,10 +53,11 @@ scanner. The full chain is **detection + simulation + payload build ONLY** —
 nothing signs, broadcasts, or flips a live flag; execution stays disabled.
 
 ```
-live pools @ block N            (pools.rs, Phase 3)
+live pools @ block N            (pools.rs, Phase 3 + Phase 8 cross-tick data)
   -> fee-aware Bellman-Ford      (scanner.rs, Phases 1–2)
-  -> price-impact SIM gate       (sim.rs, Phase 4: V2 exact; V3 exact within-tick,
-                                  boundary => reject; realized net from the sim)
+  -> price-impact SIM gate       (sim.rs, Phase 4 + 8: V2 exact; V3 exact FULL
+                                  cross-tick walk (bounded, fail-closed);
+                                  realized net from the sim)
   -> build Hop[] payload         (payload.rs, Phase 6: per-hop amountOutMin = sim
                                   output - slippage)
   -> DRY-RUN validate            (payload.rs: hop count [2,5], nonzero router/
@@ -68,6 +69,36 @@ live pools @ block N            (pools.rs, Phase 3)
 per-stage metrics (edges loaded, USD-priceable coverage, cycles proposed,
 survived, rejected_negative, rejected_unsimulable, and each survivor's route +
 realized net + encoded calldata).
+
+### V3 cross-tick swap simulation (Phase 8)
+The V3 leg of the sim gate walks each swap **tick-by-tick**, exactly like the
+real Uniswap V3 pool, instead of quoting only within the current tick-spacing
+interval:
+
+- **Exact integer math.** `get_sqrt_ratio_at_tick` (TickMath magic constants),
+  `compute_swap_step` (SwapMath: amountIn rounded UP, amountOut rounded DOWN,
+  per-step fee), and Q64.96 `getAmount0/1Delta` reproduce the on-chain result.
+  A trade that stays inside one interval yields the **identical** output to the
+  old within-interval math (asserted by an equivalence test).
+- **Real liquidity crossings.** `pools.rs` fetches a bounded window of the pool's
+  `tickBitmap(int16)` words around the current tick and each initialized tick's
+  `ticks(int24).liquidityNet`. The loop applies `liquidityNet` to in-range `L`
+  at every crossing (add moving up / subtract moving down), so multi-interval
+  trades quote an exact (or provably conservative) output.
+- **Bounded, fail-closed frontier (anti-mirage).** The walk is capped by the
+  fetched tick window and `MAX_TICK_CROSSINGS`. Anything genuinely unknowable —
+  no liquidity, missing/partial tick data, a degraded RPC batch, an unknown fee
+  tier, overflow, or exceeding the crossing cap — returns `None` and the cycle is
+  bucketed `rejected_unsimulable`. A pool without complete in-bounds cross-tick
+  data simply falls back to the Phase-4 within-interval behaviour (which still
+  fail-closes on a crossing). Rounding always biases toward **under**-stating
+  output, never toward inventing profit.
+
+The effect on the honest rejection buckets: cycles that Phase 4 rejected as
+`rejected_unsimulable` *purely because* a V3 leg would cross a tick are now
+simulated and either **survive** or are honestly `rejected_negative`;
+`rejected_unsimulable` is reserved for truly unknowable states. Zero surviving
+opportunities remains a valid, truthful outcome.
 
 ### Run the capstone dry run
 The capstone example samples the whole pipeline across several live blocks, then

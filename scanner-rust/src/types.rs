@@ -148,6 +148,42 @@ pub struct PoolSwapState {
     /// DOWN), i.e. `token_in` is the pool's lower-address token. Derived from the
     /// canonical `token0 < token1` factory ordering.
     pub zero_for_one: bool,
+    /// Phase 8: optional Uniswap V3 cross-tick data (the initialized ticks around
+    /// the current tick with their `liquidityNet`, plus the tick window that data
+    /// is COMPLETE over). When present, the simulator walks a swap tick-by-tick —
+    /// updating in-range `liquidity` at each initialized-tick crossing exactly as
+    /// the real pool does — instead of fail-closing at the first interval
+    /// boundary. When `None` (V2 pools, or a V3 state captured without tick data),
+    /// the simulator keeps the Phase-4 behaviour: exact WITHIN the current
+    /// tick-spacing interval, fail-closed (unsimulable) on any boundary crossing.
+    pub cross_tick: Option<V3CrossTickData>,
+}
+
+/// One initialized Uniswap V3 tick within a fetched window.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct V3Tick {
+    /// The tick index (always a multiple of the pool's tick spacing).
+    pub index: i32,
+    /// The tick's raw on-chain `liquidityNet` (int128), i.e. the signed change in
+    /// in-range liquidity applied when the tick is crossed moving in the
+    /// INCREASING-price (`oneForZero`) direction. Crossing in the decreasing
+    /// (`zeroForOne`) direction applies the negation, matching Uniswap's
+    /// `SwapMath`/`Tick.cross` sign convention.
+    pub liquidity_net: i128,
+}
+
+/// The bounded set of initialized ticks the cross-tick V3 simulator may walk for
+/// one hop, plus the tick window that set is guaranteed COMPLETE over (derived
+/// from the fetched `tickBitmap` words). A swap whose price would leave `window`
+/// (or that would cross more ticks than the simulator's bound) fails closed
+/// (`unsimulable`) rather than extrapolate past unfetched state — preserving the
+/// anti-mirage discipline at the new frontier.
+#[derive(Debug, Clone)]
+pub struct V3CrossTickData {
+    /// Initialized ticks, ascending by `index`, each carrying `liquidity_net`.
+    pub ticks: Vec<V3Tick>,
+    /// Inclusive `[lower, upper]` tick range the `ticks` set is complete over.
+    pub window: (i32, i32),
 }
 
 impl PoolEdge {

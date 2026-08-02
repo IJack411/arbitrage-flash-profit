@@ -66,6 +66,7 @@ fn v2_edge(
             liquidity: 0,
             tick: 0,
             zero_for_one: false,
+            cross_tick: None,
         }),
     }
 }
